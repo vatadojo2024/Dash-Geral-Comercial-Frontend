@@ -1,0 +1,35 @@
+{
+  "mes": "2026-06",
+  "closers": {
+    "marcio": {
+      "cash_collected": 121000,
+      "vendas": [
+        { "valor": 44000, "produto": "Black A", "data": "2026-06-02" },
+        { "valor": 68000, "produto": "Prime S", "data": "2026-06-04" },
+        { "valor": 25000, "produto": "Black S", "data": "2026-06-08" },
+        { "valor": 12000, "produto": "Ninja A", "data": "2026-06-09" },
+        { "valor": 7000, "produto": "Ninja S", "data": "2026-06-10" },
+        { "valor": 1997, "produto": "QC", "data": "2026-06-11" }
+      ]
+    },
+    "giba": {
+      "cash_collected": 56000,
+      "vendas": [
+        { "valor": 44000, "produto": "Black A", "data": "2026-06-03" },
+        { "valor": 25000, "produto": "Black S", "data": "2026-06-05" },
+        { "valor": 7000, "produto": "Ninja S", "data": "2026-06-09" },
+        { "valor": 1997, "produto": "QC", "data": "2026-06-10" },
+        { "valor": 1997, "produto": "QC", "data": "2026-06-11" }
+      ]
+    },
+    "aurelio": {
+      "cash_collected": 190000,
+      "vendas": [
+        { "valor": 120000, "produto": "Private S", "data": "2026-06-02" },
+        { "valor": 68000, "produto": "Prime S", "data": "2026-06-05" },
+        { "valor": 44000, "produto": "Black A", "data": "2026-06-08" },
+        { "valor": 98000, "produto": "Prime A", "data": "2026-06-10" }
+      ]
+    }
+  }
+}

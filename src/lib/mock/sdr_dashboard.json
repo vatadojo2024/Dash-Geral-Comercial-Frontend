@@ -1,0 +1,9319 @@
+{
+ "agendadas": [
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-01",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-01",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-01",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-02",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-02",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-03",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-03",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-03",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-03",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-06",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-06",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-07",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-08",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-08",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-08",
+   "total": 3
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-09",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-10",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-10",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-10",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-10",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-13",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-13",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-13",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-14",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-14",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-15",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-16",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-16",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-16",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-17",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-17",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-20",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-20",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-20",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-20",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-21",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-21",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-21",
+   "total": 3
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-22",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-23",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-23",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-23",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-23",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-24",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-24",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-27",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-27",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-28",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-29",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-29",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-29",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-30",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-30",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-30",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-01",
+   "total": 4
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-04",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-04",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-04",
+   "total": 4
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-04",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-05",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-05",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-05",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-05",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-06",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-06",
+   "total": 3
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-07",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-07",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-07",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-07",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-08",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-08",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-08",
+   "total": 4
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-11",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-11",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-11",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-11",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-12",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-12",
+   "total": 4
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-13",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-13",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-14",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-14",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-14",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-14",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-15",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-15",
+   "total": 4
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-15",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-15",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-18",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-18",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-18",
+   "total": 4
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-18",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-20",
+   "total": 4
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-20",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-21",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-21",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-22",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-25",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-25",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-25",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-25",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-26",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-26",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-26",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-27",
+   "total": 4
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-27",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-29",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-29",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-29",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-29",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-01",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-04",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-05",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-08",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-09",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-10",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-11",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-12",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-15",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-16",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-17",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-18",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-19",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-22",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-23",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-24",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-25",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-26",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-29",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-30",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-03",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-05",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-08",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-09",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-10",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-11",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-12",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-15",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-16",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-17",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-18",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-05",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-08",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-09",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-10",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-11",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-12",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-15",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-16",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-17",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-18",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 7
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 7
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 7
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-05",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-08",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-09",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-10",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-11",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-12",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-15",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-16",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-17",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-18",
+   "total": 1
+  }
+ ],
+ "realizadas": [
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-01",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-02",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-02",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-03",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-03",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-03",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-03",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-06",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-06",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-07",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-08",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-08",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-08",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-10",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-10",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-10",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-10",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-13",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-13",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-13",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-14",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-15",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-16",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-16",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-17",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-20",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-20",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-20",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-20",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-21",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-21",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-21",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-22",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-23",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-23",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-23",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-23",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-24",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-27",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-27",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-28",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-29",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-29",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-29",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-30",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-30",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-30",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-01",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-04",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-04",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-04",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-04",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-05",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-05",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-05",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-05",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-06",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-07",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-07",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-07",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-07",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-08",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-08",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-08",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-11",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-11",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-11",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-11",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-12",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-13",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-14",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-14",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-14",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-14",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-15",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-15",
+   "total": 4
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-15",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-15",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-18",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-18",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-18",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-18",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-19",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-20",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-21",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-22",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-25",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-25",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-25",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-25",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-26",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-26",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-26",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-27",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-27",
+   "total": 3
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-27",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-28",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-29",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-29",
+   "total": 3
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-29",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-29",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-01",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-04",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-05",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-08",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-09",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-10",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-11",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-03",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-05",
+   "total": 5
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-08",
+   "total": 4
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-09",
+   "total": 4
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-10",
+   "total": 4
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-11",
+   "total": 4
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 6
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-05",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-08",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-09",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-10",
+   "total": 5
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-11",
+   "total": 5
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-05",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-08",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-09",
+   "total": 6
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-10",
+   "total": 5
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-11",
+   "total": 5
+  }
+ ],
+ "no_show": [
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-02",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-08",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-08",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-09",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-16",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-20",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-21",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-24",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-30",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-01",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-04",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-05",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-06",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-11",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-11",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-12",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-13",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-18",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-20",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-21",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-21",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-21",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-29",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-29",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-05",
+   "total": 1
+  }
+ ],
+ "por_produto": [
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-01",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-01",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-01",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-02",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-02",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-02",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-02",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-02",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-02",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-03",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-03",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-03",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-03",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-03",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-03",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-06",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-06",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-07",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-07",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-07",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-07",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-08",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-08",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-09",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-09",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-09",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-09",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-10",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-10",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-10",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-10",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-10",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-10",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-13",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-13",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-13",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-13",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-13",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-14",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-14",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-14",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-14",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-15",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-15",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-15",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-15",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-15",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-16",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-16",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-16",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-16",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-16",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-16",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-17",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-17",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-17",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-17",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-20",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-20",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-20",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-20",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-20",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-20",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-21",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-21",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-21",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-22",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-22",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-22",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-22",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-23",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-23",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-23",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-23",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-23",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-24",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-24",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-24",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-24",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-27",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-27",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-27",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-27",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-27",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-27",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-28",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-28",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-28",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-28",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-28",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-29",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-29",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-29",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-29",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-29",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-29",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-29",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-30",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-30",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-30",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-30",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-01",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-01",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-01",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-01",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-04",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-04",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-04",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-04",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-04",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-04",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-05",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-05",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-05",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-05",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-05",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-05",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-06",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-06",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-06",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-07",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-07",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-08",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-08",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-08",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-08",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-11",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-11",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-11",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-11",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-11",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-11",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-12",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-12",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-12",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-12",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-12",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-12",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-12",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-13",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-13",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-13",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-13",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-13",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-13",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-14",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-14",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-14",
+   "produto": "Prime",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-14",
+   "produto": "Prime",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-14",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-15",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-15",
+   "produto": "Ninja",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-15",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-15",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-15",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-15",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-15",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-18",
+   "produto": "Ninja",
+   "total": 3
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-18",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-18",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-18",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-18",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-18",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-18",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-19",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-19",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-19",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-19",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-19",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-20",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-20",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-20",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-20",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-20",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-21",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-21",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-21",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-21",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-21",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-21",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-22",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-22",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-22",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-22",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-22",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-22",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-22",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-22",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-22",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-25",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-25",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-25",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-25",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-25",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-25",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-25",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-26",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-26",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-26",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-26",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-26",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-26",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-26",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-27",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-27",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-27",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-27",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-27",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-28",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-28",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-28",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-28",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-28",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-28",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-28",
+   "produto": "Prime",
+   "total": 2
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-29",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-29",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-29",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-29",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-29",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-01",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-02",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-03",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-04",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-05",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-09",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-10",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-11",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-11",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-03",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-05",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-05",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 2,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 2,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 2,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Quebrando Código"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-05",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-08",
+   "total": 2,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Ninja"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 2,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 2,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 2,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-10",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-11",
+   "total": 1,
+   "produto": "Black"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-05",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-08",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-09",
+   "total": 1,
+   "produto": "Prime"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-01",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-02",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "total": 1,
+   "produto": "Private"
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-04",
+   "total": 1,
+   "produto": "Private"
+  }
+ ],
+ "remarcadas": [
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-03",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-08",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-10",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-16",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-21",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-21",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-23",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-27",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-27",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-28",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-07",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-11",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-12",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-13",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-13",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-18",
+   "total": 1
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-22",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-05-22",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-25",
+   "total": 1
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-29",
+   "total": 1
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-29",
+   "total": 1
+  },
+  {
+   "sdr": "Hana",
+   "data_referencia": "2026-06-09",
+   "total": 1
+  }
+ ],
+ "marketing_leads": [
+  {
+   "data_referencia": "2026-04-01",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-02",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-04-03",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-04-06",
+   "total": 7
+  },
+  {
+   "data_referencia": "2026-04-07",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-04-08",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-09",
+   "total": 7
+  },
+  {
+   "data_referencia": "2026-04-10",
+   "total": 7
+  },
+  {
+   "data_referencia": "2026-04-13",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-04-14",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-04-15",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-04-16",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-17",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-04-20",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-21",
+   "total": 8
+  },
+  {
+   "data_referencia": "2026-04-22",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-23",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-24",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-04-27",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-28",
+   "total": 7
+  },
+  {
+   "data_referencia": "2026-04-29",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-04-30",
+   "total": 7
+  },
+  {
+   "data_referencia": "2026-05-01",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-05-04",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-05-05",
+   "total": 12
+  },
+  {
+   "data_referencia": "2026-05-06",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-05-07",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-05-08",
+   "total": 12
+  },
+  {
+   "data_referencia": "2026-05-11",
+   "total": 13
+  },
+  {
+   "data_referencia": "2026-05-12",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-05-13",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-05-14",
+   "total": 12
+  },
+  {
+   "data_referencia": "2026-05-15",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-05-18",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-05-19",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-05-20",
+   "total": 8
+  },
+  {
+   "data_referencia": "2026-05-21",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-05-22",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-05-25",
+   "total": 12
+  },
+  {
+   "data_referencia": "2026-05-26",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-05-27",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-05-28",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-05-29",
+   "total": 13
+  },
+  {
+   "data_referencia": "2026-06-01",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-06-02",
+   "total": 11
+  },
+  {
+   "data_referencia": "2026-06-03",
+   "total": 15
+  },
+  {
+   "data_referencia": "2026-06-04",
+   "total": 15
+  },
+  {
+   "data_referencia": "2026-06-05",
+   "total": 10
+  },
+  {
+   "data_referencia": "2026-06-08",
+   "total": 15
+  },
+  {
+   "data_referencia": "2026-06-09",
+   "total": 14
+  },
+  {
+   "data_referencia": "2026-06-10",
+   "total": 9
+  },
+  {
+   "data_referencia": "2026-06-11",
+   "total": 15
+  }
+ ],
+ "marketing_qualificados": [
+  {
+   "data_referencia": "2026-04-01",
+   "qualificacao": "qualificado qc",
+   "total": 4
+  },
+  {
+   "data_referencia": "2026-04-01",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-02",
+   "qualificacao": "sem qualificacao",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-02",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-02",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-03",
+   "qualificacao": "possivel ninja",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-04-03",
+   "qualificacao": "umql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-06",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-06",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-06",
+   "qualificacao": "umql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-06",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-07",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-07",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-07",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-08",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-08",
+   "qualificacao": "mql+",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-08",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-08",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-09",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-09",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-09",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-10",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-10",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-10",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-13",
+   "qualificacao": "possivel ninja",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-04-13",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-13",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-14",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-14",
+   "qualificacao": "mql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-14",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-15",
+   "qualificacao": "smql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-15",
+   "qualificacao": "possivel ninja",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-16",
+   "qualificacao": "umql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-16",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-16",
+   "qualificacao": "possivel ninja",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-16",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-17",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-17",
+   "qualificacao": "sem qualificacao",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-04-17",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-20",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-20",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-20",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-20",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-20",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-21",
+   "qualificacao": "qualificado qc",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-21",
+   "qualificacao": "umql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-21",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-22",
+   "qualificacao": "qualificado qc",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-22",
+   "qualificacao": "umql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-22",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-23",
+   "qualificacao": "possivel ninja",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-04-23",
+   "qualificacao": "mql+",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-24",
+   "qualificacao": "mql",
+   "total": 4
+  },
+  {
+   "data_referencia": "2026-04-24",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-24",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-27",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-27",
+   "qualificacao": "mql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-27",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-27",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-28",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-28",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-28",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-29",
+   "qualificacao": "sem qualificacao",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-04-29",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-29",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-30",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-30",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-04-30",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-01",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-01",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-01",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-04",
+   "qualificacao": "mql+",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-04",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-04",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-04",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-04",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-05",
+   "qualificacao": "qualificado qc",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-05-05",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-05",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-06",
+   "qualificacao": "sem qualificacao",
+   "total": 4
+  },
+  {
+   "data_referencia": "2026-05-07",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-07",
+   "qualificacao": "mql",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-05-08",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-08",
+   "qualificacao": "sem qualificacao",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-08",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-08",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-11",
+   "qualificacao": "possivel ninja",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-05-11",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-11",
+   "qualificacao": "sem qualificacao",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-12",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-12",
+   "qualificacao": "sem qualificacao",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-12",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-12",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-12",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-13",
+   "qualificacao": "mql",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-05-13",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-13",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-14",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-14",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-14",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-14",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-14",
+   "qualificacao": "smql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-15",
+   "qualificacao": "mql+",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-15",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-15",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-18",
+   "qualificacao": "qualificado qc",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-18",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-18",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-18",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-19",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-19",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-19",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-19",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-20",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-20",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-20",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-20",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-21",
+   "qualificacao": "possivel ninja",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-21",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-21",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-21",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-22",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-22",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-22",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-22",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-25",
+   "qualificacao": "mql+",
+   "total": 4
+  },
+  {
+   "data_referencia": "2026-05-25",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-26",
+   "qualificacao": "mql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-26",
+   "qualificacao": "mql+",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-26",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-27",
+   "qualificacao": "qualificado qc",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-27",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-27",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-28",
+   "qualificacao": "qualificado qc",
+   "total": 4
+  },
+  {
+   "data_referencia": "2026-05-28",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-05-29",
+   "qualificacao": "qualificado qc",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-05-29",
+   "qualificacao": "sem qualificacao",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-05-29",
+   "qualificacao": "mql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-01",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-01",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-01",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-01",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-02",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-02",
+   "qualificacao": "smql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-02",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-03",
+   "qualificacao": "qualificado qc",
+   "total": 4
+  },
+  {
+   "data_referencia": "2026-06-03",
+   "qualificacao": "mql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-03",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-04",
+   "qualificacao": "qualificado qc",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-04",
+   "qualificacao": "mql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-04",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-04",
+   "qualificacao": "umql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-05",
+   "qualificacao": "qualificado qc",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-05",
+   "qualificacao": "possivel ninja",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-05",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-08",
+   "qualificacao": "mql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-08",
+   "qualificacao": "possivel ninja",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-08",
+   "qualificacao": "qualificado qc",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-06-08",
+   "qualificacao": "hmql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-09",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-09",
+   "qualificacao": "mql+",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-09",
+   "qualificacao": "mql",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-09",
+   "qualificacao": "possivel ninja",
+   "total": 2
+  },
+  {
+   "data_referencia": "2026-06-10",
+   "qualificacao": "mql",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-06-10",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-10",
+   "qualificacao": "umql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-11",
+   "qualificacao": "possivel ninja",
+   "total": 3
+  },
+  {
+   "data_referencia": "2026-06-11",
+   "qualificacao": "sem qualificacao",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-11",
+   "qualificacao": "smql",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-11",
+   "qualificacao": "qualificado qc",
+   "total": 1
+  },
+  {
+   "data_referencia": "2026-06-11",
+   "qualificacao": "mql",
+   "total": 1
+  }
+ ],
+ "closer_agendadas": [
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-01",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-01",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-02",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-03",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-03",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-03",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-06",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-06",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-07",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-07",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-08",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-08",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-08",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-09",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-10",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-10",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-10",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-13",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-13",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-13",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-14",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-14",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-15",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-15",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-15",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-16",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-17",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-17",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-17",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-20",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-20",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-20",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-21",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-21",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-21",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-22",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-22",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-23",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-23",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-23",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-27",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-30",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-30",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-30",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-01",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-04",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-04",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-04",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-05",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-05",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-05",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-06",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-07",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-07",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-07",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-08",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-08",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-08",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-11",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-11",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-11",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-14",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-14",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-14",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-15",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-15",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-15",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-18",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-18",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-18",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-19",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-19",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-20",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-21",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-21",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-22",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-22",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-25",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-25",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-25",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-26",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-26",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-28",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-29",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-29",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-29",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-01",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-01",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-01",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-02",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-02",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-02",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-03",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-03",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-03",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-04",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-04",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-04",
+   "total": 4
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-05",
+   "total": 4
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-05",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-05",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-08",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-08",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-08",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-09",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-09",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-09",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-10",
+   "total": 4
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-10",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-10",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-11",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-11",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-11",
+   "total": 4
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-12",
+   "total": 4
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-12",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-12",
+   "total": 4
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-15",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-15",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-15",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-16",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-16",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-16",
+   "total": 4
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-17",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-17",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-17",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-18",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-18",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-18",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-19",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-19",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-19",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-22",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-22",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-22",
+   "total": 4
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-23",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-23",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-23",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-24",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-24",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-24",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-25",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-25",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-25",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-26",
+   "total": 4
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-26",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-26",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-29",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-29",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-29",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-30",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-30",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-30",
+   "total": 3
+  }
+ ],
+ "closer_realizadas": [
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-01",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-02",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-02",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-03",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-03",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-03",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-06",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-06",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-06",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-07",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-07",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-07",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-08",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-08",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-08",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-09",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-09",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-10",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-10",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-10",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-13",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-13",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-13",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-14",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-14",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-15",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-15",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-16",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-17",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-17",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-20",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-20",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-20",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-21",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-21",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-21",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-22",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-22",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-22",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-23",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-23",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-23",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-24",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-27",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-27",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-28",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-29",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-30",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-30",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-30",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-01",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-04",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-04",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-04",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-05",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-05",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-05",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-06",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-07",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-07",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-07",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-08",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-08",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-11",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-11",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-11",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-12",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-12",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-13",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-13",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-14",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-14",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-14",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-15",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-15",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-15",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-18",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-18",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-18",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-19",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-19",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-19",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-20",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-20",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-21",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-21",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-22",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-22",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-22",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-25",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-25",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-25",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-26",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-27",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-27",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-28",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-28",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-29",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-29",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-29",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-01",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-01",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-01",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-02",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-02",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-03",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-03",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-04",
+   "total": 3
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-04",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-04",
+   "total": 4
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-05",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-05",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-05",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-08",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-08",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-08",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-09",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-09",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-09",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-10",
+   "total": 4
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-10",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-10",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-11",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-11",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-11",
+   "total": 3
+  }
+ ],
+ "closer_no_show": [
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-16",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-17",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-30",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-30",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-30",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-01",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-04",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-06",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-07",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-11",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-12",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-15",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-21",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-22",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-22",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-26",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-01",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-01",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-03",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-08",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-09",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-09",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-11",
+   "total": 1
+  }
+ ],
+ "closer_por_produto": [
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-01",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-01",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-01",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-02",
+   "produto": "Prime",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-02",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-02",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-02",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-03",
+   "produto": "Black",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-03",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-03",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-03",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-06",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-06",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-06",
+   "produto": "Private",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-06",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-07",
+   "produto": "Ninja",
+   "total": 3
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-07",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-07",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-08",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-09",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-09",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-09",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-09",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-10",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-10",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-10",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-10",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-10",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-13",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-13",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-13",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-14",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-14",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-14",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-15",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-15",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-15",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-16",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-16",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-16",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-16",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-17",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-17",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-17",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-17",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-17",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-20",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-20",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-20",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-20",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-20",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-21",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-21",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-21",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-21",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-21",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-22",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-22",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-22",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-22",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-23",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-23",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-23",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-23",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-24",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-24",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-24",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-24",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-27",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-27",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-27",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-27",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-27",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-28",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-28",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-28",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-28",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-29",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-29",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-29",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-29",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-29",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-30",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-30",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-30",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-30",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-01",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-01",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-01",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-01",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-04",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-04",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-04",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-04",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-04",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-04",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-04",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-05",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-05",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-05",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-05",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-05",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-06",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-06",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-06",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-07",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-07",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-07",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-11",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-11",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-11",
+   "produto": "Ninja",
+   "total": 3
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-11",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-11",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-12",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-12",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-12",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-12",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-13",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-13",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-13",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-14",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-14",
+   "produto": "Prime",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-14",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-14",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-14",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-14",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-15",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-15",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-15",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-15",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-15",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-18",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-18",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-18",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-18",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-18",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-18",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-19",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-19",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-19",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-19",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-19",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-19",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-19",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-20",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-20",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-20",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-20",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-20",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-20",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-21",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-21",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-21",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-21",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-21",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-22",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-22",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-22",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-22",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-22",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-25",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-25",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-25",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-25",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-25",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-25",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-26",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-26",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-26",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-26",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-27",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-27",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-27",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-27",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-28",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-28",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-28",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-28",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-28",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-29",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-29",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-05-29",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-29",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-29",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-01",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-01",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-01",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-01",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-01",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-02",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-02",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-02",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-02",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-03",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-03",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-03",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-03",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-03",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-04",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-04",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-04",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-04",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-04",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-04",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-04",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-04",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-05",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-05",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-05",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-05",
+   "produto": "Quebrando Código",
+   "total": 2
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-05",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-05",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-08",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-08",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-08",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-08",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-08",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-09",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-09",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-09",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-09",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-09",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-09",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-10",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-10",
+   "produto": "Black",
+   "total": 2
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-10",
+   "produto": "Prime",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-10",
+   "produto": "Ninja",
+   "total": 2
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-10",
+   "produto": "Ninja",
+   "total": 3
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-11",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-11",
+   "produto": "Quebrando Código",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-11",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-11",
+   "produto": "Black",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-11",
+   "produto": "Ninja",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-11",
+   "produto": "Private",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-11",
+   "produto": "Ninja",
+   "total": 2
+  }
+ ],
+ "closer_remarcadas": [
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-01",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-02",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-09",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-10",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-13",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-04-14",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-04-15",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-04-20",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-08",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-05-15",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-19",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-21",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-05-21",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-05-25",
+   "total": 1
+  },
+  {
+   "closer": "Aurelio",
+   "data_referencia": "2026-06-02",
+   "total": 1
+  },
+  {
+   "closer": "Gilberto",
+   "data_referencia": "2026-06-04",
+   "total": 1
+  },
+  {
+   "closer": "Marcio",
+   "data_referencia": "2026-06-05",
+   "total": 1
+  },
+  {
+   "closer": "Giba",
+   "data_referencia": "2026-06-08",
+   "total": 1
+  }
+ ],
+ "vendas_por_sdr": [
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-04-08",
+   "produto": "Black Semestral",
+   "valor": 25000
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-04-15",
+   "produto": "Ninja Anual",
+   "valor": 12000
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-22",
+   "produto": "Prime Semestral",
+   "valor": 68000
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-04-28",
+   "produto": "QC",
+   "valor": 1997
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-05-06",
+   "produto": "Ninja Semestral",
+   "valor": 7000
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-13",
+   "produto": "Black Anual",
+   "valor": 44000
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-05-20",
+   "produto": "QC",
+   "valor": 1997
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-05-27",
+   "produto": "Black Semestral",
+   "valor": 25000
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-04",
+   "produto": "Black Anual",
+   "valor": 44000
+  },
+  {
+   "sdr": "Glaucio",
+   "data_referencia": "2026-06-09",
+   "produto": "Ninja Semestral",
+   "valor": 7000
+  },
+  {
+   "sdr": "Delrue",
+   "data_referencia": "2026-06-05",
+   "produto": "Prime Semestral",
+   "valor": 68000
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-03",
+   "produto": "Black Semestral",
+   "valor": 25000
+  },
+  {
+   "sdr": "Benhur",
+   "data_referencia": "2026-06-10",
+   "produto": "Ninja Anual",
+   "valor": 12000
+  }
+ ]
+}

@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   FONTE ÚNICA das cores (paleta unificada do Dashboard SDR, DOCUMENTACAO §9).
+   Cada token é um trio de canais RGB; o tailwind.config.ts os consome via
+   rgb(var(--c-x) / <alpha-value>), então toda classe (bg-painel, text-texto,
+   border-borda/60, bg-rosa/15…) já respeita o tema automaticamente.
+
+   TRÊS fases, selecionadas pelo atributo data-theme no <html>:
+     (sem atributo) / [data-theme="azul"] = AZUL  (default — fundo azul-marinho)
+     [data-theme="dark"]                  = ESCURO (fundo quase preto)
+     [data-theme="light"]                 = CLARO  (fundo BRANCO)
+   Usar um atributo sempre-presente (em vez de classe toggleável) evita
+   ambiguidade de cascata — o tema é exatamente o que data-theme disser.
+   Consumidores de cor em JS (gráficos, células do heatmap) leem estas mesmas
+   variáveis via o hook useThemeColors — sem duplicar valores em componente.
+--------------------------------------------------------------------------- */
+:root {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+
+  /* === Fase AZUL (default) — fundo azul-marinho ============================ */
+  --c-noite: 11 19 34;
+  --c-painel: 19 29 48;
+  --c-painel-claro: 25 39 63;
+  --c-borda: 48 65 95;
+  --c-texto: 229 238 252;
+  --c-texto-sec: 147 164 195;
+
+  /* Funcionais */
+  --c-azul: 59 130 246;
+  --c-azul-claro: 86 145 255;
+  --c-teal: 45 212 191;
+  --c-laranja: 245 158 11;
+  --c-verde: 34 197 94;
+  --c-rosa: 251 113 133;
+  --c-amarelo: 250 204 21;
+  --c-cinza: 148 163 184;
+  --c-violeta: 167 139 250;
+
+  /* Escala térmica das 6 temperaturas */
+  --c-muito-quente: 251 113 133;
+  --c-quente: 245 158 11;
+  --c-morno-alto: 250 204 21;
+  --c-morno-baixo: 45 212 191;
+  --c-frio: 86 145 255;
+  --c-congelado: 148 163 184;
+}
+
+/* === Fase ESCURO — fundo quase preto ====================================== */
+/* Só as superfícies/base mudam; funcionais e temperaturas herdam do azul
+   (são claras o bastante sobre preto). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-noite: 8 9 12; /* quase preto */
+  --c-painel: 20 22 28;
+  --c-painel-claro: 30 33 41;
+  --c-borda: 52 56 66;
+  --c-texto: 244 245 250;
+  --c-texto-sec: 165 170 185;
+}
+
+/* === Fase CLARO — IGUAL ao tema escuro, só o FUNDO claro ================== */
+/* Decisão Vata: manter a identidade de cores do dark (acentos e as 6
+   temperaturas VIBRANTES, idênticos ao :root azul); muda apenas o fundo
+   (branco) e, por necessidade de legibilidade, o texto (escuro) e a borda. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Fundo claro + texto/borda escuros (única diferença em relação ao dark) */
+  --c-noite: 255 255 255; /* fundo da página: branco */
+  --c-painel: 255 255 255; /* cards: branco */
+  --c-painel-claro: 240 244 249; /* hover/aninhado: cinza bem claro */
+  --c-borda: 214 222 233;
+  --c-texto: 16 28 48; /* navy escuro, 17:1 sobre branco */
+  --c-texto-sec: 71 85 105; /* slate-600 */
+
+  /* Funcionais — IDÊNTICOS ao tema escuro (vibrantes) */
+  --c-azul: 59 130 246;
+  --c-azul-claro: 86 145 255;
+  --c-teal: 45 212 191;
+  --c-laranja: 245 158 11;
+  --c-verde: 34 197 94;
+  --c-rosa: 251 113 133;
+  --c-amarelo: 250 204 21;
+  --c-cinza: 148 163 184;
+  --c-violeta: 167 139 250;
+
+  /* 6 temperaturas — IDÊNTICAS ao tema escuro (vibrantes) */
+  --c-muito-quente: 251 113 133;
+  --c-quente: 245 158 11;
+  --c-morno-alto: 250 204 21;
+  --c-morno-baixo: 45 212 191;
+  --c-frio: 86 145 255;
+  --c-congelado: 148 163 184;
+}
+
+body {
+  @apply bg-noite text-texto antialiased;
+  font-family: var(--font-sans);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* Garantia explícita do fundo BRANCO no modo claro (além do token bg-noite). */
+:root[data-theme="light"] body {
+  background-color: rgb(255 255 255);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-borda;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  @apply outline-none ring-2 ring-azul ring-offset-2 ring-offset-noite;
+}
