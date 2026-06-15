@@ -1,7 +1,11 @@
 // Formatadores de data/hora em pt-BR.
 
 export function tempoRelativo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
+  const ms = new Date(iso).getTime();
+  // Sem timestamp (ex.: lista da API real não expõe score_calculated_at) →
+  // não inventa "há NaN meses"; mostra um traço neutro.
+  if (Number.isNaN(ms)) return "—";
+  const diffMs = Date.now() - ms;
   const min = Math.round(diffMs / 60000);
   if (min < 1) return "agora";
   if (min < 60) return `há ${min} min`;

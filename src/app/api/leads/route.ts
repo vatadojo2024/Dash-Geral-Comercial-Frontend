@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { LeadListItemSchema } from "@/lib/api/contracts";
 import { getServerSession } from "@/lib/auth/session";
+import { adaptApiLeads } from "@/lib/server/apiLeads";
 import { leadNoEscopo, todosOsLeadsMock } from "@/lib/server/mockLeads";
 
 // ---------------------------------------------------------------------------
@@ -53,12 +54,31 @@ export async function GET(req: NextRequest) {
       cache: "no-store",
     });
     if (!res.ok) {
+      // Erro REAL (status != 2xx) — único caso que vira estado de erro na tela.
       return NextResponse.json(
         { error: `A API de leads respondeu ${res.status}.` },
         { status: res.status === 401 || res.status === 403 ? res.status : 502 },
       );
     }
-    return NextResponse.json(await res.json());
+
+    // 200 da API real: corpo enxuto { leads: [...] }. Adaptamos ao contrato do
+    // app (LeadListItemSchema) em vez de repassar cru — senão a validação no
+    // client derruba a fila inteira mesmo com dados válidos. O adapter tolera
+    // lead a lead e loga no servidor o motivo exato de qualquer descarte.
+    const corpo = await res.json().catch(() => null);
+    const adaptado = adaptApiLeads(corpo);
+    if (!adaptado.ok) {
+      return NextResponse.json(
+        { error: `A API de leads respondeu em formato inesperado: ${adaptado.motivo}` },
+        { status: 502 },
+      );
+    }
+    const items = adaptado.items.sort(
+      (a, b) =>
+        b.score_final - a.score_final ||
+        b.score_calculated_at.localeCompare(a.score_calculated_at),
+    );
+    return NextResponse.json({ total: items.length, items });
   } catch (e) {
     return NextResponse.json(
       { error: `Falha ao consultar a API de leads: ${e instanceof Error ? e.message : "erro"}` },
