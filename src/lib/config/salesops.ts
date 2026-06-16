@@ -3,6 +3,8 @@
 // Metas MUDAM por mês: editar AQUI (nunca hard-coded em componente).
 // ---------------------------------------------------------------------------
 
+import { chaveDoProduto } from "@/lib/formatters/score";
+
 export type MetaMes = { m1: number; m2: number };
 
 export const metasPorCloser: Record<string, MetaMes> = {
@@ -46,13 +48,16 @@ export const valorProjecaoPorProdutoSugerido: Record<string, number> = {
   private: 120_000,
 };
 
-// produto_sugerido do lead ("QC", "Ninja", ...) → valor de projeção.
-// Lead sem produto (null) não soma na projeção.
+// produto_sugerido do lead → valor de projeção. Usa a MESMA derivação de chave
+// da fila (chaveDoProduto, por substring), não um lookup exato: o produto_sugerido
+// real vem verboso ("Black Belt Semestral", "Ninja Anual"), então o lookup exato
+// antigo zerava TUDO ("nenhum lead com produto sugerido") mesmo com o campo
+// preenchido. Agora painel de carteira e fila concordam. Lead sem produto → null.
 export function valorDeProjecao(
   produtoSugerido: string | null | undefined,
 ): number | null {
-  if (!produtoSugerido) return null;
-  const chave = produtoSugerido.trim().toLowerCase();
+  const chave = chaveDoProduto(produtoSugerido);
+  if (!chave) return null;
   return valorProjecaoPorProdutoSugerido[chave] ?? null;
 }
 

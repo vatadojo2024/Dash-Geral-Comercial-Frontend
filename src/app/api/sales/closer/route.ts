@@ -21,6 +21,8 @@ import {
 // Antes isto era 100% mock client-side, sem fio até a Dashboard Comercial.
 // ---------------------------------------------------------------------------
 
+const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+
 type VendaMock = { valor: number; produto: string; data: string };
 type ArquivoMock = {
   mes: string;
@@ -55,8 +57,11 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Filtro da API é por NOME (contém); o slug interno difere do nome real.
-  const nomeApi = nomeApiVendasPorCloser[closer] ?? closer;
+  // Filtro da API é por NOME (contém); o slug interno difere do nome real
+  // ("giba" → "Gilberto"). Sem acento no que enviamos: os nomes na API vêm sem
+  // acento (Aurelio), então normalizar evita falso-negativo se a config/sessão
+  // trouxer "Aurélio".
+  const nomeApi = semAcento(nomeApiVendasPorCloser[closer] ?? closer);
   const { data_inicio, data_fim } = janelaDoMes(mes);
   const qs = new URLSearchParams({ data_inicio, data_fim, closer: nomeApi });
 

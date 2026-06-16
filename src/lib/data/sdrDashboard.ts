@@ -39,9 +39,11 @@ export const VendaSdrSchema = z.object({
   sdr: z.string(),
   data_referencia: z.string(),
   produto: z.string(),
-  valor: z.number().nonnegative(),
-  // Linhas reais vêm agregadas por (data, produto): quantidade de vendas ≥ 1.
-  // Opcional para o mock antigo (1 venda por linha) seguir válido.
+  // SEM .nonnegative(): a Dashboard Comercial manda ESTORNO como valor NEGATIVO
+  // (decisão: estorno ABATE). O negativo flui e subtrai na soma do volume.
+  valor: z.number(),
+  // Linhas reais vêm agregadas por (data, produto): quantidade de vendas ≥ 1
+  // (total_vendas nunca é negativo). Opcional p/ o mock antigo seguir válido.
   quantidade: z.number().int().positive().optional(),
 });
 export type VendaSdr = z.infer<typeof VendaSdrSchema>;

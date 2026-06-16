@@ -17,7 +17,13 @@ import {
 import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { fetchVendasDoMes } from "@/lib/data/salesOps";
-import { metasPorCloser, rotuloProduto, valorDeProjecao } from "@/lib/config/salesops";
+import { useUsuariosMap } from "@/lib/data/useUsuarios";
+import {
+  metasPorCloser,
+  nomeApiVendasPorCloser,
+  rotuloProduto,
+  valorDeProjecao,
+} from "@/lib/config/salesops";
 import {
   calcularComissao,
   projetarComissao,
@@ -29,10 +35,12 @@ import { potencialPorProduto } from "@/lib/salesops/potencial";
 import { formatarBRL, formatarBRLExato, formatarPct } from "@/lib/formatters/moeda";
 import { leadAtivo } from "@/features/dashboard/derivacoes";
 import { useSession } from "@/features/session/SessionProvider";
-import { CLOSERS, nomeDoUsuario } from "@/lib/mock/users";
+import { CLOSERS, findAccountById, nomeDoUsuario } from "@/lib/mock/users";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
+
+const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 function BarraMeta({
   rotulo,
@@ -243,11 +251,39 @@ function PainelCloser({ closerId }: { closerId: string }) {
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
   });
+  const usuarios = useUsuariosMap();
+
+  // O closer_id dos leads é UUID; o closerId do Sales Ops é slug (ex.: "aurelio")
+  // ou já o UUID da sessão (closer logado). Comparar slug === UUID nunca casava →
+  // carteira VAZIA → "nenhum lead com produto". Resolvemos o(s) id(s) reais do
+  // closer pelo nome, via diretório /api/usuarios (nome↔UUID), igual ao filtro de
+  // vendas (por nome). Inclui o próprio closerId p/ o caso do closer logado (UUID).
+  const idsDoCloser = useMemo(() => {
+    const ids = new Set<string>([closerId]);
+    const alvo = semAcento(
+      (nomeApiVendasPorCloser[closerId] ?? findAccountById(closerId)?.nome ?? "").toLowerCase(),
+    );
+    if (alvo) {
+      for (const [id, nome] of usuarios) {
+        if (semAcento(nome.toLowerCase()).includes(alvo)) ids.add(id);
+      }
+    }
+    return ids;
+  }, [usuarios, closerId]);
+
+  // Para o link da fila (?closer=): a fila casa por closer_id (UUID), então
+  // passamos o UUID resolvido, não o slug.
+  const idParaFila = useMemo(
+    () => [...idsDoCloser].find((id) => id.includes("-")) ?? closerId,
+    [idsDoCloser, closerId],
+  );
 
   const carteira = useMemo(
     () =>
-      (leadsQuery.data ?? []).filter((l) => l.closer_id === closerId && leadAtivo(l)),
-    [leadsQuery.data, closerId],
+      (leadsQuery.data ?? []).filter(
+        (l) => l.closer_id !== null && idsDoCloser.has(l.closer_id) && leadAtivo(l),
+      ),
+    [leadsQuery.data, idsDoCloser],
   );
 
   if (vendasQuery.isLoading || leadsQuery.isLoading) {
@@ -428,7 +464,7 @@ function PainelCloser({ closerId }: { closerId: string }) {
         carteira={carteira}
         taxaVigente={comissao.taxaVigente}
         taxaFechandoTodos={projTodos.resultado.taxaVigente}
-        closerId={closerId}
+        closerId={idParaFila}
         linkComCloser={user.role === "admin"}
       />
 

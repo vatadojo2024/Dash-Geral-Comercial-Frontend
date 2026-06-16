@@ -8,7 +8,8 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 
 export const VendaSchema = z.object({
-  valor: z.number().nonnegative(),
+  // SEM .nonnegative(): estorno vem como valor NEGATIVO e deve ABATER.
+  valor: z.number(),
   produto: z.string(),
   data: z.string(),
   // Linhas reais da API são agregadas por (data, produto): quantidade ≥ 1.
@@ -19,8 +20,9 @@ export type Venda = z.infer<typeof VendaSchema>;
 export const VendasDoMesSchema = z.object({
   mes: z.string(),
   vendas: z.array(VendaSchema),
-  volumeVendido: z.number().nonnegative(),
-  cashCollected: z.number().nonnegative(),
+  // Somas podem ficar negativas num mês dominado por estornos — não restringir.
+  volumeVendido: z.number(),
+  cashCollected: z.number(),
 });
 export type VendasDoMes = z.infer<typeof VendasDoMesSchema>;
 
