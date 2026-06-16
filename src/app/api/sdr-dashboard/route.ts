@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mock from "@/lib/mock/sdr_dashboard.json";
+import { mapVendasComercial } from "@/lib/server/apiVendas";
 
 // ---------------------------------------------------------------------------
 // Route handler SERVER-SIDE do Dashboard SDR: a chave da API externa NUNCA
@@ -121,12 +122,37 @@ export async function GET() {
     payload.lideranca_erro = `Falha ao carregar dados da liderança: ${e instanceof Error ? e.message : "erro"}`;
   }
 
-  // A API externa ainda NÃO expõe as vendas originadas por SDR (aba
-  // Comissões). Enquanto a fonte real não é definida (pendência no
-  // PROGRESSO.md), as vendas vêm do mock para a comissão de vendas não
-  // zerar — TODO trocar pela fonte real na integração.
-  payload.vendas_por_sdr =
-    (mock as { vendas_por_sdr?: unknown[] }).vendas_por_sdr ?? [];
+  // Vendas originadas por SDR (aba Comissões) — agora da Dashboard Comercial
+  // REAL (/api/sdr/vendas-por-produto), não mais do mock. total_faturado = valor
+  // da venda; total_vendas = quantidade. Erro isolado (como a liderança): se a
+  // busca falhar, a aba mostra vazio — NÃO injeta mock em modo api (seria número
+  // fictício). Tolerância linha a linha fica no mapVendasComercial.
+  try {
+    const res = await fetch(
+      `${base!.replace(/\/$/, "")}/api/sdr/vendas-por-produto`,
+      { headers, cache: "no-store" },
+    );
+    if (!res.ok) throw new Error(`/api/sdr/vendas-por-produto respondeu ${res.status}`);
+    payload.vendas_por_sdr = mapVendasComercial(
+      await res.json().catch(() => null),
+      "sdr",
+      "/api/sdr/vendas-por-produto",
+    )
+      .filter((l) => l.nome) // sem SDR nomeado não há a quem atribuir
+      .map((l) => ({
+        sdr: l.nome,
+        data_referencia: l.data,
+        produto: l.produto ?? "—",
+        valor: l.faturado,
+        quantidade: l.quantidade,
+      }));
+  } catch (e) {
+    console.error(
+      "[/api/sdr-dashboard] vendas_por_sdr:",
+      e instanceof Error ? e.message : e,
+    );
+    payload.vendas_por_sdr = [];
+  }
 
   return NextResponse.json(payload);
 }

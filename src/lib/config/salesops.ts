@@ -11,6 +11,16 @@ export const metasPorCloser: Record<string, MetaMes> = {
   giba: { m1: 75_000, m2: 85_000 },
 };
 
+// Nome do closer na Dashboard Comercial (filtro de vendas é "contém" por NOME).
+// O slug interno NÃO é o nome real na API: "giba" é "Gilberto" lá. Sem este
+// mapa, o filtro não casaria e a venda do Giba viria ZERADA em silêncio.
+// Conferir com o time se algum nome real diverge do mapeado aqui.
+export const nomeApiVendasPorCloser: Record<string, string> = {
+  aurelio: "Aurelio",
+  marcio: "Marcio",
+  giba: "Gilberto",
+};
+
 export type PrecoProduto = { avista: number; parcelado12x: number };
 
 // Tabela oficial de preços (Vata, jun/2026)

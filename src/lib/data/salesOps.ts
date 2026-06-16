@@ -1,54 +1,39 @@
 import { z } from "zod";
-import rawVendas from "@/lib/mock/vendas_closers.json";
 
 // ---------------------------------------------------------------------------
-// Camada de dados do Sales Ops — isolada para a troca mock→real futura
-// (as vendas/cash virão do backend; o contrato Zod permanece).
+// Camada de dados do Sales Ops (vendas/faturamento do closer). A FONTE (mock |
+// Dashboard Comercial real) é decidida no servidor pelo route handler
+// /api/sales/closer (env SDR_DASHBOARD_MODE) — trocar o modo no .env muda a
+// fonte SEM tocar em componente. Aqui só buscamos e validamos o contrato.
 // ---------------------------------------------------------------------------
 
 export const VendaSchema = z.object({
   valor: z.number().nonnegative(),
   produto: z.string(),
   data: z.string(),
+  // Linhas reais da API são agregadas por (data, produto): quantidade ≥ 1.
+  quantidade: z.number().int().positive().optional(),
 });
 export type Venda = z.infer<typeof VendaSchema>;
 
-const ArquivoVendasSchema = z.object({
+export const VendasDoMesSchema = z.object({
   mes: z.string(),
-  closers: z.record(
-    z.string(),
-    z.object({
-      cash_collected: z.number().nonnegative(),
-      vendas: z.array(VendaSchema),
-    }),
-  ),
+  vendas: z.array(VendaSchema),
+  volumeVendido: z.number().nonnegative(),
+  cashCollected: z.number().nonnegative(),
 });
+export type VendasDoMes = z.infer<typeof VendasDoMesSchema>;
 
-export type VendasDoMes = {
-  mes: string;
-  vendas: Venda[];
-  volumeVendido: number;
-  cashCollected: number;
-};
-
-let cache: z.infer<typeof ArquivoVendasSchema> | null = null;
-function arquivo() {
-  if (!cache) cache = ArquivoVendasSchema.parse(rawVendas);
-  return cache;
-}
-
-function simularRede(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 300));
-}
-
-export async function fetchVendasDoMes(closerId: string): Promise<VendasDoMes> {
-  await simularRede();
-  const dados = arquivo();
-  const doCloser = dados.closers[closerId] ?? { cash_collected: 0, vendas: [] };
-  return {
-    mes: dados.mes,
-    vendas: [...doCloser.vendas].sort((a, b) => b.data.localeCompare(a.data)),
-    volumeVendido: doCloser.vendas.reduce((acc, v) => acc + v.valor, 0),
-    cashCollected: doCloser.cash_collected,
-  };
+export async function fetchVendasDoMes(
+  closerId: string,
+  mes?: string,
+): Promise<VendasDoMes> {
+  const qs = new URLSearchParams({ closer: closerId });
+  if (mes) qs.set("mes", mes);
+  const res = await fetch(`/api/sales/closer?${qs}`);
+  if (!res.ok) {
+    const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(corpo?.error ?? `A busca de vendas respondeu ${res.status}.`);
+  }
+  return VendasDoMesSchema.parse(await res.json());
 }

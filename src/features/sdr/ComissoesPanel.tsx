@@ -175,6 +175,9 @@ export function ComissoesPanel({
   const calculados = sdrs.map((m) => {
     const vendas = vendasPorSdr.get(m.sdr) ?? [];
     const volumeVendas = vendas.reduce((a, v) => a + v.valor, 0);
+    // Linhas reais são agregadas (quantidade ≥ 1); o mock antigo não traz o
+    // campo, então cada linha conta como 1.
+    const qtdVendas = vendas.reduce((a, v) => a + (v.quantidade ?? 1), 0);
     const resultado = calcularComissaoSdr({
       reunioesQualificadas: m.qualificadosBase,
       qualificadosParaMeta: m.qualificados,
@@ -182,7 +185,7 @@ export function ComissoesPanel({
       volumeVendas,
       metas: m.metas,
     });
-    return { m, vendas, volumeVendas, resultado };
+    return { m, vendas, volumeVendas, qtdVendas, resultado };
   });
 
   const totalTime = calculados
@@ -199,13 +202,13 @@ export function ComissoesPanel({
       </p>
 
       <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-        {calculados.map(({ m, resultado, volumeVendas, vendas }) => (
+        {calculados.map(({ m, resultado, volumeVendas, qtdVendas }) => (
           <CardComissaoSdr
             key={m.sdr}
             m={m}
             resultado={resultado}
             volumeVendas={volumeVendas}
-            qtdVendas={vendas.length}
+            qtdVendas={qtdVendas}
             destaque={destaqueSdr === m.sdr}
           />
         ))}

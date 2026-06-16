@@ -40,6 +40,9 @@ export const VendaSdrSchema = z.object({
   data_referencia: z.string(),
   produto: z.string(),
   valor: z.number().nonnegative(),
+  // Linhas reais vêm agregadas por (data, produto): quantidade de vendas ≥ 1.
+  // Opcional para o mock antigo (1 venda por linha) seguir válido.
+  quantidade: z.number().int().positive().optional(),
 });
 export type VendaSdr = z.infer<typeof VendaSdrSchema>;
 
