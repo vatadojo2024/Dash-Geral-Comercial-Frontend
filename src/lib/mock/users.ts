@@ -27,7 +27,13 @@ export function findAccountById(id: string): SessionUser | null {
   return DEMO_ACCOUNTS.find((a) => a.id === id) ?? null;
 }
 
-export function nomeDoUsuario(id: string | null): string {
+// Traduz um id de dono em nome. Prioridade: mapa do diretório (/api/usuarios,
+// onde os UUIDs reais resolvem) → conta conhecida do mock → o próprio id como
+// fallback (não quebra). O mapa é opcional para manter as chamadas legadas.
+export function nomeDoUsuario(
+  id: string | null,
+  mapa?: ReadonlyMap<string, string> | null,
+): string {
   if (!id) return "—";
-  return findAccountById(id)?.nome ?? id;
+  return mapa?.get(id) ?? findAccountById(id)?.nome ?? id;
 }

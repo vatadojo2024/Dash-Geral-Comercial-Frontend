@@ -14,6 +14,7 @@ import {
 import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { filtrarPorEscopo } from "@/lib/data/escopo";
+import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { nomeDoUsuario } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -24,7 +25,13 @@ import { agruparAgenda, horaDaCall } from "./agenda";
 
 // Badge "quem faz a call" (item 2): nas visões de admin e SDR, mostra o closer
 // responsável pelo lead; sem closer atribuído → estado de atenção.
-function CloserDaCall({ closerId }: { closerId: string | null }) {
+function CloserDaCall({
+  closerId,
+  usuarios,
+}: {
+  closerId: string | null;
+  usuarios?: ReadonlyMap<string, string>;
+}) {
   if (!closerId) {
     return (
       <span
@@ -38,16 +45,24 @@ function CloserDaCall({ closerId }: { closerId: string | null }) {
   }
   return (
     <span
-      title={`Closer responsável pela call: ${nomeDoUsuario(closerId)}`}
+      title={`Closer responsável pela call: ${nomeDoUsuario(closerId, usuarios)}`}
       className="inline-flex shrink-0 items-center gap-1 rounded-full border border-borda bg-painel-claro px-1.5 py-px text-[10px] font-medium text-texto-sec"
     >
       <Headset className="h-3 w-3" aria-hidden />
-      Call com: {nomeDoUsuario(closerId)}
+      Call com: {nomeDoUsuario(closerId, usuarios)}
     </span>
   );
 }
 
-function ItemCall({ lead, mostrarCloser }: { lead: LeadListItem; mostrarCloser: boolean }) {
+function ItemCall({
+  lead,
+  mostrarCloser,
+  usuarios,
+}: {
+  lead: LeadListItem;
+  mostrarCloser: boolean;
+  usuarios?: ReadonlyMap<string, string>;
+}) {
   const temAlerta = lead.alertas.length > 0;
   return (
     <Link
@@ -81,7 +96,7 @@ function ItemCall({ lead, mostrarCloser }: { lead: LeadListItem; mostrarCloser: 
         <span className="mt-1.5 inline-flex flex-wrap items-center gap-1.5">
           <TemperatureBadge temperatura={lead.temperatura} size="sm" />
           <EtapaBadge etapa={lead.etapa_atual} size="sm" />
-          {mostrarCloser && <CloserDaCall closerId={lead.closer_id} />}
+          {mostrarCloser && <CloserDaCall closerId={lead.closer_id} usuarios={usuarios} />}
         </span>
       </div>
 
@@ -93,6 +108,7 @@ function ItemCall({ lead, mostrarCloser }: { lead: LeadListItem; mostrarCloser: 
 
 export function AgendaView() {
   const user = useSession();
+  const usuarios = useUsuariosMap();
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["leads", user.id],
@@ -161,7 +177,7 @@ export function AgendaView() {
           />
           <CardContent className="space-y-2">
             {d.leads.map((l) => (
-              <ItemCall key={l.lead_id} lead={l} mostrarCloser={mostrarCloser} />
+              <ItemCall key={l.lead_id} lead={l} mostrarCloser={mostrarCloser} usuarios={usuarios} />
             ))}
           </CardContent>
         </Card>

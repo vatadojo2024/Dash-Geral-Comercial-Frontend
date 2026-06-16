@@ -8,6 +8,7 @@ import { fetchLeads } from "@/lib/data/dataClient";
 import { tempoRelativo } from "@/lib/formatters/date";
 import { chaveDoProduto, PRODUTOS_OFICIAIS } from "@/lib/formatters/score";
 import { opcoesDeDono } from "@/lib/data/donos";
+import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { useSession } from "@/features/session/SessionProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -81,7 +82,8 @@ export function DashboardView() {
 
   // Opções de Closer/SDR derivadas dos próprios leads (ids reais: slug no mock,
   // UUID na API) — usar a lista fixa do mock fazia o filtro nunca casar.
-  const donos = useMemo(() => opcoesDeDono(data ?? []), [data]);
+  const usuarios = useUsuariosMap();
+  const donos = useMemo(() => opcoesDeDono(data ?? [], usuarios), [data, usuarios]);
 
   const cards = useMemo(() => cardsResumo(leadsFiltrados), [leadsFiltrados]);
   const heatmap = useMemo(() => montarHeatmap(leadsFiltrados), [leadsFiltrados]);

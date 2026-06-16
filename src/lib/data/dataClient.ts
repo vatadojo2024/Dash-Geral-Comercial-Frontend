@@ -1,9 +1,11 @@
 import {
   LeadDetailSchema,
   LeadsResponseSchema,
+  UsuariosResponseSchema,
   type LeadDetail,
   type LeadListItem,
   type SessionUser,
+  type Usuario,
 } from "@/lib/api/contracts";
 
 // ---------------------------------------------------------------------------
@@ -69,6 +71,20 @@ export async function fetchLeads(_user: SessionUser): Promise<LeadListItem[]> {
     );
   }
   return parsed.data.items;
+}
+
+// Diretório de usuários (id→nome). Buscado uma vez e cacheado pelo React Query
+// (ver useUsuariosMap); traduz os UUIDs de closer_id/sdr_id em nomes.
+export async function fetchUsuarios(): Promise<Usuario[]> {
+  const json = await buscar("/api/usuarios");
+  const parsed = UsuariosResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new DataError(
+      `Resposta de /api/usuarios fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      "invalid_contract",
+    );
+  }
+  return parsed.data.usuarios;
 }
 
 export async function fetchLeadDetail(

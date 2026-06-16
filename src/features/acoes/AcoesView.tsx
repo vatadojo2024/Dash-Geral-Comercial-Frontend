@@ -9,6 +9,7 @@ import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { opcoesDeDono } from "@/lib/data/donos";
 import { filtrarPorEscopo } from "@/lib/data/escopo";
+import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { TEMPERATURA_CONFIG, TEMPERATURAS_ORDENADAS } from "@/lib/formatters/score";
 import { useSession } from "@/features/session/SessionProvider";
 import { Button } from "@/components/ui/Button";
@@ -95,7 +96,8 @@ export function AcoesView() {
   );
 
   // Opções de Closer/SDR derivadas dos próprios leads (ids reais) — ver donos.ts.
-  const donos = useMemo(() => opcoesDeDono(data ?? []), [data]);
+  const usuarios = useUsuariosMap();
+  const donos = useMemo(() => opcoesDeDono(data ?? [], usuarios), [data, usuarios]);
 
   const agrupar = searchParams.get("agrupar") === "1";
   const grupos = useMemo(

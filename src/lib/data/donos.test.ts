@@ -59,4 +59,18 @@ describe("opcoesDeDono", () => {
     expect(closers).toEqual([]);
     expect(sdrs).toEqual([]);
   });
+
+  it("traduz o UUID pelo mapa do diretório mantendo o value (id) para o filtro", () => {
+    const uuid = "11111111-1111-1111-1111-111111111111";
+    const mapa = new Map([[uuid, "Márcio"]]);
+    const { closers } = opcoesDeDono([lead({ closer_id: uuid })], mapa);
+    // value = UUID exato (filtro casa); label = nome do diretório.
+    expect(closers).toEqual([{ id: uuid, nome: "Márcio" }]);
+  });
+
+  it("cai no id quando o UUID não está no mapa (fallback, sem quebrar)", () => {
+    const uuid = "22222222-2222-2222-2222-222222222222";
+    const { closers } = opcoesDeDono([lead({ closer_id: uuid })], new Map());
+    expect(closers).toEqual([{ id: uuid, nome: uuid }]);
+  });
 });

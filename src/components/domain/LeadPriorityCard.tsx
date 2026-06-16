@@ -16,10 +16,13 @@ export function LeadPriorityCard({
   item,
   rank,
   mostrarDonos,
+  usuarios,
 }: {
   item: LeadListItem;
   rank: number;
   mostrarDonos: boolean;
+  // Diretório id→nome para traduzir closer_id/sdr_id (vem da tela; opcional).
+  usuarios?: ReadonlyMap<string, string>;
 }) {
   return (
     <Link
@@ -38,8 +41,8 @@ export function LeadPriorityCard({
               </p>
               <p className="text-xs text-texto-sec/80">
                 {item.lead_id} · score calculado {tempoRelativo(item.score_calculated_at)}
-                {mostrarDonos && item.closer_id && <> · closer {nomeDoUsuario(item.closer_id)}</>}
-                {mostrarDonos && item.sdr_id && <> · SDR {nomeDoUsuario(item.sdr_id)}</>}
+                {mostrarDonos && item.closer_id && <> · closer {nomeDoUsuario(item.closer_id, usuarios)}</>}
+                {mostrarDonos && item.sdr_id && <> · SDR {nomeDoUsuario(item.sdr_id, usuarios)}</>}
               </p>
             </div>
             <ScoreBadge final={item.score_final} bruto={item.score_bruto} />

@@ -44,6 +44,19 @@ export const SessionUserSchema = z.object({
 });
 export type SessionUser = z.infer<typeof SessionUserSchema>;
 
+// GET /api/usuarios — diretório usado para traduzir closer_id/sdr_id (UUID) →
+// nome nos dropdowns de filtro, no detalhe do lead e onde aparecer um dono.
+// Enxuto de propósito: o front só precisa de id→nome (papel não é usado aqui).
+export const UsuarioSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+});
+export type Usuario = z.infer<typeof UsuarioSchema>;
+
+export const UsuariosResponseSchema = z.object({
+  usuarios: z.array(UsuarioSchema),
+});
+
 // Tetos reais dos 5 blocos do score (momento/fit/urgência/engajamento/timing)
 export const TETOS_BLOCOS = {
   momento: 25,

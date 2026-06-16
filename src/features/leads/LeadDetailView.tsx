@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { AnaliseResumo, LeadDetail } from "@/lib/api/contracts";
 import { DataError, fetchLeadDetail } from "@/lib/data/dataClient";
+import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { dataHora, tempoRelativo } from "@/lib/formatters/date";
 import { nomeDoUsuario } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
@@ -125,6 +126,7 @@ function BlocoAnalise({ titulo, analise }: { titulo: string; analise: AnaliseRes
 
 export function LeadDetailView({ leadId }: { leadId: string }) {
   const user = useSession();
+  const usuarios = useUsuariosMap();
   const [aba, setAba] = useState<AbaId>("geral");
 
   const { data: lead, isLoading, isError, error, refetch } = useQuery({
@@ -186,11 +188,11 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                 {lead.trava_aplicada && <TravaBadge trava={lead.trava_aplicada} />}
               </div>
               <p className="mt-2 text-xs text-texto-sec">
-                Closer: <span className="font-medium text-texto">{nomeDoUsuario(lead.closer_id)}</span>
+                Closer: <span className="font-medium text-texto">{nomeDoUsuario(lead.closer_id, usuarios)}</span>
                 {" · "}
                 SDR:{" "}
                 <span className="font-medium text-texto">
-                  {lead.sdr_pool ? "Hana (IA)" : nomeDoUsuario(lead.sdr_id)}
+                  {lead.sdr_pool ? "Hana (IA)" : nomeDoUsuario(lead.sdr_id, usuarios)}
                 </span>
               </p>
             </div>
