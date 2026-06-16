@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Search, X } from "lucide-react";
 import { ETAPAS } from "@/lib/api/contracts";
 import {
@@ -60,22 +61,37 @@ export function LeadFilters({ params, onChange, onLimpar, closers, sdrs }: Props
   const user = useSession();
   const ativos = contarFiltrosAtivos(params);
 
+  // Busca digitada fica em estado LOCAL e só vai pra URL no Enter (submit). Cada
+  // escrita na URL re-renderiza /leads (rota dinâmica) e dispara um fetch do RSC
+  // ao servidor — comitar por tecla fazia uma requisição por letra.
+  const buscaUrl = params.get("busca") ?? "";
+  const [busca, setBusca] = useState(buscaUrl);
+  // Sincroniza quando a URL muda por fora (botão Limpar, voltar do navegador).
+  useEffect(() => setBusca(buscaUrl), [buscaUrl]);
+
   return (
     <div className="rounded-xl border border-borda bg-painel p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
+        <form
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onChange("busca", busca.trim() || null);
+          }}
+          className="relative min-w-[200px] flex-1"
+        >
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
             aria-hidden
           />
           <input
-            value={params.get("busca") ?? ""}
-            onChange={(e) => onChange("busca", e.target.value || null)}
-            placeholder="Buscar por nome ou ID..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por nome ou ID... (Enter)"
             aria-label="Buscar lead por nome ou ID"
             className="h-9 w-full rounded-lg border border-borda bg-noite pl-9 pr-3 text-sm text-texto placeholder:text-texto-sec/70"
           />
-        </div>
+        </form>
 
         <FiltroSelect
           label="Temperatura"
