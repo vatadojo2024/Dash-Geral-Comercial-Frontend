@@ -88,6 +88,21 @@ describe("filtrarLeads — valores canônicos reais reduzem, não zeram", () => 
     ]);
   });
 
+  it("filtro de data (de/ate) usa last_activity_at com fallback no score_calculated_at", () => {
+    const leads = [
+      lead({ lead_id: "old", last_activity_at: "2026-05-01T09:00:00Z" }),
+      lead({ lead_id: "mid", last_activity_at: "2026-06-10T09:00:00Z" }),
+      // sem last_activity_at → cai no score_calculated_at (2026-06-14)
+      lead({ lead_id: "fallback" }),
+    ];
+    // intervalo fechado pega só o "mid"
+    expect(filtrarLeads(leads, sp({ de: "2026-06-05", ate: "2026-06-12" })).map((l) => l.lead_id)).toEqual(["mid"]);
+    // só "de": pega mid + fallback (14/06), exclui old (01/05)
+    expect(filtrarLeads(leads, sp({ de: "2026-06-05" })).map((l) => l.lead_id).sort()).toEqual(["fallback", "mid"]);
+    // só "ate": pega old + mid, exclui fallback (14/06)
+    expect(filtrarLeads(leads, sp({ ate: "2026-06-12" })).map((l) => l.lead_id).sort()).toEqual(["mid", "old"]);
+  });
+
   it("etapa null cai em 'sem_etapa' e NÃO some de outros filtros", () => {
     // O lead 'e' (etapa null) aparece no filtro sem_etapa...
     const semEtapa = filtrarLeads(LEADS, sp({ etapa: SEM_ETAPA }));

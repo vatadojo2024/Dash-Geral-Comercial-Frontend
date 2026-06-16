@@ -49,6 +49,7 @@ const ApiLeadSchema = z.object({
   tier_final: z.string().nullish(),
   next_call_numero: z.number().int().positive().nullish(),
   score_calculated_at: z.string().nullish(),
+  last_activity_at: z.string().nullish(),
 });
 type ApiLead = z.infer<typeof ApiLeadSchema>;
 
@@ -92,6 +93,7 @@ function mapApiLead(api: ApiLead): LeadListItem {
     // A API real pode não expor o instante do cálculo na lista; vazio é tratado
     // de forma segura por tempoRelativo (mostra "—").
     score_calculated_at: api.score_calculated_at ?? "",
+    last_activity_at: api.last_activity_at ?? null,
   };
 }
 

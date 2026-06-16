@@ -137,6 +137,30 @@ export function LeadFilters({ params, onChange, onLimpar, closers, sdrs }: Props
           </>
         )}
 
+        <div className="flex items-center gap-1.5" title="Intervalo por última atividade">
+          <input
+            type="date"
+            aria-label="Data inicial (última atividade)"
+            value={params.get("de") ?? ""}
+            max={params.get("ate") || undefined}
+            onChange={(e) => onChange("de", e.target.value || null)}
+            className={`h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm ${
+              params.get("de") ? "text-texto" : "text-texto-sec"
+            }`}
+          />
+          <span className="text-xs text-texto-sec">até</span>
+          <input
+            type="date"
+            aria-label="Data final (última atividade)"
+            value={params.get("ate") ?? ""}
+            min={params.get("de") || undefined}
+            onChange={(e) => onChange("ate", e.target.value || null)}
+            className={`h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm ${
+              params.get("ate") ? "text-texto" : "text-texto-sec"
+            }`}
+          />
+        </div>
+
         {user.role !== "closer" && (
           <button
             onClick={() => onChange("pool", params.get("pool") === "1" ? null : "1")}

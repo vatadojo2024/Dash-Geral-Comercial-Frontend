@@ -64,3 +64,18 @@ export function horaDaCall(iso: string): string {
     minute: "2-digit",
   });
 }
+
+// Número da call para o rótulo "Nª call". A API real NÃO expõe next_call_numero
+// (vem null) → o rótulo virava "ª call" solto. Derivamos de etapa_atual quando
+// possível ("2a_call_agendada" → "2", "5a_mais_call_agendada" → "5+",
+// "no_show_1a" → "1"). Sem número derivável → null (o rótulo cai p/ "Call").
+export function numeroDaCall(lead: LeadListItem): string | null {
+  if (lead.next_call_numero != null) return String(lead.next_call_numero);
+  const e = lead.etapa_atual;
+  if (!e) return null;
+  const call = e.match(/^(\d+)a(_mais)?_call_agendada$/);
+  if (call) return call[2] ? `${call[1]}+` : call[1];
+  const noShow = e.match(/^no_show_(\d+)a$/);
+  if (noShow) return noShow[1];
+  return null;
+}

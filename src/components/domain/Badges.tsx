@@ -1,6 +1,7 @@
 import { AlertTriangle, Bot, Lock } from "lucide-react";
 import type { Etapa, Temperatura } from "@/lib/api/contracts";
 import { etapaLabel, TEMPERATURA_CONFIG } from "@/lib/formatters/score";
+import { labelTrava } from "@/lib/formatters/labels";
 import { cn } from "@/lib/utils/cn";
 
 // Acessibilidade: temperatura/alerta nunca dependem só de cor — sempre
@@ -116,16 +117,17 @@ export function HanaBadge({ size = "md" }: { size?: "sm" | "md" }) {
 }
 
 export function TravaBadge({ trava, size = "md" }: { trava: string; size?: "sm" | "md" }) {
+  const texto = labelTrava(trava) ?? trava;
   return (
     <span
-      title={trava}
+      title={texto}
       className={cn(
         "inline-flex items-center gap-1 rounded-full border border-laranja/30 bg-laranja/15 font-medium text-laranja",
         size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
       )}
     >
       <Lock className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />
-      Trava: {trava}
+      Trava: {texto}
     </span>
   );
 }

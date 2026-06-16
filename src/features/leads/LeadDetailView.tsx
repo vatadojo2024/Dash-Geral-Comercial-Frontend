@@ -20,6 +20,7 @@ import type { AnaliseResumo, LeadDetail } from "@/lib/api/contracts";
 import { DataError, fetchLeadDetail } from "@/lib/data/dataClient";
 import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { dataHora, tempoRelativo } from "@/lib/formatters/date";
+import { labelProduto, labelTier } from "@/lib/formatters/labels";
 import { nomeDoUsuario } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
 import { Button } from "@/components/ui/Button";
@@ -179,7 +180,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
             <div className="min-w-0">
               <h1 className="text-xl font-semibold text-texto">{lead.nome_exibicao}</h1>
               <p className="mt-0.5 text-xs text-texto-sec/80">
-                {lead.lead_id} · score calculado {tempoRelativo(lead.score_calculated_at)}
+                score calculado {tempoRelativo(lead.score_calculated_at)}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <TemperatureBadge temperatura={lead.temperatura} />
@@ -188,11 +189,20 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                 {lead.trava_aplicada && <TravaBadge trava={lead.trava_aplicada} />}
               </div>
               <p className="mt-2 text-xs text-texto-sec">
-                Closer: <span className="font-medium text-texto">{nomeDoUsuario(lead.closer_id, usuarios)}</span>
+                Closer:{" "}
+                <span className="font-medium text-texto">
+                  {lead.closer_id
+                    ? nomeDoUsuario(lead.closer_id, usuarios)
+                    : "Sem closer atribuído"}
+                </span>
                 {" · "}
                 SDR:{" "}
                 <span className="font-medium text-texto">
-                  {lead.sdr_pool ? "Hana (IA)" : nomeDoUsuario(lead.sdr_id, usuarios)}
+                  {lead.sdr_pool
+                    ? "Hana (IA)"
+                    : lead.sdr_id
+                      ? nomeDoUsuario(lead.sdr_id, usuarios)
+                      : "Sem SDR atribuído"}
                 </span>
               </p>
             </div>
@@ -249,7 +259,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                 <Star className="h-4 w-4 text-laranja" aria-hidden />
                 <div>
                   <p className="text-[11px] uppercase tracking-wide text-texto-sec/80">Tier</p>
-                  <p className="text-sm font-semibold text-texto">Tier {lead.tier_final}</p>
+                  <p className="text-sm font-semibold text-texto">{labelTier(lead.tier_final)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 rounded-lg bg-noite/60 px-3 py-2">
@@ -259,7 +269,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                     Produto sugerido
                   </p>
                   <p className="text-sm font-semibold text-texto">
-                    {lead.produto_sugerido ?? "Ainda sem sugestão do motor"}
+                    {labelProduto(lead.produto_sugerido) ?? "Ainda sem sugestão do motor"}
                   </p>
                 </div>
               </div>

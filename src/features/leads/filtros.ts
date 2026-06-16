@@ -18,6 +18,13 @@ function csv(valor: string | null): string[] {
   return valor ? valor.split(",").filter(Boolean) : [];
 }
 
+// Eixo do filtro de data: última atividade (base da retenção de 65 dias) com
+// fallback no instante do cálculo do score quando a API ainda não expõe o campo.
+// Fácil trocar p/ next_call_at aqui se a regra mudar.
+export function dataEixo(l: LeadListItem): string {
+  return (l.last_activity_at ?? l.score_calculated_at ?? "").slice(0, 10);
+}
+
 export function filtrarLeads(
   leads: LeadListItem[],
   sp: URLSearchParams,
@@ -30,11 +37,20 @@ export function filtrarLeads(
   const sdr = sp.get("sdr");
   const pool = sp.get("pool") === "1";
   const trava = sp.get("trava") === "1";
+  const de = sp.get("de"); // YYYY-MM-DD (data_inicio)
+  const ate = sp.get("ate"); // YYYY-MM-DD (data_fim)
 
   return leads.filter((l) => {
     if (busca) {
       const alvo = normalizar(`${l.nome_exibicao ?? ""} ${l.lead_id ?? ""}`);
       if (!alvo.includes(normalizar(busca))) return false;
+    }
+    if (de || ate) {
+      const base = dataEixo(l);
+      // Lead sem data não cabe num intervalo: fica fora quando o filtro está ativo.
+      if (!base) return false;
+      if (de && base < de) return false;
+      if (ate && base > ate) return false;
     }
     if (temperaturas.length && !temperaturas.includes(l.temperatura)) return false;
     if (etapas.length) {
@@ -63,5 +79,7 @@ export function contarFiltrosAtivos(sp: URLSearchParams): number {
     "sdr",
     "pool",
     "trava",
+    "de",
+    "ate",
   ].filter((k) => sp.get(k)).length;
 }

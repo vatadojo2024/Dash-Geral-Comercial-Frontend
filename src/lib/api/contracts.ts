@@ -96,6 +96,10 @@ export const LeadListItemSchema = z.object({
   next_call_at: z.string().nullable(),
   next_call_numero: z.number().int().positive().nullable(),
   score_calculated_at: z.string(),
+  // Data da última atividade do lead (base da retenção de 65 dias) — eixo padrão
+  // do filtro de data na fila. Opcional/tolerante: a API pode não expor ainda
+  // (o filtro cai no score_calculated_at) e o mock não traz.
+  last_activity_at: z.string().nullish(),
 });
 export type LeadListItem = z.infer<typeof LeadListItemSchema>;
 

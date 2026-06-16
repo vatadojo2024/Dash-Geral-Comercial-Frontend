@@ -30,13 +30,26 @@ const ICONE_EVENTO: Record<LeadEvent["tipo"], LucideIcon> = {
 export function LeadTimeline({ eventos }: { eventos: LeadEvent[] }) {
   const ordenados = [...eventos].sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
 
+  // Colapsa mudanças de etapa CONSECUTIVAS idênticas (mesma descrição) em uma só
+  // exibição — repetição de "Mudança de etapa — X" vira uma entrada. NÃO mexe em
+  // eventos distintos nem em outros tipos.
+  const visiveis = ordenados.filter((ev, i) => {
+    if (i === 0) return true;
+    const ant = ordenados[i - 1];
+    return !(
+      ev.tipo === "mudanca_etapa" &&
+      ant.tipo === "mudanca_etapa" &&
+      ev.descricao === ant.descricao
+    );
+  });
+
   return (
     <ol className="space-y-0">
-      {ordenados.map((ev, i) => {
+      {visiveis.map((ev, i) => {
         const Icon = ICONE_EVENTO[ev.tipo] ?? Circle;
         return (
           <li key={ev.event_id} className="relative flex gap-3 pb-5 last:pb-0">
-            {i < ordenados.length - 1 && (
+            {i < visiveis.length - 1 && (
               <span
                 className="absolute left-[15px] top-8 h-[calc(100%-32px)] w-px bg-borda/60"
                 aria-hidden

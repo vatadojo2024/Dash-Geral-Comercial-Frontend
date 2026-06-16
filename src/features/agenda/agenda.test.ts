@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LeadListItem } from "@/lib/api/contracts";
-import { agruparAgenda, rotuloDoDia } from "./agenda";
+import { agruparAgenda, numeroDaCall, rotuloDoDia } from "./agenda";
 
 function lead(parcial: Partial<LeadListItem>): LeadListItem {
   return {
@@ -55,5 +55,28 @@ describe("agruparAgenda", () => {
     expect(grupos).toHaveLength(2);
     expect(grupos[0].leads.map((l) => l.lead_id)).toEqual(["a", "b"]);
     expect(grupos[1].leads.map((l) => l.lead_id)).toEqual(["c"]);
+  });
+});
+
+describe("numeroDaCall", () => {
+  it("usa next_call_numero quando exposto", () => {
+    expect(numeroDaCall(lead({ next_call_numero: 3 }))).toBe("3");
+  });
+  it("deriva de etapa_atual quando vem null (bug 'ª call')", () => {
+    expect(
+      numeroDaCall(lead({ next_call_numero: null, etapa_atual: "2a_call_agendada" })),
+    ).toBe("2");
+    expect(
+      numeroDaCall(lead({ next_call_numero: null, etapa_atual: "5a_mais_call_agendada" })),
+    ).toBe("5+");
+    expect(
+      numeroDaCall(lead({ next_call_numero: null, etapa_atual: "no_show_1a" })),
+    ).toBe("1");
+  });
+  it("null quando não há número derivável (rótulo cai p/ 'Call')", () => {
+    expect(
+      numeroDaCall(lead({ next_call_numero: null, etapa_atual: "fup_pos_pitch" })),
+    ).toBeNull();
+    expect(numeroDaCall(lead({ next_call_numero: null, etapa_atual: null }))).toBeNull();
   });
 });

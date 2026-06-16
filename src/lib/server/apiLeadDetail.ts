@@ -107,6 +107,15 @@ const ApiLeadDetailSchema = z
     etapa_atual: z.string().nullish(),
     next_call_at: z.string().nullish(),
     link_crm: z.string().nullish(),
+    // Posse: o backend passou a expor closer/sdr no detalhe. Tolerante ao nome do
+    // campo (id ou nome) — a UI resolve via /api/usuarios (nome↔UUID) ou exibe
+    // o valor como veio. Ausência → null ("Sem closer atribuído").
+    closer_id: z.string().nullish(),
+    sdr_id: z.string().nullish(),
+    closer: z.string().nullish(),
+    sdr: z.string().nullish(),
+    sdr_pool: z.boolean().nullish(),
+    last_activity_at: z.string().nullish(),
     analise_sdr: ApiAnaliseSchema,
     analise_call: ApiAnaliseSchema,
     timeline: z.array(ApiTimelineEventSchema).nullish(),
@@ -232,13 +241,15 @@ function mapApiLeadDetail(api: ApiLeadDetail): LeadDetail {
     alertas: api.alertas ?? [],
     tier_final: api.tier_final ?? "",
     produto_sugerido: api.produto_sugerido ?? null,
-    // Posse não vem no detalhe real — neutra (o escopo já foi aplicado pela API).
-    closer_id: null,
-    sdr_id: null,
-    sdr_pool: false,
+    // Posse: lê o que o backend mandar (id ou nome, sob qualquer um dos campos);
+    // ausência → null e a UI mostra "Sem closer/SDR atribuído".
+    closer_id: api.closer_id ?? api.closer ?? null,
+    sdr_id: api.sdr_id ?? api.sdr ?? null,
+    sdr_pool: api.sdr_pool ?? false,
     next_call_at: api.next_call_at ?? null,
     next_call_numero: null,
     score_calculated_at: scoreCalc,
+    last_activity_at: api.last_activity_at ?? null,
     telefone: api.telefone ?? "",
     email: api.email ?? "",
     link_crm: api.link_crm ?? null,
