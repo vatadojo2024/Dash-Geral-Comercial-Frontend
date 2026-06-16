@@ -19,14 +19,14 @@ export const TIPOS_ALERTA = [
 ] as const;
 export type TipoAlertaChave = (typeof TIPOS_ALERTA)[number]["chave"];
 
-function normalizar(s: string): string {
-  return s
+function normalizar(s: string | null | undefined): string {
+  return (s ?? "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
 }
 
-export function tipoDoAlerta(alerta: string): TipoAlertaChave | null {
+export function tipoDoAlerta(alerta: string | null | undefined): TipoAlertaChave | null {
   const n = normalizar(alerta);
   if (n.includes("no-show") || n.includes("no show")) return "no_show";
   if (n.includes("parado")) return "parado";
@@ -39,7 +39,8 @@ export function tipoDoAlerta(alerta: string): TipoAlertaChave | null {
 
 export function tiposDoLead(lead: LeadListItem): TipoAlertaChave[] {
   const tipos = new Set<TipoAlertaChave>();
-  for (const alerta of lead.alertas) {
+  // alertas pode vir ausente/não-array em dados fora do contrato — não quebra.
+  for (const alerta of Array.isArray(lead.alertas) ? lead.alertas : []) {
     const tipo = tipoDoAlerta(alerta);
     if (tipo) tipos.add(tipo);
   }

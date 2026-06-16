@@ -44,8 +44,8 @@ type Filtros = {
 };
 const SEM_FILTROS: Filtros = { busca: "", closer: "", sdr: "", produto: "", pool: false };
 
-function normalizar(s: string): string {
-  return s
+function normalizar(s: string | null | undefined): string {
+  return (s ?? "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
@@ -67,7 +67,7 @@ export function DashboardView() {
     if (!data) return [];
     return data.filter((l) => {
       if (filtros.busca) {
-        const alvo = normalizar(`${l.nome_exibicao} ${l.lead_id}`);
+        const alvo = normalizar(`${l.nome_exibicao ?? ""} ${l.lead_id ?? ""}`);
         if (!alvo.includes(normalizar(filtros.busca))) return false;
       }
       if (filtros.closer && l.closer_id !== filtros.closer) return false;

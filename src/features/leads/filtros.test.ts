@@ -127,6 +127,28 @@ describe("filtrarLeads — valores canônicos reais reduzem, não zeram", () => 
     ]);
   });
 
+  it("não quebra (toLowerCase of undefined) com campos undefined/null no lead", () => {
+    // Simula um lead fora do contrato estrito: campos usados em filtro vindo
+    // undefined/null. Nenhum filtro pode lançar — no máximo o lead não casa.
+    const quebrado = {
+      ...lead({ lead_id: "z" }),
+      nome_exibicao: undefined,
+      produto_sugerido: undefined,
+      closer_id: undefined,
+      sdr_id: undefined,
+      etapa_atual: undefined,
+      temperatura: undefined,
+    } as unknown as LeadListItem;
+    const carteira = [...LEADS, quebrado];
+
+    expect(() => filtrarLeads(carteira, sp({ busca: "lead" }))).not.toThrow();
+    expect(() => filtrarLeads(carteira, sp({ produto: "ninja" }))).not.toThrow();
+    expect(() => filtrarLeads(carteira, sp({ closer: "marcio" }))).not.toThrow();
+    expect(() => filtrarLeads(carteira, sp({ etapa: "em_atendimento" }))).not.toThrow();
+    // O lead quebrado não casa um produto canônico (produto undefined → null).
+    expect(filtrarLeads(carteira, sp({ produto: "ninja" })).some((l) => l.lead_id === "z")).toBe(false);
+  });
+
   it("filtro de closer/SDR casa o id real (UUID) — reduz, não zera", () => {
     const uuidCloser = "aaaaaaaa-0000-0000-0000-000000000001";
     const uuidSdr = "bbbbbbbb-0000-0000-0000-000000000002";

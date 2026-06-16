@@ -5,8 +5,10 @@ import { chaveDoProduto } from "@/lib/formatters/score";
 // Token especial "sem_etapa" filtra leads com etapa_atual nula.
 export const SEM_ETAPA = "sem_etapa";
 
-function normalizar(s: string): string {
-  return s
+// Aceita null/undefined sem quebrar: um campo ausente vira "" (não casa busca,
+// mas NUNCA derruba o filtro com "toLowerCase of undefined").
+function normalizar(s: string | null | undefined): string {
+  return (s ?? "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "");
@@ -31,7 +33,7 @@ export function filtrarLeads(
 
   return leads.filter((l) => {
     if (busca) {
-      const alvo = normalizar(`${l.nome_exibicao} ${l.lead_id}`);
+      const alvo = normalizar(`${l.nome_exibicao ?? ""} ${l.lead_id ?? ""}`);
       if (!alvo.includes(normalizar(busca))) return false;
     }
     if (temperaturas.length && !temperaturas.includes(l.temperatura)) return false;

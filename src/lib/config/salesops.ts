@@ -38,7 +38,9 @@ export const valorProjecaoPorProdutoSugerido: Record<string, number> = {
 
 // produto_sugerido do lead ("QC", "Ninja", ...) → valor de projeção.
 // Lead sem produto (null) não soma na projeção.
-export function valorDeProjecao(produtoSugerido: string | null): number | null {
+export function valorDeProjecao(
+  produtoSugerido: string | null | undefined,
+): number | null {
   if (!produtoSugerido) return null;
   const chave = produtoSugerido.trim().toLowerCase();
   return valorProjecaoPorProdutoSugerido[chave] ?? null;

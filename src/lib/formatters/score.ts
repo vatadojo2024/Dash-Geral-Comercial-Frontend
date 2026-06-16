@@ -156,7 +156,9 @@ export const PRODUTOS_OFICIAIS = [
   { chave: "private", label: "Private" },
 ] as const;
 
-export function chaveDoProduto(produtoSugerido: string | null): string | null {
+export function chaveDoProduto(
+  produtoSugerido: string | null | undefined,
+): string | null {
   if (!produtoSugerido) return null;
   const norm = produtoSugerido.trim().toLowerCase();
   // Reduz à base canônica: ignora variante S/A e separadores ("ninja_s",
