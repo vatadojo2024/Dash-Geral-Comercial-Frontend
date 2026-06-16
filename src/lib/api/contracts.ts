@@ -141,8 +141,12 @@ export type LeadEvent = z.infer<typeof LeadEventSchema>;
 // link_crm é o botão "Abrir na Clint" (pendência de backend 3.2 — no mock já existe).
 export const LeadDetailSchema = LeadListItemSchema.extend({
   telefone: z.string(),
-  email: z.string().email(),
-  link_crm: z.string().url(),
+  // E-mail aceito como string livre: a API real pode mandar um valor não
+  // estritamente válido (ou vazio) e isso NÃO pode derrubar a tela.
+  email: z.string(),
+  // link_crm é o botão "Abrir na Clint". A API real responde NULL enquanto a
+  // integração com o CRM não popula o link — nullable, e a UI esconde o botão.
+  link_crm: z.string().url().nullable(),
   score_breakdown: ScoreBreakdownSchema,
   resumo_analises: z.object({
     sdr: AnaliseResumoSchema.nullable(),

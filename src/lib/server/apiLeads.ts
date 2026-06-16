@@ -35,6 +35,20 @@ const ApiLeadSchema = z.object({
   alertas: z.array(z.string()).default([]),
   next_call_at: z.string().nullable().default(null), // PODE ser null
   no_show_count: z.number().int().nonnegative().default(0),
+  // Campos ENRIQUECIDOS da lista real (quando presentes). A lista antiga era
+  // enxuta e não os trazia; descartá-los fazia o filtro de produto ZERAR a
+  // lista (todo lead com produto_sugerido=null) e, para closer/SDR, o escopo
+  // client-side esvaziar a fila (closer_id/sdr_id sempre null). Lê-los quando
+  // a API os envia; ausência cai no default seguro (compatível com a enxuta).
+  score_bruto: z.number().min(0).max(100).nullish(),
+  produto_sugerido: z.string().nullish(),
+  closer_id: z.string().nullish(),
+  sdr_id: z.string().nullish(),
+  sdr_pool: z.boolean().nullish(),
+  trava_aplicada: z.string().nullish(),
+  tier_final: z.string().nullish(),
+  next_call_numero: z.number().int().positive().nullish(),
+  score_calculated_at: z.string().nullish(),
 });
 type ApiLead = z.infer<typeof ApiLeadSchema>;
 
@@ -53,7 +67,7 @@ function mapApiLead(api: ApiLead): LeadListItem {
     lead_id: api.id,
     nome_exibicao: api.nome_exibicao,
     score_final: api.score_final,
-    score_bruto: api.score_final,
+    score_bruto: api.score_bruto ?? api.score_final,
     temperatura: api.temperatura,
     etapa_atual: etapa,
     // Blocos do score só existem no detalhe — neutros na lista.
@@ -62,20 +76,22 @@ function mapApiLead(api: ApiLead): LeadListItem {
     score_urgencia: 0,
     score_engajamento: 0,
     score_timing: 0,
-    trava_aplicada: null,
+    trava_aplicada: api.trava_aplicada ?? null,
     motivo_curto: api.motivo_curto,
     proxima_acao: api.proxima_acao,
     alertas: api.alertas,
-    tier_final: "",
-    produto_sugerido: null,
-    closer_id: null,
-    sdr_id: null,
-    sdr_pool: false,
+    tier_final: api.tier_final ?? "",
+    // Produto sugerido alimenta o filtro de produto (heatmap e fila). Quando a
+    // API o envia, normalizamos para a chave canônica; ausência = null (neutro).
+    produto_sugerido: api.produto_sugerido ?? null,
+    closer_id: api.closer_id ?? null,
+    sdr_id: api.sdr_id ?? null,
+    sdr_pool: api.sdr_pool ?? false,
     next_call_at: api.next_call_at,
-    next_call_numero: null,
-    // A API real ainda não expõe o instante do cálculo na lista; vazio é
-    // tratado de forma segura por tempoRelativo (mostra "—").
-    score_calculated_at: "",
+    next_call_numero: api.next_call_numero ?? null,
+    // A API real pode não expor o instante do cálculo na lista; vazio é tratado
+    // de forma segura por tempoRelativo (mostra "—").
+    score_calculated_at: api.score_calculated_at ?? "",
   };
 }
 

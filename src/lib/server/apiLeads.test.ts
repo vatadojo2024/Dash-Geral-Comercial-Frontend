@@ -82,6 +82,43 @@ describe("adaptApiLeads", () => {
     err.mockRestore();
   });
 
+  it("carrega produto_sugerido e posse quando a lista real os envia (fix do filtro de produto)", () => {
+    const r = adaptApiLeads({
+      leads: [
+        {
+          ...RESPOSTA_REAL.leads[0],
+          produto_sugerido: "ninja",
+          closer_id: "u_giba",
+          sdr_id: "u_benhur",
+          sdr_pool: true,
+          score_bruto: 95,
+          tier_final: "A",
+        },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const [item] = r.items;
+    // Antes do fix estes campos eram descartados (null/0/false) e o filtro de
+    // produto zerava a lista; agora vêm da API.
+    expect(item.produto_sugerido).toBe("ninja");
+    expect(item.closer_id).toBe("u_giba");
+    expect(item.sdr_id).toBe("u_benhur");
+    expect(item.sdr_pool).toBe(true);
+    expect(item.score_bruto).toBe(95);
+    expect(item.tier_final).toBe("A");
+  });
+
+  it("mantém defaults seguros quando a lista é enxuta (sem produto/posse)", () => {
+    const r = adaptApiLeads(RESPOSTA_REAL);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const [a] = r.items;
+    expect(a.produto_sugerido).toBeNull();
+    expect(a.closer_id).toBeNull();
+    expect(a.sdr_pool).toBe(false);
+  });
+
   it("rejeita envelope fora do formato { leads: [...] } como erro (não silencioso)", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = adaptApiLeads({ items: [] });

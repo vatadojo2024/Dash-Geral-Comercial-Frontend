@@ -196,12 +196,14 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
             </div>
             <div className="flex shrink-0 flex-col items-end gap-3">
               <ScoreBadge final={lead.score_final} bruto={lead.score_bruto} size="lg" />
-              <a href={lead.link_crm} target="_blank" rel="noopener noreferrer">
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                  Abrir na Clint
-                </Button>
-              </a>
+              {lead.link_crm && (
+                <a href={lead.link_crm} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm">
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    Abrir na Clint
+                  </Button>
+                </a>
+              )}
             </div>
           </div>
         </CardContent>

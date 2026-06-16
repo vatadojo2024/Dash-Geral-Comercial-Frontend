@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { adaptApiLeadDetail } from "@/lib/server/apiLeadDetail";
 import { leadNoEscopo, todosOsLeadsMock } from "@/lib/server/mockLeads";
 
 // ---------------------------------------------------------------------------
@@ -61,7 +62,20 @@ export async function GET(
         },
       );
     }
-    return NextResponse.json(await res.json());
+
+    // 200 da API real: corpo no contrato real (campos null, blocos como objeto,
+    // analise_sdr/call com nomes próprios, timeline com event_type). Adaptamos
+    // ao LeadDetailSchema em vez de repassar cru — senão o Zod do client derruba
+    // a tela ("Não foi possível carregar o lead") mesmo com 200 válido.
+    const corpo = await res.json().catch(() => null);
+    const adaptado = adaptApiLeadDetail(corpo);
+    if (!adaptado.ok) {
+      return NextResponse.json(
+        { error: `A API de leads respondeu em formato inesperado: ${adaptado.motivo}` },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json(adaptado.lead);
   } catch (e) {
     return NextResponse.json(
       { error: `Falha ao consultar a API de leads: ${e instanceof Error ? e.message : "erro"}` },
