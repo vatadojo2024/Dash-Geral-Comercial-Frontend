@@ -157,7 +157,14 @@ export const PRODUTOS_OFICIAIS = [
 ] as const;
 
 export function chaveDoProduto(produtoSugerido: string | null): string | null {
-  return produtoSugerido ? produtoSugerido.trim().toLowerCase() : null;
+  if (!produtoSugerido) return null;
+  const norm = produtoSugerido.trim().toLowerCase();
+  // Reduz à base canônica: ignora variante S/A e separadores ("ninja_s",
+  // "Black A", "prime-anual" → "ninja"/"black"/"prime"). Se não bater nenhuma
+  // base oficial, devolve o valor normalizado (ainda filtrável, sem casar as
+  // opções oficiais). "private" não colide com "prime" (prefixo difere).
+  const base = PRODUTOS_OFICIAIS.find((p) => norm.startsWith(p.chave));
+  return base ? base.chave : norm;
 }
 
 // Rótulos dos 5 blocos reais do score (tetos 25/20/25/20/10)

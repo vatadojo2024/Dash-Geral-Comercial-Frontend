@@ -7,9 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Layers, Sparkles, X, Zap } from "lucide-react";
 import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
+import { opcoesDeDono } from "@/lib/data/donos";
 import { filtrarPorEscopo } from "@/lib/data/escopo";
 import { TEMPERATURA_CONFIG, TEMPERATURAS_ORDENADAS } from "@/lib/formatters/score";
-import { CLOSERS, SDRS } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -94,6 +94,9 @@ export function AcoesView() {
     [data, user, searchParams],
   );
 
+  // Opções de Closer/SDR derivadas dos próprios leads (ids reais) — ver donos.ts.
+  const donos = useMemo(() => opcoesDeDono(data ?? []), [data]);
+
   const agrupar = searchParams.get("agrupar") === "1";
   const grupos = useMemo(
     () => (agrupar ? agruparPorAcao(filtrados) : null),
@@ -160,13 +163,13 @@ export function AcoesView() {
             <FiltroSelect
               label="Closer"
               valor={searchParams.get("closer") ?? ""}
-              opcoes={CLOSERS.map((c) => ({ valor: c.id, label: c.nome }))}
+              opcoes={donos.closers.map((c) => ({ valor: c.id, label: c.nome }))}
               onChange={(v) => setParam("closer", v)}
             />
             <FiltroSelect
               label="SDR"
               valor={searchParams.get("sdr") ?? ""}
-              opcoes={SDRS.map((s) => ({ valor: s.id, label: s.nome }))}
+              opcoes={donos.sdrs.map((s) => ({ valor: s.id, label: s.nome }))}
               onChange={(v) => setParam("sdr", v)}
             />
           </>

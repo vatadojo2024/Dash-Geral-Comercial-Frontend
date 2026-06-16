@@ -9,7 +9,7 @@ import {
   TEMPERATURA_CONFIG,
   TEMPERATURAS_ORDENADAS,
 } from "@/lib/formatters/score";
-import { CLOSERS, SDRS } from "@/lib/mock/users";
+import type { OpcaoDono } from "@/lib/data/donos";
 import { useSession } from "@/features/session/SessionProvider";
 import { Button } from "@/components/ui/Button";
 import { SEM_ETAPA, contarFiltrosAtivos } from "./filtros";
@@ -18,6 +18,9 @@ type Props = {
   params: URLSearchParams;
   onChange: (chave: string, valor: string | null) => void;
   onLimpar: () => void;
+  // Opções derivadas dos leads (ids reais) — ver lib/data/donos.ts.
+  closers: OpcaoDono[];
+  sdrs: OpcaoDono[];
 };
 
 function FiltroSelect({
@@ -53,7 +56,7 @@ function FiltroSelect({
   );
 }
 
-export function LeadFilters({ params, onChange, onLimpar }: Props) {
+export function LeadFilters({ params, onChange, onLimpar, closers, sdrs }: Props) {
   const user = useSession();
   const ativos = contarFiltrosAtivos(params);
 
@@ -106,13 +109,13 @@ export function LeadFilters({ params, onChange, onLimpar }: Props) {
             <FiltroSelect
               label="Closer"
               valor={params.get("closer") ?? ""}
-              opcoes={CLOSERS.map((c) => ({ valor: c.id, label: c.nome }))}
+              opcoes={closers.map((c) => ({ valor: c.id, label: c.nome }))}
               onChange={(v) => onChange("closer", v)}
             />
             <FiltroSelect
               label="SDR"
               valor={params.get("sdr") ?? ""}
-              opcoes={SDRS.map((s) => ({ valor: s.id, label: s.nome }))}
+              opcoes={sdrs.map((s) => ({ valor: s.id, label: s.nome }))}
               onChange={(v) => onChange("sdr", v)}
             />
           </>

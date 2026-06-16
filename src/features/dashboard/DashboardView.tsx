@@ -7,7 +7,7 @@ import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { tempoRelativo } from "@/lib/formatters/date";
 import { chaveDoProduto, PRODUTOS_OFICIAIS } from "@/lib/formatters/score";
-import { CLOSERS, SDRS } from "@/lib/mock/users";
+import { opcoesDeDono } from "@/lib/data/donos";
 import { useSession } from "@/features/session/SessionProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -78,6 +78,10 @@ export function DashboardView() {
       return true;
     });
   }, [data, filtros]);
+
+  // Opções de Closer/SDR derivadas dos próprios leads (ids reais: slug no mock,
+  // UUID na API) — usar a lista fixa do mock fazia o filtro nunca casar.
+  const donos = useMemo(() => opcoesDeDono(data ?? []), [data]);
 
   const cards = useMemo(() => cardsResumo(leadsFiltrados), [leadsFiltrados]);
   const heatmap = useMemo(() => montarHeatmap(leadsFiltrados), [leadsFiltrados]);
@@ -226,7 +230,7 @@ export function DashboardView() {
               }`}
             >
               <option value="">Closer</option>
-              {CLOSERS.map((c) => (
+              {donos.closers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nome}
                 </option>
@@ -241,7 +245,7 @@ export function DashboardView() {
               }`}
             >
               <option value="">SDR</option>
-              {SDRS.map((s) => (
+              {donos.sdrs.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nome}
                 </option>

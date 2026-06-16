@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { SearchX } from "lucide-react";
 import { fetchLeads } from "@/lib/data/dataClient";
+import { opcoesDeDono } from "@/lib/data/donos";
 import { filtrarPorEscopo } from "@/lib/data/escopo";
 import { useSession } from "@/features/session/SessionProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -34,6 +35,9 @@ export function LeadsView() {
     [data, user, searchParams],
   );
 
+  // Opções de Closer/SDR derivadas dos próprios leads (ids reais) — ver donos.ts.
+  const donos = useMemo(() => opcoesDeDono(data ?? []), [data]);
+
   function setParam(chave: string, valor: string | null) {
     const sp = new URLSearchParams(searchParams);
     if (valor) sp.set(chave, valor);
@@ -48,6 +52,8 @@ export function LeadsView() {
         params={new URLSearchParams(searchParams)}
         onChange={setParam}
         onLimpar={() => router.replace(pathname, { scroll: false })}
+        closers={donos.closers}
+        sdrs={donos.sdrs}
       />
 
       {isLoading ? (

@@ -106,4 +106,39 @@ describe("filtrarLeads — valores canônicos reais reduzem, não zeram", () => 
     expect(r).toHaveLength(1);
     expect(r[0].lead_id).toBe("c");
   });
+
+  it("produto com variante (S/A) ou casing casa a base canônica", () => {
+    const comVariante: LeadListItem[] = [
+      lead({ lead_id: "v1", produto_sugerido: "prime" }),
+      lead({ lead_id: "v2", produto_sugerido: "Prime Anual" }),
+      lead({ lead_id: "v3", produto_sugerido: "ninja_s" }),
+      lead({ lead_id: "v4", produto_sugerido: "private" }),
+    ];
+    expect(filtrarLeads(comVariante, sp({ produto: "prime" })).map((l) => l.lead_id)).toEqual([
+      "v1",
+      "v2",
+    ]);
+    // "private" NÃO é capturado por "prime" (prefixo difere).
+    expect(filtrarLeads(comVariante, sp({ produto: "private" })).map((l) => l.lead_id)).toEqual([
+      "v4",
+    ]);
+    expect(filtrarLeads(comVariante, sp({ produto: "ninja" })).map((l) => l.lead_id)).toEqual([
+      "v3",
+    ]);
+  });
+
+  it("filtro de closer/SDR casa o id real (UUID) — reduz, não zera", () => {
+    const uuidCloser = "aaaaaaaa-0000-0000-0000-000000000001";
+    const uuidSdr = "bbbbbbbb-0000-0000-0000-000000000002";
+    const carteira: LeadListItem[] = [
+      lead({ lead_id: "m", nome_exibicao: "Mayron", closer_id: uuidCloser, sdr_id: uuidSdr }),
+      lead({ lead_id: "n", closer_id: "outro-uuid", sdr_id: "outro-sdr" }),
+      lead({ lead_id: "o", closer_id: null, sdr_id: null }), // sem dono
+    ];
+    // Filtrar pelo UUID do closer mostra só os dele (não zera).
+    expect(filtrarLeads(carteira, sp({ closer: uuidCloser })).map((l) => l.lead_id)).toEqual(["m"]);
+    expect(filtrarLeads(carteira, sp({ sdr: uuidSdr })).map((l) => l.lead_id)).toEqual(["m"]);
+    // Lead sem dono não some dos demais filtros (aparece por temperatura).
+    expect(filtrarLeads(carteira, sp({ temperatura: "morno_alto" })).length).toBe(3);
+  });
 });
