@@ -32,14 +32,22 @@ function aplicar(t: Tema) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // O script anti-flash (layout.tsx) já gravou data-theme antes da hidratação;
-  // lemos dele para o primeiro render do client bater com o DOM.
-  const [tema, setTema] = useState<Tema>(() => {
-    if (typeof document !== "undefined") {
-      return temaValido(document.documentElement.dataset.theme);
-    }
-    return TEMA_PADRAO;
-  });
+  // HIDRATAÇÃO: o primeiro render do CLIENT precisa bater com o SERVIDOR, que
+  // renderiza sempre com TEMA_PADRAO. Por isso NÃO lemos o DOM/localStorage no
+  // inicializador — senão componentes que dependem do tema (ex.: ThemeToggle,
+  // ícone+label+dots) renderizariam "azul" no servidor e "dark/light" no
+  // cliente → React #418 (mismatch de texto/atributo). As CORES não dependem
+  // disso: o script anti-flash já gravou data-theme no <html> antes da pintura.
+  const [tema, setTema] = useState<Tema>(TEMA_PADRAO);
+
+  // Pós-montagem (depois da hidratação): alinha o estado do React ao tema que o
+  // anti-flash já aplicou (data-theme, vindo do localStorage). É uma atualização
+  // normal de estado — não uma divergência de hidratação. Sem flash de cor (o
+  // <html> já estava no tema certo); no máximo o rótulo do botão acerta em 1
+  // frame.
+  useEffect(() => {
+    setTema(temaValido(document.documentElement.dataset.theme));
+  }, []);
 
   const definir = useCallback((t: Tema) => {
     setTema(t);
@@ -52,13 +60,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const alternar = useCallback(() => {
-    definir(proximoTema(tema));
-  }, [tema, definir]);
-
-  // Garante sincronia caso o estado inicial divirja do DOM.
-  useEffect(() => {
-    aplicar(tema);
-  }, [tema]);
+    setTema((atual) => {
+      const prox = proximoTema(atual);
+      aplicar(prox);
+      try {
+        localStorage.setItem(TEMA_STORAGE_KEY, prox);
+      } catch {
+        /* localStorage indisponível — segue só em memória */
+      }
+      return prox;
+    });
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ tema, alternar, definir }}>
