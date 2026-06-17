@@ -17,11 +17,12 @@ import {
 import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { fetchVendasDoMes } from "@/lib/data/salesOps";
-import { useUsuariosMap } from "@/lib/data/useUsuarios";
+import { useUsuariosMap, useUsuariosCarregando } from "@/lib/data/useUsuarios";
 import {
   metasPorCloser,
   nomeApiVendasPorCloser,
   rotuloProduto,
+  slugDoCloser,
   valorDeProjecao,
 } from "@/lib/config/salesops";
 import {
@@ -241,27 +242,38 @@ function PotencialPorProduto({
 
 function PainelCloser({ closerId }: { closerId: string }) {
   const user = useSession();
-  const meta = metasPorCloser[closerId];
+  const usuarios = useUsuariosMap();
+  const usuariosCarregando = useUsuariosCarregando();
+
+  // closerId entra como slug (admin seleciona) ou UUID (closer logado). Metas,
+  // vendas e carteira são TODAS chaveadas por slug → resolvemos UUID→slug UMA vez
+  // (diretório /api/usuarios + nome→slug) e dali pra frente tudo usa o mesmo slug.
+  // Admin e closer passam pelo MESMO ponto de resolução. Ver slugDoCloser.
+  const slug = slugDoCloser(closerId, usuarios);
+  const meta = slug ? metasPorCloser[slug] : undefined;
+  // Diferencia "diretório ainda carregando" de "carregou e não achou meta": sem
+  // isto, o closer logado piscaria "sem meta" enquanto o UUID não resolve.
+  const resolvendoCloser = !slug && usuariosCarregando;
 
   const vendasQuery = useQuery({
-    queryKey: ["vendas", closerId],
-    queryFn: () => fetchVendasDoMes(closerId),
+    queryKey: ["vendas", slug],
+    queryFn: () => fetchVendasDoMes(slug!),
+    enabled: !!slug,
   });
   const leadsQuery = useQuery({
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
   });
-  const usuarios = useUsuariosMap();
 
-  // O closer_id dos leads é UUID; o closerId do Sales Ops é slug (ex.: "aurelio")
-  // ou já o UUID da sessão (closer logado). Comparar slug === UUID nunca casava →
-  // carteira VAZIA → "nenhum lead com produto". Resolvemos o(s) id(s) reais do
-  // closer pelo nome, via diretório /api/usuarios (nome↔UUID), igual ao filtro de
-  // vendas (por nome). Inclui o próprio closerId p/ o caso do closer logado (UUID).
+  // O closer_id dos leads é UUID; já temos o slug resolvido acima. Resolvemos
+  // o(s) UUID(s) reais do closer pelo nome, via diretório /api/usuarios
+  // (nome↔UUID), igual ao filtro de vendas (por nome). Inclui o próprio slug por
+  // segurança (mock chaveia leads por slug).
   const idsDoCloser = useMemo(() => {
-    const ids = new Set<string>([closerId]);
+    const chave = slug ?? closerId;
+    const ids = new Set<string>([chave]);
     const alvo = semAcento(
-      (nomeApiVendasPorCloser[closerId] ?? findAccountById(closerId)?.nome ?? "").toLowerCase(),
+      (nomeApiVendasPorCloser[chave] ?? findAccountById(chave)?.nome ?? "").toLowerCase(),
     );
     if (alvo) {
       for (const [id, nome] of usuarios) {
@@ -269,7 +281,7 @@ function PainelCloser({ closerId }: { closerId: string }) {
       }
     }
     return ids;
-  }, [usuarios, closerId]);
+  }, [usuarios, slug, closerId]);
 
   // Para o link da fila (?closer=): a fila casa por closer_id (UUID), então
   // passamos o UUID resolvido, não o slug.
@@ -286,7 +298,7 @@ function PainelCloser({ closerId }: { closerId: string }) {
     [leadsQuery.data, idsDoCloser],
   );
 
-  if (vendasQuery.isLoading || leadsQuery.isLoading) {
+  if (resolvendoCloser || vendasQuery.isLoading || leadsQuery.isLoading) {
     return (
       <div className="space-y-4" aria-label="Carregando Sales Ops">
         <div className="grid gap-3 lg:grid-cols-3">
@@ -505,12 +517,21 @@ function PainelCloser({ closerId }: { closerId: string }) {
 
 export function SalesOpsView() {
   const user = useSession();
+  const usuarios = useUsuariosMap();
   const [closerSelecionado, setCloserSelecionado] = useState<string>(
     user.role === "closer" ? user.id : CLOSERS[0].id,
   );
 
   // Closer vê a própria página; admin escolhe qual carteira ver.
   const closerId = user.role === "closer" ? user.id : closerSelecionado;
+
+  // Cabeçalho: nome real (diretório /api/usuarios resolve o UUID do closer; admin
+  // cai no nome da conta pelo slug). Último recurso de nomeDoUsuario é o próprio
+  // id — se isso for um UUID (diretório ainda carregando), mostramos um rótulo
+  // limpo, NUNCA o UUID cru.
+  const nomeResolvido = nomeDoUsuario(closerId, usuarios);
+  const ehUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-/i.test(nomeResolvido);
+  const rotuloCloser = ehUuid ? "Closer" : nomeResolvido;
 
   return (
     <div className="space-y-4">
@@ -542,7 +563,7 @@ export function SalesOpsView() {
       )}
 
       <p className="text-xs text-texto-sec">
-        Carteira de <span className="font-medium text-texto">{nomeDoUsuario(closerId)}</span> ·
+        Carteira de <span className="font-medium text-texto">{rotuloCloser}</span> ·
         metas e tabela de preços vigentes do mês
       </p>
 

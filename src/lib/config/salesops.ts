@@ -23,6 +23,30 @@ export const nomeApiVendasPorCloser: Record<string, string> = {
   giba: "Gilberto",
 };
 
+const semAcento = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+// Resolve a CHAVE única do closer (o SLUG de metasPorCloser) a partir do id que
+// chega na tela. O admin já seleciona pelo slug; o closer LOGADO entra com o
+// UUID do JWT, que precisa virar o MESMO slug ANTES de buscar meta/vendas e
+// montar o cabeçalho — senão o UUID ia cru pra meta (→ "sem meta"), pra busca de
+// vendas (que filtra por NOME e zeraria) e pro cabeçalho (UUID cru). A ponte é a
+// MESMA do filtro de leads/carteira: UUID→nome (diretório /api/usuarios) e
+// nome→slug (a correspondência por nome de nomeApiVendasPorCloser). Não há slug
+// no diretório, então o casamento é por nome ("contém"), como nas demais telas.
+export function slugDoCloser(
+  closerId: string,
+  usuariosMap: ReadonlyMap<string, string>,
+): string | null {
+  if (metasPorCloser[closerId]) return closerId; // já é um slug conhecido (admin)
+  const nome = semAcento((usuariosMap.get(closerId) ?? "").toLowerCase());
+  if (!nome) return null; // UUID ainda não resolvido (diretório carregando/sem match)
+  for (const slug of Object.keys(metasPorCloser)) {
+    const alvo = semAcento((nomeApiVendasPorCloser[slug] ?? slug).toLowerCase());
+    if (alvo && nome.includes(alvo)) return slug;
+  }
+  return null;
+}
+
 export type PrecoProduto = { avista: number; parcelado12x: number };
 
 // Tabela oficial de preços (Vata, jun/2026)

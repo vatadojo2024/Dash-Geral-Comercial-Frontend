@@ -15,16 +15,25 @@ import { fetchUsuarios } from "./dataClient";
 // atual é preservado.
 // ---------------------------------------------------------------------------
 
+const usuariosQueryOptions = {
+  queryKey: ["usuarios"] as const,
+  queryFn: fetchUsuarios,
+  staleTime: 10 * 60_000,
+  gcTime: 30 * 60_000,
+};
+
 export function useUsuariosMap(): ReadonlyMap<string, string> {
-  const { data } = useQuery({
-    queryKey: ["usuarios"],
-    queryFn: fetchUsuarios,
-    staleTime: 10 * 60_000,
-    gcTime: 30 * 60_000,
-  });
+  const { data } = useQuery(usuariosQueryOptions);
 
   return useMemo(
     () => new Map((data ?? []).map((u) => [u.id, u.nome] as const)),
     [data],
   );
+}
+
+// isLoading do diretório (mesma queryKey → o React Query dedupe a busca). Para
+// telas que precisam DISTINGUIR "ainda carregando" de "carregou e não achou":
+// ex. resolver UUID→slug no Sales Ops antes de declarar "closer sem meta".
+export function useUsuariosCarregando(): boolean {
+  return useQuery(usuariosQueryOptions).isLoading;
 }
