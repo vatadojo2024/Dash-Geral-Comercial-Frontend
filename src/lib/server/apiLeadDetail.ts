@@ -1,11 +1,13 @@
 import { z } from "zod";
 import {
   EtapaSchema,
+  FICHA_VAZIA,
   LeadDetailSchema,
   TemperaturaSchema,
   TETOS_BLOCOS,
   type AnaliseResumo,
   type Etapa,
+  type FichaLead,
   type LeadDetail,
   type LeadEvent,
   type ScoreBreakdown,
@@ -103,10 +105,35 @@ const ApiLeadDetailSchema = z
     alertas: z.array(z.string()).nullish(),
     score_calculated_at: z.string().nullish(),
     tier_final: z.string().nullish(),
+    // Produto efetivo do lead. A API real expõe sob nomes variados
+    // (produto_sugerido | produto_recomendado) e SEM variante para QC
+    // (produto_*_variante = null). Lemos todos e usamos o efetivo; a variante
+    // NÃO é concatenada (QC = "QC", nunca "qc - null"). labelProduto canoniza.
     produto_sugerido: z.string().nullish(),
+    produto_recomendado: z.string().nullish(),
+    produto_variante: z.string().nullish(),
+    produto_recomendado_variante: z.string().nullish(),
     etapa_atual: z.string().nullish(),
     next_call_at: z.string().nullish(),
     link_crm: z.string().nullish(),
+    // Ficha do Clint + briefing (12 campos novos). z.unknown(): aceitamos
+    // QUALQUER tipo sem nunca derrubar o parse do lead; a coerção campo-a-campo
+    // (textoOuNull) decide o que vira texto e o que vira null.
+    renda_faixa: z.unknown(),
+    patrimonio_faixa: z.unknown(),
+    investimento_mensal: z.unknown(),
+    profissao: z.unknown(),
+    objetivo_mercado: z.unknown(),
+    obstaculo: z.unknown(),
+    momento_financeiro: z.unknown(),
+    motivacao: z.unknown(),
+    tempo_disponivel: z.unknown(),
+    momento_atual: z.unknown(),
+    desafio_resolver: z.unknown(),
+    briefing: z.unknown(),
+    // Ainda não vêm da API (backend vai capturá-los); por ora chegam ausentes.
+    conducao_da_call: z.unknown(),
+    guia_sdr: z.unknown(),
     // Posse: o backend passou a expor closer/sdr no detalhe. Tolerante ao nome do
     // campo (id ou nome) — a UI resolve via /api/usuarios (nome↔UUID) ou exibe
     // o valor como veio. Ausência → null ("Sem closer atribuído").
@@ -129,6 +156,41 @@ function coagirEtapa(valor: string | null | undefined): Etapa | null {
 
 function clamp(n: number, max: number): number {
   return Math.max(0, Math.min(max, n));
+}
+
+// Coerção campo-a-campo da ficha do Clint: só string não-vazia vira texto; null,
+// ausência, "" ou qualquer tipo inesperado viram null (linha some na UI), sem
+// nunca derrubar o lead. Trim remove brancos de borda; o miolo é preservado.
+function textoOuNull(valor: unknown): string | null {
+  if (typeof valor !== "string") return null;
+  const limpo = valor.trim();
+  return limpo.length > 0 ? limpo : null;
+}
+
+// Monta a ficha do app a partir do corpo real, um campo de cada vez.
+function mapFicha(api: ApiLeadDetail): FichaLead {
+  return {
+    renda_faixa: textoOuNull(api.renda_faixa),
+    patrimonio_faixa: textoOuNull(api.patrimonio_faixa),
+    investimento_mensal: textoOuNull(api.investimento_mensal),
+    profissao: textoOuNull(api.profissao),
+    objetivo_mercado: textoOuNull(api.objetivo_mercado),
+    obstaculo: textoOuNull(api.obstaculo),
+    momento_financeiro: textoOuNull(api.momento_financeiro),
+    motivacao: textoOuNull(api.motivacao),
+    tempo_disponivel: textoOuNull(api.tempo_disponivel),
+    momento_atual: textoOuNull(api.momento_atual),
+    desafio_resolver: textoOuNull(api.desafio_resolver),
+  };
+}
+
+// link_crm é o ÚNICO campo onde o contrato do app (z.string().url()) é mais
+// estrito que este adapter (z.string().nullish()): a API real manda null OU, às
+// vezes, uma string que NÃO é URL ("" ou um caminho do Clint sem http). Sem
+// sanear, o LeadDetailSchema rejeitaria o lead INTEIRO ("Não foi possível
+// carregar o lead"). Mantém só URL válida; o resto vira null (botão some).
+function urlValidaOuNull(valor: string | null | undefined): string | null {
+  return valor && z.string().url().safeParse(valor).success ? valor : null;
 }
 
 // Objeto {fit, timing, ...} → array do contrato, na ordem fixa dos 5 blocos,
@@ -240,7 +302,9 @@ function mapApiLeadDetail(api: ApiLeadDetail): LeadDetail {
     proxima_acao: api.proxima_acao ?? "",
     alertas: api.alertas ?? [],
     tier_final: api.tier_final ?? "",
-    produto_sugerido: api.produto_sugerido ?? null,
+    // Efetivo sob qualquer um dos nomes; variante NÃO entra (QC sem variante =
+    // "QC" via labelProduto, jamais "qc - null").
+    produto_sugerido: api.produto_sugerido ?? api.produto_recomendado ?? null,
     // Posse: lê o que o backend mandar (id ou nome, sob qualquer um dos campos);
     // ausência → null e a UI mostra "Sem closer/SDR atribuído".
     closer_id: api.closer_id ?? api.closer ?? null,
@@ -252,7 +316,11 @@ function mapApiLeadDetail(api: ApiLeadDetail): LeadDetail {
     last_activity_at: api.last_activity_at ?? null,
     telefone: api.telefone ?? "",
     email: api.email ?? "",
-    link_crm: api.link_crm ?? null,
+    link_crm: urlValidaOuNull(api.link_crm),
+    briefing: textoOuNull(api.briefing),
+    conducao_da_call: textoOuNull(api.conducao_da_call),
+    guia_sdr: textoOuNull(api.guia_sdr),
+    ficha: mapFicha(api),
     score_breakdown: mapBreakdown(api),
     resumo_analises: {
       sdr: mapAnalise(api.analise_sdr, scoreCalc),
@@ -260,6 +328,71 @@ function mapApiLeadDetail(api: ApiLeadDetail): LeadDetail {
     },
     timeline,
   };
+}
+
+// Defaults seguros por campo NÃO-essencial do contrato. O detalhe é UM lead sem
+// rede: se um campo opcional vier numa forma inesperada, caímos no default e o
+// lead ainda abre — mesma filosofia da tolerância item-a-item da lista, aqui
+// campo-a-campo. Os 4 essenciais (id/nome_exibicao/score_final/temperatura) não
+// entram: sem eles não há lead, e já foram validados no ApiLeadDetailSchema.
+function defaultsPorCampo(lead: LeadDetail): Partial<Record<keyof LeadDetail, unknown>> {
+  return {
+    score_bruto: lead.score_final,
+    etapa_atual: null,
+    score_momento: 0,
+    score_fit: 0,
+    score_urgencia: 0,
+    score_engajamento: 0,
+    score_timing: 0,
+    trava_aplicada: null,
+    motivo_curto: "",
+    proxima_acao: "",
+    alertas: [],
+    tier_final: "",
+    produto_sugerido: null,
+    closer_id: null,
+    sdr_id: null,
+    sdr_pool: false,
+    next_call_at: null,
+    next_call_numero: null,
+    score_calculated_at: "",
+    last_activity_at: null,
+    telefone: "",
+    email: "",
+    link_crm: null,
+    briefing: null,
+    conducao_da_call: null,
+    guia_sdr: null,
+    ficha: FICHA_VAZIA,
+    resumo_analises: { sdr: null, call: null },
+    timeline: [],
+  };
+}
+
+// Tenta validar o lead mapeado; se falhar APENAS em campos não-essenciais, troca
+// cada um pelo default e revalida. Só desiste (null) se sobrar erro num campo
+// sem default (essencial) — aí o lead é realmente inviável.
+function repararContrato(mapeado: LeadDetail): LeadDetail | null {
+  const primeira = LeadDetailSchema.safeParse(mapeado);
+  if (primeira.success) return primeira.data;
+
+  const defaults = defaultsPorCampo(mapeado);
+  const remendado: Record<string, unknown> = { ...mapeado };
+  let remendou = false;
+  for (const issue of primeira.error.issues) {
+    const campo = issue.path[0];
+    if (typeof campo === "string" && campo in defaults) {
+      remendado[campo] = defaults[campo as keyof LeadDetail];
+      remendou = true;
+      console.error(
+        `[/api/leads/:id] campo "${issue.path.join(".")}" fora do contrato (${issue.message}) — usando fallback, lead preservado.`,
+      );
+    }
+  }
+  if (!remendou) return null; // erro só em campo essencial → inviável
+
+  const segunda = LeadDetailSchema.safeParse(remendado);
+  return segunda.success ? segunda.data : null;
 }
 
 export type AdaptDetailResult =
@@ -283,17 +416,19 @@ export function adaptApiLeadDetail(corpo: unknown): AdaptDetailResult {
   }
 
   const mapeado = mapApiLeadDetail(parsed.data);
-  const contrato = LeadDetailSchema.safeParse(mapeado);
-  if (!contrato.success) {
-    const motivo = contrato.error.issues
-      .map((i) => `${i.path.join(".") || "(raiz)"} — ${i.message}`)
-      .join("; ");
+  // Cinto de segurança tolerante: valida o contrato do app e, se falhar só em
+  // campos não-essenciais, repara campo-a-campo em vez de derrubar o lead.
+  const lead = repararContrato(mapeado);
+  if (!lead) {
+    const motivo = LeadDetailSchema.safeParse(mapeado)
+      .error?.issues.map((i) => `${i.path.join(".") || "(raiz)"} — ${i.message}`)
+      .join("; ") ?? "campo essencial inválido";
     console.error(
-      `[/api/leads/:id] (id=${parsed.data.id}) falhou no contrato do app após mapeamento:`,
+      `[/api/leads/:id] (id=${parsed.data.id}) falhou no contrato do app após mapeamento (campo essencial):`,
       motivo,
     );
     return { ok: false, motivo };
   }
 
-  return { ok: true, lead: contrato.data };
+  return { ok: true, lead };
 }

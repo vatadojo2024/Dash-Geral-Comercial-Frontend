@@ -153,6 +153,41 @@ export const LeadEventSchema = z.object({
 });
 export type LeadEvent = z.infer<typeof LeadEventSchema>;
 
+// Ficha do lead (dados frios da qualificação, vindos do Clint). TODOS de
+// exibição como TEXTO e independentes: um campo nulo NÃO afeta os outros. São
+// distintos do NÍVEL numérico do score (renda_nivel etc., de outra fonte) —
+// renda_faixa/patrimonio_faixa são texto ("Entre R$ 11 mil e R$ 25 mil"), nunca
+// usados no cálculo do score.
+export const FichaLeadSchema = z.object({
+  renda_faixa: z.string().nullable(),
+  patrimonio_faixa: z.string().nullable(),
+  investimento_mensal: z.string().nullable(),
+  profissao: z.string().nullable(),
+  objetivo_mercado: z.string().nullable(),
+  obstaculo: z.string().nullable(),
+  momento_financeiro: z.string().nullable(),
+  motivacao: z.string().nullable(),
+  tempo_disponivel: z.string().nullable(),
+  momento_atual: z.string().nullable(),
+  desafio_resolver: z.string().nullable(),
+});
+export type FichaLead = z.infer<typeof FichaLeadSchema>;
+
+// Ficha toda vazia — default quando a fonte (mock) não traz os campos do Clint.
+export const FICHA_VAZIA: FichaLead = {
+  renda_faixa: null,
+  patrimonio_faixa: null,
+  investimento_mensal: null,
+  profissao: null,
+  objetivo_mercado: null,
+  obstaculo: null,
+  momento_financeiro: null,
+  motivacao: null,
+  tempo_disponivel: null,
+  momento_atual: null,
+  desafio_resolver: null,
+};
+
 // Detalhe do lead — espelho do futuro GET /api/leads/:id (F5).
 // Contato (telefone/e-mail) aparece DIRETO aqui (decisão Vata 3.1.3);
 // link_crm é o botão "Abrir na Clint" (pendência de backend 3.2 — no mock já existe).
@@ -169,6 +204,15 @@ export const LeadDetailSchema = LeadListItemSchema.extend({
     sdr: AnaliseResumoSchema.nullable(),
     call: AnaliseResumoSchema.nullable(),
   }),
+  // Textos da IA exibidos como accordions em "Análises da IA". Todos com
+  // .default(null): o mock não traz e o contrato segue válido. conducao_da_call
+  // e guia_sdr AINDA não vêm da API (backend ainda vai capturá-los) → ficam null
+  // e a UI mostra placeholder até lá.
+  briefing: z.string().nullable().default(null),
+  conducao_da_call: z.string().nullable().default(null),
+  guia_sdr: z.string().nullable().default(null),
+  // Ficha do Clint (dados frios). .default: idem — mock antigo segue válido.
+  ficha: FichaLeadSchema.default(FICHA_VAZIA),
   timeline: z.array(LeadEventSchema),
 });
 export type LeadDetail = z.infer<typeof LeadDetailSchema>;

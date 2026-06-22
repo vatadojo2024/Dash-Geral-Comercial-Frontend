@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Bot,
   Check,
+  ChevronDown,
   Copy,
   ExternalLink,
   Lightbulb,
@@ -14,19 +15,20 @@ import {
   Package,
   Phone,
   ShieldAlert,
-  Star,
 } from "lucide-react";
-import type { AnaliseResumo, LeadDetail } from "@/lib/api/contracts";
+import type { FichaLead, LeadDetail } from "@/lib/api/contracts";
 import { DataError, fetchLeadDetail } from "@/lib/data/dataClient";
 import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { dataHora, tempoRelativo } from "@/lib/formatters/date";
-import { labelProduto, labelTier } from "@/lib/formatters/labels";
+import { labelProduto } from "@/lib/formatters/labels";
+import { brParaQuebras } from "@/lib/formatters/texto";
 import { nomeDoUsuario } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
+import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import {
   AlertaBadge,
   EtapaBadge,
@@ -41,7 +43,6 @@ import { LeadTimeline } from "@/components/domain/LeadTimeline";
 const ABAS = [
   { id: "geral", label: "Visão geral" },
   { id: "score", label: "Score" },
-  { id: "comercial", label: "Comercial" },
   { id: "timeline", label: "Timeline" },
 ] as const;
 
@@ -88,40 +89,117 @@ function LinhaCopiavel({
   );
 }
 
-function BlocoAnalise({ titulo, analise }: { titulo: string; analise: AnaliseResumo | null }) {
-  if (!analise) {
-    return (
-      <div className="rounded-xl border border-dashed border-borda px-4 py-5 text-center text-sm text-texto-sec">
-        {titulo}: ainda não há análise registrada.
-      </div>
-    );
-  }
+// Accordion de análise da IA: <details> nativo (acessível, recolhido por
+// padrão). Com conteúdo → texto com as quebras do briefing (brParaQuebras +
+// pre-wrap, sem HTML cru); ausente/vazio → placeholder "ainda não disponível".
+function AccordionAnalise({
+  titulo,
+  conteudo,
+}: {
+  titulo: string;
+  // Possivelmente undefined: conducao_da_call/guia_sdr ainda não vêm da API.
+  conteudo?: string | null;
+}) {
+  const texto = typeof conteudo === "string" ? conteudo.trim() : "";
   return (
-    <div className="rounded-xl border border-borda p-4">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-texto">{titulo}</p>
-        <p className="text-xs text-texto-sec/80">{tempoRelativo(analise.analisado_em)}</p>
+    <details className="group rounded-xl border border-borda">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-texto [&::-webkit-details-marker]:hidden">
+        {titulo}
+        <ChevronDown
+          className="h-4 w-4 shrink-0 text-texto-sec transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="border-t border-borda/60 px-4 py-3">
+        {texto ? (
+          <p className="whitespace-pre-wrap break-words text-sm text-texto-sec">
+            {brParaQuebras(texto)}
+          </p>
+        ) : (
+          <p className="text-sm text-texto-sec/70">Ainda não disponível.</p>
+        )}
       </div>
-      <p className="text-sm text-texto-sec">{analise.resumo_curto}</p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {analise.sinais_positivos.map((s) => (
-          <span
-            key={s}
-            className="rounded-full border border-verde/30 bg-verde/15 px-2 py-0.5 text-[11px] font-medium text-verde"
-          >
-            + {s}
-          </span>
-        ))}
-        {analise.sinais_risco.map((s) => (
-          <span
-            key={s}
-            className="rounded-full border border-rosa/30 bg-rosa/15 px-2 py-0.5 text-[11px] font-medium text-rosa"
-          >
-            ! {s}
-          </span>
-        ))}
-      </div>
-    </div>
+    </details>
+  );
+}
+
+// Seção "Análises da IA": três accordions empilhados, fechados por padrão.
+function AnalisesIA({ lead }: { lead: LeadDetail }) {
+  return (
+    <Card>
+      <CardHeader
+        title="Análises da IA"
+        subtitle="Briefing e guias gerados pela IA a partir das conversas."
+      />
+      <CardContent className="space-y-2">
+        <AccordionAnalise titulo="Briefing" conteudo={lead.briefing} />
+        <AccordionAnalise titulo="Condução da Call" conteudo={lead.conducao_da_call} />
+        <AccordionAnalise titulo="Análise para SDR" conteudo={lead.guia_sdr} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// Rótulos PT da ficha (dados frios do Clint), na ordem de exibição. São TEXTO —
+// renda_faixa/patrimonio_faixa não têm relação com o NÍVEL numérico do score.
+const CAMPOS_FICHA: { campo: keyof FichaLead; rotulo: string }[] = [
+  { campo: "renda_faixa", rotulo: "Renda" },
+  { campo: "patrimonio_faixa", rotulo: "Patrimônio" },
+  { campo: "investimento_mensal", rotulo: "Investimento mensal" },
+  { campo: "profissao", rotulo: "Profissão" },
+  { campo: "objetivo_mercado", rotulo: "Objetivo com o mercado" },
+  { campo: "obstaculo", rotulo: "Obstáculo" },
+  { campo: "momento_financeiro", rotulo: "Momento financeiro" },
+  { campo: "motivacao", rotulo: "Motivação" },
+  { campo: "tempo_disponivel", rotulo: "Tempo disponível" },
+  { campo: "momento_atual", rotulo: "Momento atual" },
+  { campo: "desafio_resolver", rotulo: "Desafio a resolver" },
+];
+
+// Ficha do lead: Produto sugerido (Fit comercial, SEM Tier) + os 11 campos
+// frios do Clint. Tolerância campo-a-campo: campo nulo/vazio não renderiza a
+// linha; o Produto cai num texto neutro quando o motor ainda não sugeriu.
+function FichaLeadCard({ ficha, produto }: { ficha: FichaLead; produto: string | null }) {
+  const preenchidos = CAMPOS_FICHA.filter(({ campo }) => {
+    const v = ficha[campo];
+    return typeof v === "string" && v.trim().length > 0;
+  });
+
+  return (
+    <Card>
+      <CardHeader
+        title="Ficha do lead"
+        subtitle="Dados informados na qualificação (Clint)."
+      />
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3 rounded-lg bg-noite/60 px-3 py-2">
+          <Package className="h-4 w-4 text-texto-sec" aria-hidden />
+          <div>
+            <p className="text-[11px] uppercase tracking-wide text-texto-sec/80">
+              Produto sugerido
+            </p>
+            <p className="text-sm font-semibold text-texto">
+              {labelProduto(produto) ?? "Ainda sem sugestão do motor"}
+            </p>
+          </div>
+        </div>
+
+        {preenchidos.length === 0 ? (
+          <p className="text-sm text-texto-sec">Sem dados de ficha para este lead.</p>
+        ) : (
+          <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            {preenchidos.map(({ campo, rotulo }) => (
+              <div key={campo}>
+                <dt className="text-[11px] font-medium uppercase tracking-wide text-texto-sec/80">
+                  {rotulo}
+                </dt>
+                <dd className="mt-0.5 text-sm text-texto">{ficha[campo]}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -182,29 +260,33 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
               <p className="mt-0.5 text-xs text-texto-sec/80">
                 score calculado {tempoRelativo(lead.score_calculated_at)}
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <TemperatureBadge temperatura={lead.temperatura} />
-                <EtapaBadge etapa={lead.etapa_atual} />
-                {lead.sdr_pool && <HanaBadge />}
-                {lead.trava_aplicada && <TravaBadge trava={lead.trava_aplicada} />}
-              </div>
-              <p className="mt-2 text-xs text-texto-sec">
-                Closer:{" "}
-                <span className="font-medium text-texto">
-                  {lead.closer_id
-                    ? nomeDoUsuario(lead.closer_id, usuarios)
-                    : "Sem closer atribuído"}
-                </span>
-                {" · "}
-                SDR:{" "}
-                <span className="font-medium text-texto">
-                  {lead.sdr_pool
-                    ? "Hana (IA)"
-                    : lead.sdr_id
-                      ? nomeDoUsuario(lead.sdr_id, usuarios)
-                      : "Sem SDR atribuído"}
-                </span>
-              </p>
+              {/* Badges + posse: parte dinâmica do cabeçalho. Se algo aqui
+                  estourar, nome e score acima continuam visíveis. */}
+              <ErrorBoundary rotulo="cabeçalho do lead" fallback={null}>
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <TemperatureBadge temperatura={lead.temperatura} />
+                  <EtapaBadge etapa={lead.etapa_atual} />
+                  {lead.sdr_pool && <HanaBadge />}
+                  {lead.trava_aplicada && <TravaBadge trava={lead.trava_aplicada} />}
+                </div>
+                <p className="mt-2 text-xs text-texto-sec">
+                  Closer:{" "}
+                  <span className="font-medium text-texto">
+                    {lead.closer_id
+                      ? nomeDoUsuario(lead.closer_id, usuarios)
+                      : "Sem closer atribuído"}
+                  </span>
+                  {" · "}
+                  SDR:{" "}
+                  <span className="font-medium text-texto">
+                    {lead.sdr_pool
+                      ? "Hana (IA)"
+                      : lead.sdr_id
+                        ? nomeDoUsuario(lead.sdr_id, usuarios)
+                        : "Sem SDR atribuído"}
+                  </span>
+                </p>
+              </ErrorBoundary>
             </div>
             <div className="flex shrink-0 flex-col items-end gap-3">
               <ScoreBadge final={lead.score_final} bruto={lead.score_bruto} size="lg" />
@@ -239,70 +321,60 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
         ))}
       </div>
 
-      {aba === "geral" && <AbaGeral lead={lead} />}
-
-      {aba === "score" && (
-        <Card>
-          <CardHeader title="Por que essa nota" subtitle="Os 5 blocos do motor de score e a trava, quando aplicada." />
-          <CardContent>
-            <LeadScoreBlocks lead={lead} />
-          </CardContent>
-        </Card>
+      {/* Cada aba é envolvida por um ErrorBoundary: um valor inesperado numa
+          seção mostra um fallback limpo SEM derrubar o resto do lead. */}
+      {aba === "geral" && (
+        <ErrorBoundary rotulo="aba geral" fallback={<FallbackSecao />}>
+          <AbaGeral lead={lead} />
+        </ErrorBoundary>
       )}
 
-      {aba === "comercial" && (
-        <div className="grid gap-4 lg:grid-cols-2">
+      {aba === "score" && (
+        <ErrorBoundary rotulo="aba score" fallback={<FallbackSecao />}>
           <Card>
-            <CardHeader title="Fit comercial" />
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3 rounded-lg bg-noite/60 px-3 py-2">
-                <Star className="h-4 w-4 text-laranja" aria-hidden />
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-texto-sec/80">Tier</p>
-                  <p className="text-sm font-semibold text-texto">{labelTier(lead.tier_final)}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 rounded-lg bg-noite/60 px-3 py-2">
-                <Package className="h-4 w-4 text-texto-sec" aria-hidden />
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-texto-sec/80">
-                    Produto sugerido
-                  </p>
-                  <p className="text-sm font-semibold text-texto">
-                    {labelProduto(lead.produto_sugerido) ?? "Ainda sem sugestão do motor"}
-                  </p>
-                </div>
-              </div>
+            <CardHeader title="Por que essa nota" subtitle="Os 5 blocos do motor de score e a trava, quando aplicada." />
+            <CardContent>
+              <LeadScoreBlocks lead={lead} />
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader
-              title="Análises da IA"
-              subtitle="Resumo da conversa do SDR e da call mais recente."
-            />
-            <CardContent className="space-y-3">
-              <BlocoAnalise titulo="Análise SDR" analise={lead.resumo_analises.sdr} />
-              <BlocoAnalise titulo="Análise da call" analise={lead.resumo_analises.call} />
-            </CardContent>
-          </Card>
-        </div>
+        </ErrorBoundary>
       )}
 
       {aba === "timeline" && (
-        <Card>
-          <CardHeader title="Timeline" subtitle="O filme do lead, do evento mais recente ao mais antigo." />
-          <CardContent>
-            <LeadTimeline eventos={lead.timeline} />
-          </CardContent>
-        </Card>
+        <ErrorBoundary rotulo="aba timeline" fallback={<FallbackSecao />}>
+          <Card>
+            <CardHeader title="Timeline" subtitle="O filme do lead, do evento mais recente ao mais antigo." />
+            <CardContent>
+              <LeadTimeline eventos={lead.timeline} />
+            </CardContent>
+          </Card>
+        </ErrorBoundary>
       )}
     </div>
   );
 }
 
+// Fallback de uma seção que estourou ao renderizar — o cabeçalho e as demais
+// abas do lead seguem de pé.
+function FallbackSecao() {
+  return (
+    <Card>
+      <ErrorState
+        titulo="Não foi possível exibir esta seção"
+        descricao="Os demais dados do lead seguem disponíveis acima."
+      />
+    </Card>
+  );
+}
+
+// Visão Geral agora é uma página contínua (a aba "Comercial" foi fundida aqui):
+// (a) Prioridade/Contato → (b) Ficha do lead → (c) Análises da IA, separadas por
+// divisórias. Cada seção é independente — uma não derruba a outra.
 function AbaGeral({ lead }: { lead: LeadDetail }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="space-y-6">
+      {/* (a) Prioridade + Contato */}
+      <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader title="Prioridade" />
         <CardContent className="space-y-3">
@@ -356,6 +428,17 @@ function AbaGeral({ lead }: { lead: LeadDetail }) {
           </p>
         </CardContent>
       </Card>
+      </div>
+
+      <hr className="border-borda/60" />
+
+      {/* (b) Ficha do lead */}
+      <FichaLeadCard ficha={lead.ficha} produto={lead.produto_sugerido} />
+
+      <hr className="border-borda/60" />
+
+      {/* (c) Análises da IA */}
+      <AnalisesIA lead={lead} />
     </div>
   );
 }

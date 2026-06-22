@@ -131,17 +131,23 @@ export type GrupoEtapa = {
   etapas: Etapa[];
 };
 
+// Funil do mapa de calor (6 colunas). FUP saiu (leads em FUP já são filtrados no
+// backend → coluna vazia); a posição foi repurposada. "3ª+ call" estreitou para
+// "3ª call" (só a 3ª) e nasceu "4ª+ call" (4ª, 5ª e acima). Nenhum lead órfão: o
+// que caía em "3ª+ call" agora cai em "3ª call" OU "4ª+ call". Slugs reais (enum
+// do backend, confirmados no dado): 3a_call_agendada / 4a_call_agendada /
+// 5a_mais_call_agendada. Os slugs de FUP passam a ficar "fora da grade".
 export const GRUPOS_ETAPA_HEATMAP: GrupoEtapa[] = [
   { id: "1a_call", label: "1ª call", etapas: ["1a_call_agendada"] },
   { id: "em_atendimento", label: "Em atendimento", etapas: ["em_atendimento"] },
   { id: "2a_call", label: "2ª call", etapas: ["2a_call_agendada"] },
+  { id: "3a_call", label: "3ª call", etapas: ["3a_call_agendada"] },
   {
-    id: "3a_mais",
-    label: "3ª+ call",
-    etapas: ["3a_call_agendada", "4a_call_agendada", "5a_mais_call_agendada"],
+    id: "4a_mais",
+    label: "4ª+ call",
+    etapas: ["4a_call_agendada", "5a_mais_call_agendada"],
   },
   { id: "no_show", label: "No-show", etapas: ["no_show_1a", "no-show"] },
-  { id: "fup", label: "FUP", etapas: ["fup_pos_pitch", "fup_infinito_perdido"] },
 ];
 
 export const ETAPAS_FORA_DO_HEATMAP: Etapa[] = ["blacklist", "fechado"];

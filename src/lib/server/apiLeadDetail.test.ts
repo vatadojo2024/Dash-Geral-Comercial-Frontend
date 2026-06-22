@@ -161,6 +161,125 @@ describe("adaptApiLeadDetail", () => {
     expect(r.lead.score_breakdown.trava).toMatchObject({ teto: 60, tipo: "teto_renda" });
   });
 
+  it("lead QC (produto sem variante) abre: produto efetivo 'qc', sem '- null'", () => {
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      id: "lead_qc",
+      produto_sugerido: "qc",
+      produto_variante: null,
+      produto_recomendado: "qc",
+      produto_recomendado_variante: null,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.lead.produto_sugerido).toBe("qc"); // labelProduto traduz p/ "QC" na UI
+  });
+
+  it("lê produto_recomendado quando produto_sugerido ausente", () => {
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      produto_sugerido: undefined,
+      produto_recomendado: "black",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.lead.produto_sugerido).toBe("black");
+  });
+
+  it("link_crm não-URL NÃO derruba o lead (vira null, botão some) — a causa do bug QC", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const linkRuim of ["", "/clients/123", "clint.com/x", "nao-url"]) {
+      const r = adaptApiLeadDetail({ ...RESPOSTA_REAL, link_crm: linkRuim });
+      expect(r.ok).toBe(true);
+      if (!r.ok) continue;
+      expect(LeadDetailSchema.safeParse(r.lead).success).toBe(true);
+      expect(r.lead.link_crm).toBeNull();
+    }
+    err.mockRestore();
+  });
+
+  it("link_crm URL válida é preservada", () => {
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      link_crm: "https://app.clint.com/leads/123",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.lead.link_crm).toBe("https://app.clint.com/leads/123");
+  });
+
+  it("mapeia a ficha do Clint (texto) e o briefing quando vêm preenchidos", () => {
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      renda_faixa: "Entre R$ 11 mil e R$ 25 mil",
+      patrimonio_faixa: "Acima de R$ 500 mil",
+      profissao: "Médico",
+      objetivo_mercado: "Renda passiva",
+      desafio_resolver: "Falta de tempo para estudar o mercado",
+      briefing: "Resumo:<br/>Decisor confirmado.<br>Evidências: orçamento aprovado.",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(LeadDetailSchema.safeParse(r.lead).success).toBe(true);
+    // Faixa é TEXTO de exibição — não tem relação com o nível numérico do score.
+    expect(r.lead.ficha.renda_faixa).toBe("Entre R$ 11 mil e R$ 25 mil");
+    expect(r.lead.ficha.patrimonio_faixa).toBe("Acima de R$ 500 mil");
+    expect(r.lead.ficha.profissao).toBe("Médico");
+    expect(r.lead.ficha.desafio_resolver).toBe("Falta de tempo para estudar o mercado");
+    // O adapter guarda o briefing CRU (com <br/>); a conversão é só na UI.
+    expect(r.lead.briefing).toContain("<br/>");
+  });
+
+  it("ficha tolerante campo-a-campo: nulo/vazio/tipo errado viram null, lead preservado", () => {
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      renda_faixa: "Até R$ 5 mil", // ok
+      patrimonio_faixa: null, // null → null
+      profissao: "   ", // só brancos → null
+      investimento_mensal: 1500, // tipo errado (número) → null, NÃO derruba
+      momento_atual: "",
+      briefing: null,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(LeadDetailSchema.safeParse(r.lead).success).toBe(true);
+    expect(r.lead.ficha.renda_faixa).toBe("Até R$ 5 mil");
+    expect(r.lead.ficha.patrimonio_faixa).toBeNull();
+    expect(r.lead.ficha.profissao).toBeNull();
+    expect(r.lead.ficha.investimento_mensal).toBeNull();
+    expect(r.lead.ficha.momento_atual).toBeNull();
+    expect(r.lead.briefing).toBeNull();
+  });
+
+  it("ficha toda ausente → todos os campos null e briefing null (ficha vazia)", () => {
+    const r = adaptApiLeadDetail(RESPOSTA_REAL); // sem nenhum campo de ficha
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.lead.briefing).toBeNull();
+    expect(Object.values(r.lead.ficha).every((v) => v === null)).toBe(true);
+  });
+
+  it("conducao_da_call/guia_sdr ausentes (backend ainda não captura) → null, lead preservado", () => {
+    const r = adaptApiLeadDetail(RESPOSTA_REAL);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(LeadDetailSchema.safeParse(r.lead).success).toBe(true);
+    expect(r.lead.conducao_da_call).toBeNull();
+    expect(r.lead.guia_sdr).toBeNull();
+  });
+
+  it("conducao_da_call/guia_sdr presentes são preservados (texto cru com <br/>)", () => {
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      conducao_da_call: "Abra com a dor.<br/>Confirme orçamento.",
+      guia_sdr: "Qualifique fit antes de agendar.",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.lead.conducao_da_call).toBe("Abra com a dor.<br/>Confirme orçamento.");
+    expect(r.lead.guia_sdr).toBe("Qualifique fit antes de agendar.");
+  });
+
   it("falha (erro, não silêncio) quando o corpo não tem o obrigatório", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = adaptApiLeadDetail({ id: "x" }); // sem score_final/temperatura/nome

@@ -103,7 +103,7 @@ export type CelulaHeatmap = {
 export type Heatmap = {
   celulas: CelulaHeatmap[];
   maxTotal: number;
-  foraDaGrade: number; // blacklist, fechado e sem etapa
+  foraDaGrade: number; // FUP, blacklist, fechado e sem etapa
 };
 
 export function montarHeatmap(leads: LeadListItem[]): Heatmap {
@@ -154,7 +154,7 @@ export function recorteForaDaGrade(): Recorte {
   const etapasNaGrade = new Set(GRUPOS_ETAPA_HEATMAP.flatMap((g) => g.etapas as string[]));
   return {
     id: "fora_da_grade",
-    label: "Fora da grade (blacklist, fechado, sem etapa)",
+    label: "Fora da grade (FUP, blacklist, fechado, sem etapa)",
     predicado: (l) => l.etapa_atual === null || !etapasNaGrade.has(l.etapa_atual),
   };
 }
