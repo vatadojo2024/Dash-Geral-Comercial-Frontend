@@ -5,40 +5,11 @@ import { Loader2, LockKeyhole, MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
-import { CHAT_CONFIGURADO, obterTokenSessao } from "./chatClient";
+import { CHAT_CONFIGURADO } from "./chatClient";
 import { ChatConversa } from "./ChatConversa";
 import { ConversaList } from "./ConversaList";
 import { useConversas } from "./useConversas";
-
-// Estado da checagem de sessão (T-08): a aba só chama o serviço com token válido.
-type EstadoSessao = "verificando" | "ok" | "sem";
-
-function useSessaoChat(): EstadoSessao {
-  const [estado, setEstado] = useState<EstadoSessao>("verificando");
-  useEffect(() => {
-    let ativo = true;
-    obterTokenSessao().then((t) => ativo && setEstado(t ? "ok" : "sem"));
-    return () => {
-      ativo = false;
-    };
-  }, []);
-  return estado;
-}
-
-// Alternância chat ↔ playbook: só placeholder "em breve" nesta etapa (sem gerador).
-function AlternanciaPlaceholder() {
-  return (
-    <div className="inline-flex items-center gap-1 rounded-lg border border-borda bg-painel p-0.5 text-xs">
-      <span className="rounded-md bg-azul/15 px-2.5 py-1 font-medium text-azul-claro">Chat</span>
-      <span
-        title="Geração de playbook chega em uma etapa futura"
-        className="cursor-not-allowed rounded-md px-2.5 py-1 text-texto-sec/60"
-      >
-        Playbook · em breve
-      </span>
-    </div>
-  );
-}
+import { useSessaoChat } from "./useSessaoChat";
 
 function Aviso({ titulo, descricao }: { titulo: string; descricao: string }) {
   return (
@@ -111,10 +82,6 @@ export function ChatView() {
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
-        <AlternanciaPlaceholder />
-      </div>
-
       {criar.isError && (
         <p
           role="alert"
