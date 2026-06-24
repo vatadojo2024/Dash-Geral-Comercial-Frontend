@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { LeadDetailSchema } from "@/lib/api/contracts";
-import { adaptApiLeadDetail } from "./apiLeadDetail";
+import { adaptApiLeadDetail, parseCorpoLead } from "./apiLeadDetail";
 
 // Payload no contrato REAL de GET /api/leads/:id (exemplo do lead Mayron):
 // link_crm/analise_call/teto_aplicado/trava_aplicada NULL, analise_sdr com os 3
@@ -286,5 +286,58 @@ describe("adaptApiLeadDetail", () => {
     expect(r.ok).toBe(false);
     expect(err).toHaveBeenCalled();
     err.mockRestore();
+  });
+});
+
+describe("parseCorpoLead (parse tolerante do corpo da API)", () => {
+  it("faz o parse normal de um JSON válido", () => {
+    expect(parseCorpoLead('{"id":"a","n":1}')).toEqual({ id: "a", n: 1 });
+  });
+
+  it("corpo vazio → null", () => {
+    expect(parseCorpoLead("")).toBeNull();
+  });
+
+  it("REPARA quebras de linha/tab CRUS dentro de strings (a causa do 502)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // JSON com newline e tab REAIS dentro das strings (não-escapados), mas com
+    // as aspas internas corretamente escapadas — o que o res.json() rejeitava.
+    const corpoQuebrado =
+      '{"id":"lead_br","nome_exibicao":"Com BR","score_final":70,"temperatura":"quente",' +
+      '"briefing":"Resumo:\nEvidências: ele disse \\"ótimo\\". <br/>",' +
+      '"conducao_da_call":"Passo 1\tabrir\nPasso 2"}';
+
+    // res.json() puro falharia aqui:
+    expect(() => JSON.parse(corpoQuebrado)).toThrow();
+
+    const corpo = parseCorpoLead(corpoQuebrado) as Record<string, unknown>;
+    expect(corpo).not.toBeNull();
+    expect(corpo.briefing).toBe('Resumo:\nEvidências: ele disse "ótimo". <br/>');
+    expect(corpo.conducao_da_call).toBe("Passo 1\tabrir\nPasso 2");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("o lead reparado passa pelo adaptador e abre (briefing/condução preservados)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const corpoQuebrado =
+      '{"id":"lead_br","nome_exibicao":"Com BR","score_final":70,"temperatura":"quente",' +
+      '"briefing":"Linha 1\nLinha 2 com \\"aspas\\" <br/>",' +
+      '"conducao_da_call":"Conduza\nassim"}';
+
+    const r = adaptApiLeadDetail(parseCorpoLead(corpoQuebrado));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(LeadDetailSchema.safeParse(r.lead).success).toBe(true);
+    expect(r.lead.briefing).toContain("<br/>");
+    expect(r.lead.briefing).toContain('"aspas"');
+    expect(r.lead.conducao_da_call).toContain("Conduza");
+    warn.mockRestore();
+  });
+
+  it("irrecuperável (aspas de fato não-escapadas) → null, sem lançar", () => {
+    // Aspas não-escapadas dentro do valor: ambíguo, não dá para reparar — vira
+    // null (a rota então responde com diagnóstico, sem derrubar o processo).
+    expect(parseCorpoLead('{"x": "a"b"}')).toBeNull();
   });
 });

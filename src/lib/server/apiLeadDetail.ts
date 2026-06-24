@@ -167,6 +167,73 @@ function textoOuNull(valor: unknown): string | null {
   return limpo.length > 0 ? limpo : null;
 }
 
+// Escapa caracteres de CONTROLE crus (U+0000–U+001F: quebra de linha, tab, CR…)
+// que aparecem DENTRO de strings JSON. É a causa clássica do "Bad control
+// character in string literal": campos de texto (briefing/condução) vêm do CRM
+// com <br/> e quebras de linha REAIS não-escapadas, e o JSON.parse rejeita o
+// corpo inteiro → a rota devolvia 502. Só toca no que está dentro de string;
+// barras invertidas e aspas já escapadas passam intactas, e a estrutura do JSON
+// (chaves, vírgulas, espaços entre tokens) é preservada.
+function escaparControlesCrusEmStrings(json: string): string {
+  let dentroDeString = false;
+  let escapando = false;
+  let saida = "";
+  for (let i = 0; i < json.length; i++) {
+    const c = json[i];
+    if (escapando) {
+      // Caractere logo após uma "\" — já é parte de um escape válido (\", \\, \n…).
+      saida += c;
+      escapando = false;
+      continue;
+    }
+    if (c === "\\") {
+      saida += c;
+      escapando = true;
+      continue;
+    }
+    if (c === '"') {
+      dentroDeString = !dentroDeString;
+      saida += c;
+      continue;
+    }
+    const code = json.charCodeAt(i);
+    if (dentroDeString && code < 0x20) {
+      saida +=
+        c === "\n"
+          ? "\\n"
+          : c === "\r"
+            ? "\\r"
+            : c === "\t"
+              ? "\\t"
+              : "\\u" + code.toString(16).padStart(4, "0");
+      continue;
+    }
+    saida += c;
+  }
+  return saida;
+}
+
+// Parse TOLERANTE do corpo da API. Tenta o JSON normal; se o corpo trouxer
+// controles crus dentro de strings (texto com quebras de linha não-escapadas),
+// repara e tenta de novo — assim leads com briefing/condução preenchidos abrem
+// em vez de virar 502. Devolve null só se for de fato irrecuperável.
+export function parseCorpoLead(texto: string): unknown {
+  if (!texto) return null;
+  try {
+    return JSON.parse(texto);
+  } catch {
+    try {
+      const valor = JSON.parse(escaparControlesCrusEmStrings(texto));
+      console.warn(
+        "[/api/leads/:id] corpo com caracteres de controle crus dentro de strings — reparado antes do parse (texto com quebras de linha não-escapadas).",
+      );
+      return valor;
+    } catch {
+      return null;
+    }
+  }
+}
+
 // Monta a ficha do app a partir do corpo real, um campo de cada vez.
 function mapFicha(api: ApiLeadDetail): FichaLead {
   return {
