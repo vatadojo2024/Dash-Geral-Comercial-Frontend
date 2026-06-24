@@ -34,6 +34,7 @@ export const ConversaSchema = z.object({
   id: z.string(),
   papel: RoleSchema,
   titulo: z.string().optional(),
+  resumo: z.string().optional(), // resumo curto do serviço (Etapa 5), opcional
   criada_em: z.string(), // ISO
   atualizada_em: z.string(), // ISO
 });

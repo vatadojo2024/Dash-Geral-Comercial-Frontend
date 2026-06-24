@@ -4,22 +4,21 @@ import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { Paperclip, SendHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
-const EH_DEV = process.env.NODE_ENV !== "production";
-
 // Barra de input (T-09): caixa de texto + enviar + placeholder de anexo (NÃO
-// funcional). Em dev, um toggle para simular erro na próxima resposta (RF-06).
+// funcional). `disabled` trava o envio enquanto a anterior está em andamento.
 export function ChatInput({
   onEnviar,
+  disabled = false,
 }: {
-  onEnviar: (texto: string, opts?: { forcarErro?: boolean }) => void;
+  onEnviar: (texto: string) => void;
+  disabled?: boolean;
 }) {
   const [texto, setTexto] = useState("");
-  const [simularErro, setSimularErro] = useState(false);
 
   function enviar() {
     const conteudo = texto.trim();
-    if (!conteudo) return;
-    onEnviar(conteudo, { forcarErro: simularErro });
+    if (!conteudo || disabled) return;
+    onEnviar(conteudo);
     setTexto("");
   }
 
@@ -38,18 +37,6 @@ export function ChatInput({
 
   return (
     <form onSubmit={aoSubmeter} className="border-t border-borda/60 px-3 py-3">
-      {EH_DEV && (
-        <label className="mb-2 flex w-fit items-center gap-2 text-[11px] text-texto-sec">
-          <input
-            type="checkbox"
-            checked={simularErro}
-            onChange={(e) => setSimularErro(e.target.checked)}
-            className="h-3.5 w-3.5 accent-rosa"
-          />
-          Simular erro na próxima resposta (dev)
-        </label>
-      )}
-
       <div className="flex items-end gap-2">
         {/* Placeholder visual de anexo — não funcional nesta etapa. */}
         <button
@@ -74,11 +61,11 @@ export function ChatInput({
 
         <button
           type="submit"
-          disabled={!texto.trim()}
+          disabled={!texto.trim() || disabled}
           aria-label="Enviar"
           className={cn(
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
-            texto.trim()
+            texto.trim() && !disabled
               ? "bg-azul text-white hover:bg-azul-claro"
               : "cursor-not-allowed bg-borda/50 text-texto-sec",
           )}

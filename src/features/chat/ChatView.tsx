@@ -1,62 +1,160 @@
 "use client";
 
-import { useState } from "react";
-import { FlaskConical } from "lucide-react";
-import type { Role } from "@/lib/api/contracts";
-import { useSession } from "@/features/session/SessionProvider";
+import { useEffect, useState } from "react";
+import { Loader2, LockKeyhole, MessageSquarePlus } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/States";
+import { CHAT_CONFIGURADO, obterTokenSessao } from "./chatClient";
 import { ChatConversa } from "./ChatConversa";
+import { ConversaList } from "./ConversaList";
+import { useConversas } from "./useConversas";
 
-const EH_DEV = process.env.NODE_ENV !== "production";
+// Estado da checagem de sessão (T-08): a aba só chama o serviço com token válido.
+type EstadoSessao = "verificando" | "ok" | "sem";
 
-const PAPEIS: { valor: Role; label: string }[] = [
-  { valor: "admin", label: "Admin (Vata/Cindy)" },
-  { valor: "closer", label: "Closer" },
-  { valor: "sdr", label: "SDR" },
-];
+function useSessaoChat(): EstadoSessao {
+  const [estado, setEstado] = useState<EstadoSessao>("verificando");
+  useEffect(() => {
+    let ativo = true;
+    obterTokenSessao().then((t) => ativo && setEstado(t ? "ok" : "sem"));
+    return () => {
+      ativo = false;
+    };
+  }, []);
+  return estado;
+}
 
-// Seletor de papel — APENAS em desenvolvimento (RF-09/T-10). Em produção este
-// bloco não é renderizado e o papel vem só da sessão.
-function SeletorPapelDev({
-  papel,
-  onChange,
-}: {
-  papel: Role;
-  onChange: (p: Role) => void;
-}) {
+// Alternância chat ↔ playbook: só placeholder "em breve" nesta etapa (sem gerador).
+function AlternanciaPlaceholder() {
   return (
-    <label className="flex items-center gap-2 rounded-lg border border-dashed border-borda bg-painel-claro px-3 py-1.5 text-xs text-texto-sec">
-      <FlaskConical className="h-3.5 w-3.5 text-laranja" aria-hidden />
-      <span>Pré-visualizar papel (dev):</span>
-      <select
-        aria-label="Papel exibido (apenas desenvolvimento)"
-        value={papel}
-        onChange={(e) => onChange(e.target.value as Role)}
-        className="rounded-md border border-borda bg-painel px-2 py-1 text-texto"
+    <div className="inline-flex items-center gap-1 rounded-lg border border-borda bg-painel p-0.5 text-xs">
+      <span className="rounded-md bg-azul/15 px-2.5 py-1 font-medium text-azul-claro">Chat</span>
+      <span
+        title="Geração de playbook chega em uma etapa futura"
+        className="cursor-not-allowed rounded-md px-2.5 py-1 text-texto-sec/60"
       >
-        {PAPEIS.map((p) => (
-          <option key={p.valor} value={p.valor}>
-            {p.label}
-          </option>
-        ))}
-      </select>
-    </label>
+        Playbook · em breve
+      </span>
+    </div>
+  );
+}
+
+function Aviso({ titulo, descricao }: { titulo: string; descricao: string }) {
+  return (
+    <Card>
+      <EmptyState icon={LockKeyhole} titulo={titulo} descricao={descricao} />
+    </Card>
   );
 }
 
 export function ChatView() {
-  // Papel real do usuário — MESMA fonte que o painel já usa (useSession).
-  const { role } = useSession();
-  // Em dev, o seletor pode sobrepor o papel exibido sem tocar na sessão.
-  const [papelExibido, setPapelExibido] = useState<Role>(role);
-  const papel = EH_DEV ? papelExibido : role;
+  const sessao = useSessaoChat();
+  const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
+
+  const habilitado = sessao === "ok" && CHAT_CONFIGURADO;
+  const { query, criar, apagar } = useConversas(habilitado);
+  const conversas = query.data ?? [];
+
+  // Seleciona a conversa mais recente quando a lista chega e nada está aberto.
+  useEffect(() => {
+    if (!selecionadaId && conversas.length > 0) {
+      setSelecionadaId(conversas[0].id);
+    }
+  }, [conversas, selecionadaId]);
+
+  async function nova() {
+    try {
+      const c = await criar.mutateAsync();
+      setSelecionadaId(c.id);
+    } catch {
+      /* erro de criação é tratado visualmente pelo estado da mutação */
+    }
+  }
+
+  async function remover(id: string) {
+    if (typeof window !== "undefined" && !window.confirm("Apagar esta conversa?")) return;
+    try {
+      await apagar.mutateAsync(id);
+      if (selecionadaId === id) setSelecionadaId(null);
+    } catch {
+      /* mantém a conversa na lista se a remoção falhar */
+    }
+  }
+
+  // --- Guardas (T-08 + config) -------------------------------------------------
+  if (!CHAT_CONFIGURADO) {
+    return (
+      <Aviso
+        titulo="Chat não configurado"
+        descricao="Defina NEXT_PUBLIC_CHAT_API_URL (ex.: http://localhost:8000) para conectar ao serviço de chat."
+      />
+    );
+  }
+  if (sessao === "verificando") {
+    return (
+      <div className="flex h-40 items-center justify-center text-texto-sec">
+        <Loader2 className="h-5 w-5 animate-spin" aria-label="Verificando sessão" />
+      </div>
+    );
+  }
+  if (sessao === "sem") {
+    return (
+      <Aviso
+        titulo="Entre para usar o chat"
+        descricao="É necessário estar logado com uma sessão válida para conversar com a IA-guia."
+      />
+    );
+  }
+
+  const conversaSel = conversas.find((c) => c.id === selecionadaId) ?? null;
 
   return (
     <div className="space-y-3">
-      {EH_DEV && (
-        <SeletorPapelDev papel={papelExibido} onChange={setPapelExibido} />
+      <div className="flex justify-end">
+        <AlternanciaPlaceholder />
+      </div>
+
+      {criar.isError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-rosa/30 bg-rosa/10 px-3 py-2 text-sm text-rosa"
+        >
+          Não foi possível criar a conversa
+          {criar.error instanceof Error ? `: ${criar.error.message}` : "."}
+        </p>
       )}
-      {/* key={papel}: trocar de agente recomeça a conversa do zero. */}
-      <ChatConversa key={papel} papel={papel} />
+
+      <div className="flex gap-4">
+        <ConversaList
+          conversas={conversas}
+          selecionadaId={selecionadaId}
+          carregando={query.isLoading}
+          erro={query.isError}
+          criando={criar.isPending}
+          apagandoId={apagar.isPending ? apagar.variables ?? null : null}
+          onSelecionar={setSelecionadaId}
+          onNova={nova}
+          onApagar={remover}
+        />
+
+        <div className="min-w-0 flex-1">
+          {conversaSel ? (
+            <ChatConversa key={conversaSel.id} conversa={conversaSel} />
+          ) : (
+            <Card className="flex h-[calc(100vh-13rem)] min-h-[26rem] flex-col items-center justify-center gap-4">
+              <EmptyState
+                icon={MessageSquarePlus}
+                titulo="Nenhuma conversa aberta"
+                descricao="Crie uma nova conversa para começar a falar com a IA-guia do seu papel."
+              />
+              <Button onClick={nova} loading={criar.isPending}>
+                Nova conversa
+              </Button>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
