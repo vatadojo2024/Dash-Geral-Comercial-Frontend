@@ -161,6 +161,60 @@ describe("adaptApiLeadDetail", () => {
     expect(r.lead.score_breakdown.trava).toMatchObject({ teto: 60, tipo: "teto_renda" });
   });
 
+  it("aceita o score_breakdown REAL inteiro (travas_ativas = array de objeto {nome,teto}) — a causa do 502", () => {
+    // Payload colado do banco: jsonb com avisos/blocos/alertas/financeiro/
+    // teto_aplicado/travas_ativas(objeto)/fonte_urgencia. Antes derrubava o lead.
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      trava_aplicada: "urgencia_muito_baixa",
+      score_breakdown: {
+        avisos: [],
+        blocos: { fit: 7, timing: 3, momento: 16, urgencia: 0, engajamento: 0 },
+        alertas: ["urgência muito baixa"],
+        financeiro: {
+          nivel_usado: 3.3000000000000003,
+          renda_nivel: 2,
+          aporte_nivel: 6,
+          patrimonio_nivel: 3,
+        },
+        teto_aplicado: 65,
+        travas_ativas: [{ nome: "urgencia_muito_baixa", teto: 65 }],
+        fonte_urgencia: "sdr",
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(LeadDetailSchema.safeParse(r.lead).success).toBe(true);
+
+    const trava = r.lead.score_breakdown.trava;
+    expect(trava).not.toBeNull();
+    expect(trava?.teto).toBe(65);
+    expect(trava?.tipo).toBe("urgencia_muito_baixa");
+    // motivo humanizado para exibição (snake_case → "Urgencia muito baixa"; o
+    // acento não vem da chave, e o front só usa travas_ativas, não `alertas`).
+    expect(trava?.motivo).toBe("Travas ativas: Urgencia muito baixa.");
+
+    // os 5 blocos seguem corretos
+    const fit = r.lead.score_breakdown.blocos.find((b) => b.bloco === "fit");
+    expect(fit).toMatchObject({ pontos: 7, teto: 20 });
+    const urgencia = r.lead.score_breakdown.blocos.find((b) => b.bloco === "urgencia");
+    expect(urgencia).toMatchObject({ pontos: 0, teto: 25 });
+  });
+
+  it("trava sem teto_aplicado usa o teto embutido no objeto da trava", () => {
+    const r = adaptApiLeadDetail({
+      ...RESPOSTA_REAL,
+      score_breakdown: {
+        ...RESPOSTA_REAL.score_breakdown,
+        teto_aplicado: null,
+        travas_ativas: [{ nome: "no_show_2x", teto: 60 }],
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.lead.score_breakdown.trava).toMatchObject({ teto: 60, tipo: "no_show_2x" });
+  });
+
   it("lead QC (produto sem variante) abre: produto efetivo 'qc', sem '- null'", () => {
     const r = adaptApiLeadDetail({
       ...RESPOSTA_REAL,

@@ -91,11 +91,24 @@ const ApiLeadDetailSchema = z
     score_engajamento: z.number().nullish(),
     score_timing: z.number().nullish(),
     trava_aplicada: z.string().nullish(),
+    // score_breakdown é um jsonb. Alinhado ao formato REAL do backend, campo a
+    // campo, de forma TOLERANTE (nada aqui pode derrubar o lead):
+    //   { avisos[], blocos{...}, alertas[], financeiro{...}, teto_aplicado,
+    //     travas_ativas: [ { nome, teto } ], fonte_urgencia }
+    // A tela só usa blocos / teto_aplicado / travas_ativas; os demais ficam
+    // declarados (lenientes) só para documentar e blindar contra surpresa futura.
     score_breakdown: z
       .object({
         blocos: ApiBlocosSchema.nullish(),
         teto_aplicado: z.number().nullish(),
-        travas_ativas: z.array(z.string()).nullish(),
+        // FORMATO REAL: array de OBJETO ({ nome, teto }). Já apareceu como array
+        // de string em outras respostas — z.unknown() aceita os dois sem falhar;
+        // mapBreakdown normaliza para nome/teto.
+        travas_ativas: z.array(z.unknown()).nullish(),
+        avisos: z.array(z.unknown()).nullish(),
+        alertas: z.array(z.unknown()).nullish(),
+        financeiro: z.record(z.unknown()).nullish(),
+        fonte_urgencia: z.string().nullish(),
       })
       .passthrough()
       .nullish(),
@@ -272,20 +285,49 @@ function mapBreakdown(api: ApiLeadDetail): ScoreBreakdown {
     },
   );
 
-  const teto = api.score_breakdown?.teto_aplicado;
-  const travasAtivas = api.score_breakdown?.travas_ativas ?? [];
-  const temTrava = (teto !== null && teto !== undefined) || travasAtivas.length > 0;
+  // travas_ativas: formato real = [{ nome, teto }]; legado = ["nome"]. Normaliza
+  // os dois para nome (string) e teto (number|null), sem nunca derrubar o lead.
+  const itens = api.score_breakdown?.travas_ativas ?? [];
+  const nomes = itens.map(nomeDaTrava).filter((n) => n.length > 0);
+  // teto: o teto_aplicado do breakdown tem prioridade; senão, o teto da 1ª trava.
+  const teto = api.score_breakdown?.teto_aplicado ?? tetoDaTrava(itens[0]);
+  const temTrava = (teto !== null && teto !== undefined) || nomes.length > 0;
   const trava = temTrava
     ? {
-        tipo: travasAtivas[0] ?? api.trava_aplicada ?? "trava",
+        tipo: nomes[0] ?? api.trava_aplicada ?? "trava",
         teto: teto ?? 0,
-        motivo: travasAtivas.length
-          ? `Travas ativas: ${travasAtivas.join(", ")}.`
+        motivo: nomes.length
+          ? `Travas ativas: ${nomes.map(humanizarTrava).join(", ")}.`
           : "Trava aplicada ao score.",
       }
     : null;
 
   return { blocos: blocosArray, trava };
+}
+
+// Nome da trava a partir de um item de travas_ativas (objeto {nome} ou string).
+function nomeDaTrava(item: unknown): string {
+  if (typeof item === "string") return item.trim();
+  if (item && typeof item === "object") {
+    const nome = (item as { nome?: unknown }).nome;
+    if (typeof nome === "string") return nome.trim();
+  }
+  return "";
+}
+
+// Teto embutido no objeto de trava ({ teto }), quando houver — fallback do teto.
+function tetoDaTrava(item: unknown): number | null {
+  if (item && typeof item === "object") {
+    const teto = (item as { teto?: unknown }).teto;
+    if (typeof teto === "number") return teto;
+  }
+  return null;
+}
+
+// snake_case → "Snake case" para exibição (mesmo espírito do humanizar de labels).
+function humanizarTrava(nome: string): string {
+  const t = nome.replace(/_/g, " ").trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : nome;
 }
 
 // analise_sdr/call → AnaliseResumo | null. Sem resumo nem sinais = sem análise
