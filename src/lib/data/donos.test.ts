@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LeadListItem } from "@/lib/api/contracts";
-import { opcoesDeDono } from "./donos";
+import { leadDoSdr, opcoesDeDono, SEM_SDR } from "./donos";
 
 function lead(over: Partial<LeadListItem>): LeadListItem {
   return {
@@ -32,45 +32,78 @@ function lead(over: Partial<LeadListItem>): LeadListItem {
 }
 
 describe("opcoesDeDono", () => {
-  it("deriva closers/sdrs distintos dos próprios leads (ids reais)", () => {
-    const uuidA = "11111111-1111-1111-1111-111111111111";
-    const uuidB = "22222222-2222-2222-2222-222222222222";
+  it("deriva closers/sdrs distintos dos leads, com o NOME que vem no lead (ordenado)", () => {
     const leads = [
-      lead({ closer_id: uuidA, sdr_id: uuidB }),
-      lead({ closer_id: uuidA, sdr_id: null }), // dono repetido + sdr nulo
-      lead({ closer_id: null, sdr_id: uuidB }),
-      lead({ closer_id: null, sdr_id: null }), // lead sem dono nenhum
+      lead({ closer_id: "c1", closer_nome: "Marcio", sdr_id: "s1", sdr_nome: "Benhur" }),
+      lead({ closer_id: "c1", closer_nome: "Marcio", sdr_id: "s1", sdr_nome: "Benhur" }), // repetido
+      lead({ closer_id: "c2", closer_nome: "Giba", sdr_id: "s2", sdr_nome: "Guilherme" }),
     ];
     const { closers, sdrs } = opcoesDeDono(leads);
-    // UUID aparece UMA vez (distinto); nulos não viram opção.
-    expect(closers.map((c) => c.id)).toEqual([uuidA]);
-    expect(sdrs.map((s) => s.id)).toEqual([uuidB]);
-    // O value da opção é o UUID exato que está no lead → o filtro casa.
-    expect(closers[0].nome).toBe(uuidA); // sem fonte de nomes → cai no id
+    expect(closers).toEqual([
+      { id: "c2", nome: "Giba" },
+      { id: "c1", nome: "Marcio" },
+    ]);
+    expect(sdrs).toEqual([
+      { id: "s1", nome: "Benhur" },
+      { id: "s2", nome: "Guilherme" },
+    ]);
   });
 
-  it("resolve o nome quando o id é uma conta conhecida (mock)", () => {
-    const { closers } = opcoesDeDono([lead({ closer_id: "marcio" })]);
-    expect(closers).toEqual([{ id: "marcio", nome: "Marcio" }]);
-  });
-
-  it("não inventa opção quando nenhum lead tem dono", () => {
-    const { closers, sdrs } = opcoesDeDono([lead({}), lead({})]);
-    expect(closers).toEqual([]);
-    expect(sdrs).toEqual([]);
-  });
-
-  it("traduz o UUID pelo mapa do diretório mantendo o value (id) para o filtro", () => {
+  it("value = id REAL (UUID), rótulo = sdr_nome — não exibe UUID havendo nome", () => {
     const uuid = "11111111-1111-1111-1111-111111111111";
-    const mapa = new Map([[uuid, "Márcio"]]);
-    const { closers } = opcoesDeDono([lead({ closer_id: uuid })], mapa);
-    // value = UUID exato (filtro casa); label = nome do diretório.
-    expect(closers).toEqual([{ id: uuid, nome: "Márcio" }]);
+    const { sdrs } = opcoesDeDono([lead({ sdr_id: uuid, sdr_nome: "Benhur" })]);
+    expect(sdrs).toEqual([{ id: uuid, nome: "Benhur" }]);
   });
 
-  it("cai no id quando o UUID não está no mapa (fallback, sem quebrar)", () => {
+  it("sem nome no lead: cai no diretório (/api/usuarios) e, por fim, no id", () => {
     const uuid = "22222222-2222-2222-2222-222222222222";
-    const { closers } = opcoesDeDono([lead({ closer_id: uuid })], new Map());
-    expect(closers).toEqual([{ id: uuid, nome: uuid }]);
+    // sem sdr_nome, sem mapa → id cru
+    expect(opcoesDeDono([lead({ sdr_id: uuid })]).sdrs).toEqual([{ id: uuid, nome: uuid }]);
+    // sem sdr_nome, com mapa → nome do diretório
+    expect(
+      opcoesDeDono([lead({ sdr_id: uuid })], new Map([[uuid, "Benhur"]])).sdrs,
+    ).toEqual([{ id: uuid, nome: "Benhur" }]);
+    // conta conhecida do mock (slug)
+    expect(opcoesDeDono([lead({ closer_id: "marcio" })]).closers).toEqual([
+      { id: "marcio", nome: "Marcio" },
+    ]);
+  });
+
+  it("leads sem SDR (Hana/pool) viram uma opção própria no fim da lista", () => {
+    const { sdrs } = opcoesDeDono([
+      lead({ sdr_id: "s1", sdr_nome: "Benhur" }),
+      lead({ sdr_id: null, sdr_pool: true }), // Hana
+    ]);
+    expect(sdrs).toEqual([
+      { id: "s1", nome: "Benhur" },
+      { id: SEM_SDR, nome: "Hana (IA)" },
+    ]);
+  });
+
+  it("sem SDR e sem pool → rótulo 'Sem SDR'", () => {
+    const { sdrs } = opcoesDeDono([lead({ sdr_id: null, sdr_pool: false })]);
+    expect(sdrs).toEqual([{ id: SEM_SDR, nome: "Sem SDR" }]);
+  });
+
+  it("todos com sdr_id preenchido → sem a opção 'sem SDR'", () => {
+    const { sdrs } = opcoesDeDono([lead({ sdr_id: "s1", sdr_nome: "Benhur" })]);
+    expect(sdrs).toEqual([{ id: "s1", nome: "Benhur" }]);
+  });
+});
+
+describe("leadDoSdr", () => {
+  it("vazio/nulo = sem filtro (passa todos)", () => {
+    expect(leadDoSdr(lead({ sdr_id: "s1" }), "")).toBe(true);
+    expect(leadDoSdr(lead({ sdr_id: null }), null)).toBe(true);
+  });
+
+  it("casa pelo sdr_id exato", () => {
+    expect(leadDoSdr(lead({ sdr_id: "s1" }), "s1")).toBe(true);
+    expect(leadDoSdr(lead({ sdr_id: "s2" }), "s1")).toBe(false);
+  });
+
+  it("a sentinela SEM_SDR pega só os leads sem sdr_id (Hana/pool)", () => {
+    expect(leadDoSdr(lead({ sdr_id: null }), SEM_SDR)).toBe(true);
+    expect(leadDoSdr(lead({ sdr_id: "s1" }), SEM_SDR)).toBe(false);
   });
 });

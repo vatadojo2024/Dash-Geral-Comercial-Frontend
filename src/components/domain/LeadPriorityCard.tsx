@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Lightbulb, MessageSquareText } from "lucide-react";
 import type { LeadListItem } from "@/lib/api/contracts";
+import { nomeDoCloser, nomeDoSdr } from "@/lib/data/donos";
 import { tempoRelativo } from "@/lib/formatters/date";
-import { nomeDoUsuario } from "@/lib/mock/users";
 import {
   AlertaBadge,
   EtapaBadge,
@@ -41,8 +41,8 @@ export function LeadPriorityCard({
               </p>
               <p className="text-xs text-texto-sec/80">
                 score calculado {tempoRelativo(item.score_calculated_at)}
-                {mostrarDonos && item.closer_id && <> · closer {nomeDoUsuario(item.closer_id, usuarios)}</>}
-                {mostrarDonos && item.sdr_id && <> · SDR {nomeDoUsuario(item.sdr_id, usuarios)}</>}
+                {mostrarDonos && item.closer_id && <> · closer {nomeDoCloser(item, usuarios)}</>}
+                {mostrarDonos && item.sdr_id && <> · SDR {nomeDoSdr(item, usuarios)}</>}
               </p>
             </div>
             <ScoreBadge final={item.score_final} bruto={item.score_bruto} />

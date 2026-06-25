@@ -120,21 +120,22 @@ export function LeadFilters({ params, onChange, onLimpar, closers, sdrs }: Props
           onChange={(v) => onChange("produto", v)}
         />
 
+        {/* Closer só p/ admin; SDR p/ admin e closer (não p/ o papel SDR). */}
         {user.role === "admin" && (
-          <>
-            <FiltroSelect
-              label="Closer"
-              valor={params.get("closer") ?? ""}
-              opcoes={closers.map((c) => ({ valor: c.id, label: c.nome }))}
-              onChange={(v) => onChange("closer", v)}
-            />
-            <FiltroSelect
-              label="SDR"
-              valor={params.get("sdr") ?? ""}
-              opcoes={sdrs.map((s) => ({ valor: s.id, label: s.nome }))}
-              onChange={(v) => onChange("sdr", v)}
-            />
-          </>
+          <FiltroSelect
+            label="Closer"
+            valor={params.get("closer") ?? ""}
+            opcoes={closers.map((c) => ({ valor: c.id, label: c.nome }))}
+            onChange={(v) => onChange("closer", v)}
+          />
+        )}
+        {(user.role === "admin" || user.role === "closer") && (
+          <FiltroSelect
+            label="SDR"
+            valor={params.get("sdr") ?? ""}
+            opcoes={sdrs.map((s) => ({ valor: s.id, label: s.nome }))}
+            onChange={(v) => onChange("sdr", v)}
+          />
         )}
 
         <div className="flex items-center gap-1.5" title="Intervalo por última atividade">

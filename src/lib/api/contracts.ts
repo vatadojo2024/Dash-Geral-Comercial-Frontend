@@ -89,7 +89,12 @@ export const LeadListItemSchema = z.object({
   // motor ainda não sugeriu produto.
   produto_sugerido: z.string().nullable(),
   closer_id: z.string().nullable(),
+  // Nomes legíveis do dono, vindos do GET /api/leads (casados com a tabela
+  // users). Opcionais/tolerantes: ausência ou null → a UI cai no id. Hana/pool
+  // (sdr_id nulo) → sdr_nome nulo.
+  closer_nome: z.string().nullish(),
   sdr_id: z.string().nullable(),
+  sdr_nome: z.string().nullish(),
   sdr_pool: z.boolean(),
   // Próxima call agendada (Agenda, Parte 7.3) — null quando não há call futura.
   // PENDÊNCIA DE INTEGRAÇÃO: o GET /api/leads real ainda não expõe estes campos.

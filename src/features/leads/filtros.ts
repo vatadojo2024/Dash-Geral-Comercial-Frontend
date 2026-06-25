@@ -1,4 +1,5 @@
 import type { LeadListItem } from "@/lib/api/contracts";
+import { leadDoSdr } from "@/lib/data/donos";
 import { chaveDoProduto } from "@/lib/formatters/score";
 
 // Filtros client-side da fila (F3) — a URL é a fonte de verdade.
@@ -62,7 +63,7 @@ export function filtrarLeads(
       if (!chave || !produtos.includes(chave)) return false;
     }
     if (closer && l.closer_id !== closer) return false;
-    if (sdr && l.sdr_id !== sdr) return false;
+    if (!leadDoSdr(l, sdr)) return false; // inclui a sentinela "sem SDR" (Hana)
     if (pool && !l.sdr_pool) return false;
     if (trava && !l.trava_aplicada) return false;
     return true;

@@ -160,21 +160,22 @@ export function AcoesView() {
           onChange={(v) => setParam("alerta", v)}
         />
 
+        {/* Closer só p/ admin; SDR p/ admin e closer (não p/ o papel SDR). */}
         {user.role === "admin" && (
-          <>
-            <FiltroSelect
-              label="Closer"
-              valor={searchParams.get("closer") ?? ""}
-              opcoes={donos.closers.map((c) => ({ valor: c.id, label: c.nome }))}
-              onChange={(v) => setParam("closer", v)}
-            />
-            <FiltroSelect
-              label="SDR"
-              valor={searchParams.get("sdr") ?? ""}
-              opcoes={donos.sdrs.map((s) => ({ valor: s.id, label: s.nome }))}
-              onChange={(v) => setParam("sdr", v)}
-            />
-          </>
+          <FiltroSelect
+            label="Closer"
+            valor={searchParams.get("closer") ?? ""}
+            opcoes={donos.closers.map((c) => ({ valor: c.id, label: c.nome }))}
+            onChange={(v) => setParam("closer", v)}
+          />
+        )}
+        {(user.role === "admin" || user.role === "closer") && (
+          <FiltroSelect
+            label="SDR"
+            valor={searchParams.get("sdr") ?? ""}
+            opcoes={donos.sdrs.map((s) => ({ valor: s.id, label: s.nome }))}
+            onChange={(v) => setParam("sdr", v)}
+          />
         )}
 
         <button

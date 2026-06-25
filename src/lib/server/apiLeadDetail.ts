@@ -154,6 +154,9 @@ const ApiLeadDetailSchema = z
     sdr_id: z.string().nullish(),
     closer: z.string().nullish(),
     sdr: z.string().nullish(),
+    // Nomes legíveis do dono (quando o detalhe os traz) — ausência → null.
+    closer_nome: z.string().nullish(),
+    sdr_nome: z.string().nullish(),
     sdr_pool: z.boolean().nullish(),
     last_activity_at: z.string().nullish(),
     analise_sdr: ApiAnaliseSchema,
@@ -417,7 +420,9 @@ function mapApiLeadDetail(api: ApiLeadDetail): LeadDetail {
     // Posse: lê o que o backend mandar (id ou nome, sob qualquer um dos campos);
     // ausência → null e a UI mostra "Sem closer/SDR atribuído".
     closer_id: api.closer_id ?? api.closer ?? null,
+    closer_nome: api.closer_nome ?? null,
     sdr_id: api.sdr_id ?? api.sdr ?? null,
+    sdr_nome: api.sdr_nome ?? null,
     sdr_pool: api.sdr_pool ?? false,
     next_call_at: api.next_call_at ?? null,
     next_call_numero: null,

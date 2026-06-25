@@ -44,6 +44,10 @@ const ApiLeadSchema = z.object({
   produto_sugerido: z.string().nullish(),
   closer_id: z.string().nullish(),
   sdr_id: z.string().nullish(),
+  // Nomes legíveis do dono (backend casa com a tabela users). Ausência/null → a
+  // UI cai no id; sdr_nome nulo no caso Hana/pool.
+  closer_nome: z.string().nullish(),
+  sdr_nome: z.string().nullish(),
   sdr_pool: z.boolean().nullish(),
   trava_aplicada: z.string().nullish(),
   tier_final: z.string().nullish(),
@@ -86,7 +90,9 @@ function mapApiLead(api: ApiLead): LeadListItem {
     // API o envia, normalizamos para a chave canônica; ausência = null (neutro).
     produto_sugerido: api.produto_sugerido ?? null,
     closer_id: api.closer_id ?? null,
+    closer_nome: api.closer_nome ?? null,
     sdr_id: api.sdr_id ?? null,
+    sdr_nome: api.sdr_nome ?? null,
     sdr_pool: api.sdr_pool ?? false,
     next_call_at: api.next_call_at,
     next_call_numero: api.next_call_numero ?? null,

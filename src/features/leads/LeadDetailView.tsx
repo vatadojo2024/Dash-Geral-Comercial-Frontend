@@ -20,9 +20,9 @@ import type { FichaLead, LeadDetail } from "@/lib/api/contracts";
 import { DataError, fetchLeadDetail } from "@/lib/data/dataClient";
 import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { dataHora, tempoRelativo } from "@/lib/formatters/date";
+import { nomeDoCloser, nomeDoSdr } from "@/lib/data/donos";
 import { labelProduto } from "@/lib/formatters/labels";
 import { brParaQuebras } from "@/lib/formatters/texto";
-import { nomeDoUsuario } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -273,7 +273,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                   Closer:{" "}
                   <span className="font-medium text-texto">
                     {lead.closer_id
-                      ? nomeDoUsuario(lead.closer_id, usuarios)
+                      ? nomeDoCloser(lead, usuarios)
                       : "Sem closer atribuído"}
                   </span>
                   {" · "}
@@ -282,7 +282,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                     {lead.sdr_pool
                       ? "Hana (IA)"
                       : lead.sdr_id
-                        ? nomeDoUsuario(lead.sdr_id, usuarios)
+                        ? nomeDoSdr(lead, usuarios)
                         : "Sem SDR atribuído"}
                   </span>
                 </p>

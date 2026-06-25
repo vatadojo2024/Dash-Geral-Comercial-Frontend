@@ -1,4 +1,5 @@
 import type { LeadListItem, Temperatura } from "@/lib/api/contracts";
+import { leadDoSdr } from "@/lib/data/donos";
 import { leadAtivo } from "@/features/dashboard/derivacoes";
 
 // ---------------------------------------------------------------------------
@@ -72,7 +73,7 @@ export function filtrarAcoes(
         if (!alertas.some((a) => doLead.includes(a))) return false;
       }
       if (closer && l.closer_id !== closer) return false;
-      if (sdr && l.sdr_id !== sdr) return false;
+      if (!leadDoSdr(l, sdr)) return false; // inclui a sentinela "sem SDR" (Hana)
       return true;
     })
     .sort((a, b) => b.score_final - a.score_final);

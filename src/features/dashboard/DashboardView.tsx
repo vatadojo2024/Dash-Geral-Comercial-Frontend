@@ -7,7 +7,7 @@ import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { tempoRelativo } from "@/lib/formatters/date";
 import { chaveDoProduto, PRODUTOS_OFICIAIS } from "@/lib/formatters/score";
-import { opcoesDeDono } from "@/lib/data/donos";
+import { leadDoSdr, opcoesDeDono } from "@/lib/data/donos";
 import { useUsuariosMap } from "@/lib/data/useUsuarios";
 import { useSession } from "@/features/session/SessionProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -72,7 +72,7 @@ export function DashboardView() {
         if (!alvo.includes(normalizar(filtros.busca))) return false;
       }
       if (filtros.closer && l.closer_id !== filtros.closer) return false;
-      if (filtros.sdr && l.sdr_id !== filtros.sdr) return false;
+      if (!leadDoSdr(l, filtros.sdr)) return false; // inclui a sentinela "sem SDR"
       if (filtros.produto && chaveDoProduto(l.produto_sugerido) !== filtros.produto)
         return false;
       if (filtros.pool && !l.sdr_pool) return false;
@@ -221,39 +221,40 @@ export function DashboardView() {
           />
         </div>
 
+        {/* Closer só p/ admin; SDR p/ admin e closer (não p/ o papel SDR). */}
         {user.role === "admin" && (
-          <>
-            <select
-              aria-label="Filtrar por closer"
-              value={filtros.closer}
-              onChange={(e) => setFiltros((f) => ({ ...f, closer: e.target.value }))}
-              className={`h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm ${
-                filtros.closer ? "text-texto" : "text-texto-sec"
-              }`}
-            >
-              <option value="">Closer</option>
-              {donos.closers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label="Filtrar por SDR"
-              value={filtros.sdr}
-              onChange={(e) => setFiltros((f) => ({ ...f, sdr: e.target.value }))}
-              className={`h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm ${
-                filtros.sdr ? "text-texto" : "text-texto-sec"
-              }`}
-            >
-              <option value="">SDR</option>
-              {donos.sdrs.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
-              ))}
-            </select>
-          </>
+          <select
+            aria-label="Filtrar por closer"
+            value={filtros.closer}
+            onChange={(e) => setFiltros((f) => ({ ...f, closer: e.target.value }))}
+            className={`h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm ${
+              filtros.closer ? "text-texto" : "text-texto-sec"
+            }`}
+          >
+            <option value="">Closer</option>
+            {donos.closers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        )}
+        {(user.role === "admin" || user.role === "closer") && (
+          <select
+            aria-label="Filtrar por SDR"
+            value={filtros.sdr}
+            onChange={(e) => setFiltros((f) => ({ ...f, sdr: e.target.value }))}
+            className={`h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm ${
+              filtros.sdr ? "text-texto" : "text-texto-sec"
+            }`}
+          >
+            <option value="">SDR</option>
+            {donos.sdrs.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
+            ))}
+          </select>
         )}
 
         <select
