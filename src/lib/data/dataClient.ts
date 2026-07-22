@@ -7,6 +7,10 @@ import {
   type SessionUser,
   type Usuario,
 } from "@/lib/api/contracts";
+import {
+  AgendamentosResponseSchema,
+  type Agendamento,
+} from "@/lib/sdr/agendamentos";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de acesso a dados de leads no client. Os componentes só
@@ -85,6 +89,26 @@ export async function fetchUsuarios(): Promise<Usuario[]> {
     );
   }
   return parsed.data.usuarios;
+}
+
+// Aba "Calls por Ciclo": única porta dos agendamentos por ciclo. Isolada de
+// propósito — a fonte (endpoint agregado /api/sdr/agendamentos, sem escopo e sem
+// PII) pode mudar sem tocar a UI. O corte por ciclo é feito no servidor
+// (occurred_at); aqui só passamos a janela inicio/fim (datas do ciclo).
+export async function fetchAgendamentos(
+  inicio: string,
+  fim: string,
+): Promise<Agendamento[]> {
+  const qs = `inicio=${encodeURIComponent(inicio)}&fim=${encodeURIComponent(fim)}`;
+  const json = await buscar(`/api/sdr/agendamentos?${qs}`);
+  const parsed = AgendamentosResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new DataError(
+      `Resposta de /api/sdr/agendamentos fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      "invalid_contract",
+    );
+  }
+  return parsed.data.agendamentos;
 }
 
 export async function fetchLeadDetail(

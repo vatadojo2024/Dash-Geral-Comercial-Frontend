@@ -35,6 +35,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
+import { AgendamentosPanel } from "./AgendamentosPanel";
 import { ChartsPanel } from "./ChartsPanel";
 import { ComissoesPanel } from "./ComissoesPanel";
 import { InsightsPanel } from "./InsightsPanel";
@@ -142,7 +143,7 @@ function KpiChip({
   );
 }
 
-type Aba = "dashboard" | "comissoes" | "lideranca";
+type Aba = "dashboard" | "agendamentos" | "comissoes" | "lideranca";
 
 export function SdrView() {
   const user = useSession();
@@ -249,6 +250,19 @@ export function SdrView() {
           </button>
           <button
             role="tab"
+            aria-selected={aba === "agendamentos"}
+            onClick={() => setAba("agendamentos")}
+            className={cn(
+              "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+              aba === "agendamentos"
+                ? "bg-azul/20 text-azul-claro"
+                : "text-texto-sec hover:text-texto",
+            )}
+          >
+            Calls por Ciclo
+          </button>
+          <button
+            role="tab"
             aria-selected={aba === "comissoes"}
             onClick={() => setAba("comissoes")}
             className={cn(
@@ -277,7 +291,7 @@ export function SdrView() {
           )}
         </div>
 
-        {aba !== "lideranca" && (
+        {aba !== "lideranca" && aba !== "agendamentos" && (
           <div className="flex items-center gap-2">
             <label htmlFor="mes-sdr" className="text-xs text-texto-sec">
               Filtrar por mês (data da call):
@@ -300,6 +314,8 @@ export function SdrView() {
 
       {aba === "lideranca" ? (
         <LeadershipPanel payload={payload} />
+      ) : aba === "agendamentos" ? (
+        <AgendamentosPanel />
       ) : aba === "comissoes" ? (
         <ComissoesPanel
           payload={payload}
