@@ -173,10 +173,97 @@ export function SdrView() {
   // o card/linha dele ganha destaque visual.
   const meuSdr = user.role === "sdr" ? normalizarSdr(user.nome) : null;
 
+  // Barra de abas — SEMPRE disponível, para o usuário navegar mesmo que o payload
+  // do Dashboard SDR (/api/sdr-dashboard) esteja carregando ou tenha falhado. O
+  // filtro de mês (que depende do payload) só entra quando há meses e na aba certa.
+  const barraAbas = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div role="tablist" aria-label="Abas da produtividade" className="flex gap-1 rounded-xl border border-borda bg-painel p-1">
+        <button
+          role="tab"
+          aria-selected={aba === "dashboard"}
+          onClick={() => setAba("dashboard")}
+          className={cn(
+            "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+            aba === "dashboard" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+          )}
+        >
+          Dashboard SDR
+        </button>
+        <button
+          role="tab"
+          aria-selected={aba === "agendamentos"}
+          onClick={() => setAba("agendamentos")}
+          className={cn(
+            "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+            aba === "agendamentos" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+          )}
+        >
+          Calls por Ciclo
+        </button>
+        <button
+          role="tab"
+          aria-selected={aba === "comissoes"}
+          onClick={() => setAba("comissoes")}
+          className={cn(
+            "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+            aba === "comissoes" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+          )}
+        >
+          Comissões
+        </button>
+        {user.role === "admin" && (
+          <button
+            role="tab"
+            aria-selected={aba === "lideranca"}
+            onClick={() => setAba("lideranca")}
+            className={cn(
+              "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+              aba === "lideranca" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+            )}
+          >
+            Liderança Pré-venda
+          </button>
+        )}
+      </div>
+
+      {aba !== "lideranca" && aba !== "agendamentos" && meses.length > 0 && mes && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="mes-sdr" className="text-xs text-texto-sec">
+            Filtrar por mês (data da call):
+          </label>
+          <select
+            id="mes-sdr"
+            value={mes}
+            onChange={(e) => setMesSelecionado(e.target.value)}
+            className="h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm text-texto"
+          >
+            {meses.map((m) => (
+              <option key={m} value={m}>
+                {rotuloMes(m)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  );
+
+  // "Calls por Ciclo" é autossuficiente (fetchAgendamentos, fonte própria) — NÃO
+  // depende do payload do Dashboard SDR. Renderiza antes dos guards desse payload.
+  if (aba === "agendamentos") {
+    return (
+      <div className="space-y-4">
+        {barraAbas}
+        <AgendamentosPanel />
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="space-y-4" aria-label="Carregando produtividade SDR">
-        <Skeleton className="h-12 rounded-xl" />
+        {barraAbas}
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-9">
           {Array.from({ length: 9 }).map((_, i) => (
             <Skeleton key={i} className="h-16 rounded-xl" />
@@ -193,25 +280,31 @@ export function SdrView() {
 
   if (isError || !payload || !mes || !dashboard) {
     return (
-      <Card>
-        <ErrorState
-          titulo="Não foi possível carregar a produtividade SDR"
-          descricao={error instanceof Error ? error.message : "Tente novamente."}
-          onRetry={() => refetch()}
-        />
-      </Card>
+      <div className="space-y-4">
+        {barraAbas}
+        <Card>
+          <ErrorState
+            titulo="Não foi possível carregar a produtividade SDR"
+            descricao={error instanceof Error ? error.message : "Tente novamente."}
+            onRetry={() => refetch()}
+          />
+        </Card>
+      </div>
     );
   }
 
   if (meses.length === 0) {
     return (
-      <Card>
-        <EmptyState
-          icon={Inbox}
-          titulo="Sem dados de produtividade"
-          descricao="O payload do Dashboard SDR não trouxe nenhum mês com calls."
-        />
-      </Card>
+      <div className="space-y-4">
+        {barraAbas}
+        <Card>
+          <EmptyState
+            icon={Inbox}
+            titulo="Sem dados de produtividade"
+            descricao="O payload do Dashboard SDR não trouxe nenhum mês com calls."
+          />
+        </Card>
+      </div>
     );
   }
 
@@ -232,90 +325,10 @@ export function SdrView() {
 
   return (
     <div className="space-y-4">
-      {/* Cabeçalho: abas (Liderança só p/ admin) + filtro de mês */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="tablist" aria-label="Abas da produtividade" className="flex gap-1 rounded-xl border border-borda bg-painel p-1">
-          <button
-            role="tab"
-            aria-selected={aba === "dashboard"}
-            onClick={() => setAba("dashboard")}
-            className={cn(
-              "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-              aba === "dashboard"
-                ? "bg-azul/20 text-azul-claro"
-                : "text-texto-sec hover:text-texto",
-            )}
-          >
-            Dashboard SDR
-          </button>
-          <button
-            role="tab"
-            aria-selected={aba === "agendamentos"}
-            onClick={() => setAba("agendamentos")}
-            className={cn(
-              "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-              aba === "agendamentos"
-                ? "bg-azul/20 text-azul-claro"
-                : "text-texto-sec hover:text-texto",
-            )}
-          >
-            Calls por Ciclo
-          </button>
-          <button
-            role="tab"
-            aria-selected={aba === "comissoes"}
-            onClick={() => setAba("comissoes")}
-            className={cn(
-              "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-              aba === "comissoes"
-                ? "bg-azul/20 text-azul-claro"
-                : "text-texto-sec hover:text-texto",
-            )}
-          >
-            Comissões
-          </button>
-          {user.role === "admin" && (
-            <button
-              role="tab"
-              aria-selected={aba === "lideranca"}
-              onClick={() => setAba("lideranca")}
-              className={cn(
-                "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-                aba === "lideranca"
-                  ? "bg-azul/20 text-azul-claro"
-                  : "text-texto-sec hover:text-texto",
-              )}
-            >
-              Liderança Pré-venda
-            </button>
-          )}
-        </div>
-
-        {aba !== "lideranca" && aba !== "agendamentos" && (
-          <div className="flex items-center gap-2">
-            <label htmlFor="mes-sdr" className="text-xs text-texto-sec">
-              Filtrar por mês (data da call):
-            </label>
-            <select
-              id="mes-sdr"
-              value={mes}
-              onChange={(e) => setMesSelecionado(e.target.value)}
-              className="h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm text-texto"
-            >
-              {meses.map((m) => (
-                <option key={m} value={m}>
-                  {rotuloMes(m)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
+      {barraAbas}
 
       {aba === "lideranca" ? (
         <LeadershipPanel payload={payload} />
-      ) : aba === "agendamentos" ? (
-        <AgendamentosPanel />
       ) : aba === "comissoes" ? (
         <ComissoesPanel
           payload={payload}
