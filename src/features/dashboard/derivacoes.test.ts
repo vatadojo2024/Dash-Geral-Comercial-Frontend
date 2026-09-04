@@ -29,6 +29,7 @@ function lead(etapa: Etapa | null, score = 50): LeadListItem {
     next_call_at: null,
     next_call_numero: null,
     score_calculated_at: "2026-06-20T10:00:00.000Z",
+    destaque: false,
   };
 }
 
@@ -77,5 +78,40 @@ describe("buckets do mapa de calor (re-bucketing)", () => {
     // Sem coluna FUP: os 2 FUP contam como "fora da grade"; a 3ª call fica.
     expect(totalDoGrupo(hm, "3a_call")).toBe(1);
     expect(hm.foraDaGrade).toBe(2);
+  });
+});
+
+describe("indicador de destaque na célula do mapa", () => {
+  // A célula precisa saber QUANTOS dos seus leads têm estrela — é o que a grade
+  // usa para marcar a coordenada. Destaque é só indicação: não entra em total,
+  // score médio nem intensidade.
+  it("conta só os leads com destaque da própria célula", () => {
+    const comEstrela = (etapa: Etapa, score: number): LeadListItem => ({
+      ...lead(etapa, score),
+      destaque: true,
+    });
+    const hm = montarHeatmap([
+      comEstrela("2a_call_agendada", 80),
+      lead("2a_call_agendada", 76),
+      comEstrela("no-show", 78),
+    ]);
+
+    const segundaCall = hm.celulas.find(
+      (c) => c.grupo.id === "2a_call" && c.temperatura === "quente",
+    );
+    expect(segundaCall?.total).toBe(2);
+    expect(segundaCall?.destaques).toBe(1);
+    // O score médio ignora o destaque por completo.
+    expect(segundaCall?.scoreMedio).toBe(78);
+
+    const noShow = hm.celulas.find(
+      (c) => c.grupo.id === "no_show" && c.temperatura === "quente",
+    );
+    expect(noShow?.destaques).toBe(1);
+  });
+
+  it("célula sem nenhum lead destacado tem destaques = 0", () => {
+    const hm = montarHeatmap([lead("1a_call_agendada", 80)]);
+    expect(hm.celulas.every((c) => c.destaques === 0)).toBe(true);
   });
 });

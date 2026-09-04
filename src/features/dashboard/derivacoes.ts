@@ -98,12 +98,20 @@ export type CelulaHeatmap = {
   grupo: GrupoEtapa;
   total: number;
   scoreMedio: number | null;
+  // Quantos leads DESTA célula estão marcados com estrela pelo admin. A grade
+  // usa isso só como indicador visual (a coordenada tem prioridade manual) —
+  // não altera intensidade, score médio nem a ordem de nada.
+  destaques: number;
 };
 
 export type Heatmap = {
   celulas: CelulaHeatmap[];
   maxTotal: number;
   foraDaGrade: number; // FUP, blacklist, fechado e sem etapa
+  // Destacados que caem FORA da grade (ex.: um lead em FUP pós-pitch, que não é
+  // coluna do mapa). Sem isto, um lead com estrela ficaria invisível na tela:
+  // nenhuma célula o indicaria e o link "fora da grade" não diria que ele existe.
+  destaquesForaDaGrade: number;
 };
 
 export function montarHeatmap(leads: LeadListItem[]): Heatmap {
@@ -127,16 +135,22 @@ export function montarHeatmap(leads: LeadListItem[]): Heatmap {
         scoreMedio: total
           ? Math.round(doGrupo.reduce((a, l) => a + l.score_final, 0) / total)
           : null,
+        destaques: doGrupo.filter((l) => l.destaque).length,
       });
     }
   }
 
   const etapasNaGrade = new Set(GRUPOS_ETAPA_HEATMAP.flatMap((g) => g.etapas as string[]));
-  const foraDaGrade = leads.filter(
+  const fora = leads.filter(
     (l) => l.etapa_atual === null || !etapasNaGrade.has(l.etapa_atual),
-  ).length;
+  );
 
-  return { celulas, maxTotal, foraDaGrade };
+  return {
+    celulas,
+    maxTotal,
+    foraDaGrade: fora.length,
+    destaquesForaDaGrade: fora.filter((l) => l.destaque).length,
+  };
 }
 
 export function recorteDaCelula(c: CelulaHeatmap): Recorte {

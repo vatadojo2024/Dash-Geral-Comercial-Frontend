@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { LeadListItemSchema } from "@/lib/api/contracts";
+import { LeadListItemSchema, type LeadListItem } from "@/lib/api/contracts";
 import { getServerSession } from "@/lib/auth/session";
 import { adaptApiLeads } from "@/lib/server/apiLeads";
 import { leadNoEscopo, todosOsLeadsMock } from "@/lib/server/mockLeads";
@@ -14,6 +14,18 @@ import { leadNoEscopo, todosOsLeadsMock } from "@/lib/server/mockLeads";
 // e next_call_numero (Agenda) — registrada no PROGRESSO.md.
 // ---------------------------------------------------------------------------
 
+// Ordem da fila: destaque (marcação manual do admin) no topo, depois score.
+// É EXATAMENTE a ordem que a API real já devolve (destaque desc, score_final
+// desc) — aplicá-la aqui é idempotente sobre a resposta real e faz o mock se
+// comportar igual. O client NÃO reordena.
+function porPrioridade(a: LeadListItem, b: LeadListItem): number {
+  return (
+    Number(b.destaque) - Number(a.destaque) ||
+    b.score_final - a.score_final ||
+    b.score_calculated_at.localeCompare(a.score_calculated_at)
+  );
+}
+
 export async function GET(req: NextRequest) {
   const modo = process.env.LEADS_MODE === "api" ? "api" : "mock";
 
@@ -24,12 +36,8 @@ export async function GET(req: NextRequest) {
     }
     const items = todosOsLeadsMock()
       .filter((l) => leadNoEscopo(l, user))
-      .sort(
-        (a, b) =>
-          b.score_final - a.score_final ||
-          b.score_calculated_at.localeCompare(a.score_calculated_at),
-      )
-      .map((l) => LeadListItemSchema.parse(l));
+      .map((l) => LeadListItemSchema.parse(l))
+      .sort(porPrioridade);
     return NextResponse.json({ total: items.length, items });
   }
 
@@ -73,11 +81,7 @@ export async function GET(req: NextRequest) {
         { status: 502 },
       );
     }
-    const items = adaptado.items.sort(
-      (a, b) =>
-        b.score_final - a.score_final ||
-        b.score_calculated_at.localeCompare(a.score_calculated_at),
-    );
+    const items = adaptado.items.sort(porPrioridade);
     return NextResponse.json({ total: items.length, items });
   } catch (e) {
     return NextResponse.json(

@@ -54,6 +54,8 @@ const ApiLeadSchema = z.object({
   next_call_numero: z.number().int().positive().nullish(),
   score_calculated_at: z.string().nullish(),
   last_activity_at: z.string().nullish(),
+  // Destaque manual do admin. Ausência (API antiga) → false, nunca quebra.
+  destaque: z.boolean().nullish(),
 });
 type ApiLead = z.infer<typeof ApiLeadSchema>;
 
@@ -100,6 +102,7 @@ function mapApiLead(api: ApiLead): LeadListItem {
     // de forma segura por tempoRelativo (mostra "—").
     score_calculated_at: api.score_calculated_at ?? "",
     last_activity_at: api.last_activity_at ?? null,
+    destaque: api.destaque ?? false,
   };
 }
 

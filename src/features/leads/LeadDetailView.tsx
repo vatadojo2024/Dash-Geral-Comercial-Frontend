@@ -31,6 +31,7 @@ import { ErrorState } from "@/components/ui/States";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import {
   AlertaBadge,
+  EstrelaDestaque,
   EtapaBadge,
   HanaBadge,
   ScoreBadge,
@@ -39,6 +40,7 @@ import {
 } from "@/components/domain/Badges";
 import { LeadScoreBlocks } from "@/components/domain/LeadScoreBlocks";
 import { LeadTimeline } from "@/components/domain/LeadTimeline";
+import { DestaqueSwitch } from "./DestaqueSwitch";
 
 const ABAS = [
   { id: "geral", label: "Visão geral" },
@@ -256,7 +258,12 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
         <CardContent>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <h1 className="text-xl font-semibold text-texto">{lead.nome_exibicao}</h1>
+              {/* Estrela do destaque à esquerda do nome — visível para TODOS os
+                  papéis (read-only para closer/SDR; só o admin ganha o switch). */}
+              <h1 className="flex items-center gap-2 text-xl font-semibold text-texto">
+                {lead.destaque && <EstrelaDestaque size="lg" />}
+                {lead.nome_exibicao}
+              </h1>
               <p className="mt-0.5 text-xs text-texto-sec/80">
                 score calculado {tempoRelativo(lead.score_calculated_at)}
               </p>
@@ -290,6 +297,9 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
             </div>
             <div className="flex shrink-0 flex-col items-end gap-3">
               <ScoreBadge final={lead.score_final} bruto={lead.score_bruto} size="lg" />
+              {/* Marcar destaque é privilégio do admin. Closer/SDR não veem o
+                  switch — só a estrela acima. A API também barra (403). */}
+              {user.role === "admin" && <DestaqueSwitch lead={lead} />}
               {lead.link_crm && (
                 <a href={lead.link_crm} target="_blank" rel="noopener noreferrer">
                   <Button variant="outline" size="sm">

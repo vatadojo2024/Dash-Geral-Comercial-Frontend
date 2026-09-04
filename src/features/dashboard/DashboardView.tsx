@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Inbox, Search, X } from "lucide-react";
+import { AlertTriangle, Inbox, Search, Star, X } from "lucide-react";
 import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { tempoRelativo } from "@/lib/formatters/date";
@@ -42,8 +42,18 @@ type Filtros = {
   sdr: string;
   produto: string;
   pool: boolean;
+  // Filtro pronto "só os destacados" — o atalho para achar os leads com estrela
+  // sem digitar nada. Como os demais, redesenha mapa, cards e ações.
+  destaque: boolean;
 };
-const SEM_FILTROS: Filtros = { busca: "", closer: "", sdr: "", produto: "", pool: false };
+const SEM_FILTROS: Filtros = {
+  busca: "",
+  closer: "",
+  sdr: "",
+  produto: "",
+  pool: false,
+  destaque: false,
+};
 
 function normalizar(s: string | null | undefined): string {
   return (s ?? "")
@@ -76,6 +86,7 @@ export function DashboardView() {
       if (filtros.produto && chaveDoProduto(l.produto_sugerido) !== filtros.produto)
         return false;
       if (filtros.pool && !l.sdr_pool) return false;
+      if (filtros.destaque && !l.destaque) return false;
       return true;
     });
   }, [data, filtros]);
@@ -120,7 +131,8 @@ export function DashboardView() {
     filtros.closer !== "" ||
     filtros.sdr !== "" ||
     filtros.produto !== "" ||
-    filtros.pool;
+    filtros.pool ||
+    filtros.destaque;
 
   function alternarRecorte(novo: Recorte) {
     setRecorte((atual) => (atual?.id === novo.id ? null : novo));
@@ -273,6 +285,26 @@ export function DashboardView() {
           ))}
         </select>
 
+        {/* Filtro pronto de destaque: visível para TODOS os papéis — só o admin
+            MARCA a estrela, mas closer e SDR também precisam achar os leads
+            que o admin priorizou. */}
+        <button
+          onClick={() => setFiltros((f) => ({ ...f, destaque: !f.destaque }))}
+          aria-pressed={filtros.destaque}
+          title="Mostrar apenas os leads marcados com estrela pelo admin"
+          className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors ${
+            filtros.destaque
+              ? "border-amarelo/50 bg-amarelo/15 text-amarelo"
+              : "border-borda bg-painel-claro text-texto-sec hover:text-texto"
+          }`}
+        >
+          <Star
+            className={`h-3.5 w-3.5 ${filtros.destaque ? "fill-amarelo" : "fill-none"}`}
+            aria-hidden
+          />
+          Destaques
+        </button>
+
         {user.role !== "closer" && (
           <button
             onClick={() => setFiltros((f) => ({ ...f, pool: !f.pool }))}
@@ -324,7 +356,17 @@ export function DashboardView() {
                 >
                   {heatmap.foraDaGrade} lead(s)
                 </button>{" "}
-                em blacklist, fechado ou sem etapa definida.
+                em blacklist, fechado ou sem etapa definida
+                {heatmap.destaquesForaDaGrade > 0 && (
+                  <>
+                    {" — "}
+                    <span className="inline-flex items-center gap-1 align-[-2px] font-medium text-amarelo">
+                      <Star className="h-3 w-3 fill-amarelo" aria-hidden />
+                      {heatmap.destaquesForaDaGrade} em destaque
+                    </span>
+                  </>
+                )}
+                .
               </p>
             )}
           </CardContent>

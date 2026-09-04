@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "lucide-react";
 import {
   GRUPOS_ETAPA_HEATMAP,
   TEMPERATURA_CONFIG,
@@ -78,10 +79,16 @@ export function HeatmapGrid({
                       title={
                         vazia
                           ? `${cfg.label} · ${c.grupo.label}: sem leads`
-                          : `${cfg.label} · ${c.grupo.label}: ${c.total} lead(s), score médio ${c.scoreMedio}. Clique para ver a lista ao lado.`
+                          : `${cfg.label} · ${c.grupo.label}: ${c.total} lead(s), score médio ${c.scoreMedio}${
+                              c.destaques > 0
+                                ? `, ${c.destaques} em destaque`
+                                : ""
+                            }. Clique para ver a lista ao lado.`
                       }
-                      aria-label={`${cfg.label}, ${c.grupo.label}: ${c.total} leads`}
-                      className={`flex h-16 flex-col items-center justify-center rounded-lg border transition-shadow ${
+                      aria-label={`${cfg.label}, ${c.grupo.label}: ${c.total} leads${
+                        c.destaques > 0 ? `, ${c.destaques} em destaque` : ""
+                      }`}
+                      className={`relative flex h-16 flex-col items-center justify-center rounded-lg border transition-shadow ${
                         vazia
                           ? "cursor-default border-borda/30 bg-painel-claro/40 text-texto-sec/40"
                           : ativa
@@ -99,6 +106,20 @@ export function HeatmapGrid({
                             }
                       }
                     >
+                      {/* Indicador de destaque na COORDENADA: a célula tem ao
+                          menos um lead marcado com estrela. Chip no canto para
+                          não competir com o número (que segue sendo o total da
+                          célula); mostra a contagem quando há mais de um. */}
+                      {c.destaques > 0 && (
+                        <span className="absolute right-1 top-1 inline-flex items-center gap-0.5 rounded-full bg-noite/75 px-1 py-0.5">
+                          <Star className="h-3 w-3 fill-amarelo text-amarelo" aria-hidden />
+                          {c.destaques > 1 && (
+                            <span className="text-[9px] font-semibold tabular-nums text-amarelo">
+                              {c.destaques}
+                            </span>
+                          )}
+                        </span>
+                      )}
                       <span
                         className={`text-lg font-bold tabular-nums ${vazia ? "" : "text-texto"}`}
                       >
@@ -126,6 +147,10 @@ export function HeatmapGrid({
             </span>
           );
         })}
+        <span className="inline-flex items-center gap-1 text-[11px] text-texto-sec">
+          <Star className="h-3 w-3 fill-amarelo text-amarelo" aria-hidden />
+          célula com lead em destaque
+        </span>
       </div>
     </div>
   );

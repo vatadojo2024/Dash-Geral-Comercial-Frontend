@@ -27,6 +27,7 @@ function lead(parcial: Partial<LeadListItem>): LeadListItem {
     next_call_at: "2026-06-11T17:00:00.000Z",
     next_call_numero: 2,
     score_calculated_at: "2026-06-11T10:00:00.000Z",
+    destaque: false,
     ...parcial,
   };
 }

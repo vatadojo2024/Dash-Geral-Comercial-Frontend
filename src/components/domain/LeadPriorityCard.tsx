@@ -5,6 +5,7 @@ import { nomeDoCloser, nomeDoSdr } from "@/lib/data/donos";
 import { tempoRelativo } from "@/lib/formatters/date";
 import {
   AlertaBadge,
+  EstrelaDestaque,
   EtapaBadge,
   HanaBadge,
   ScoreBadge,
@@ -36,8 +37,11 @@ export function LeadPriorityCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-texto">
-                {item.nome_exibicao}
+              {/* Estrela do destaque ao lado do nome. A ordem da fila já vem
+                  pronta do servidor (destaque no topo) — aqui é só o marcador. */}
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                {item.destaque && <EstrelaDestaque size="sm" />}
+                <span className="truncate">{item.nome_exibicao}</span>
               </p>
               <p className="text-xs text-texto-sec/80">
                 score calculado {tempoRelativo(item.score_calculated_at)}

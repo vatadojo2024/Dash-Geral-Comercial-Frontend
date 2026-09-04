@@ -1,7 +1,9 @@
 import {
+  DestaqueResponseSchema,
   LeadDetailSchema,
   LeadsResponseSchema,
   UsuariosResponseSchema,
+  type DestaqueResponse,
   type LeadDetail,
   type LeadListItem,
   type SessionUser,
@@ -109,6 +111,38 @@ export async function fetchAgendamentos(
     );
   }
   return parsed.data.agendamentos;
+}
+
+// PATCH do destaque do lead (só admin — a API responde 403 para os demais).
+// Passa pela mesma porta das leituras: o route handler decide mock|api e anexa
+// o Bearer. Erro vira DataError com a mensagem da API, para a UI reverter o
+// update otimista e mostrar o toast.
+export async function patchDestaque(
+  leadId: string,
+  destaque: boolean,
+): Promise<DestaqueResponse["lead"]> {
+  const res = await fetch(`/api/leads/${encodeURIComponent(leadId)}/destaque`, {
+    method: "PATCH",
+    headers: { ...(await headersComToken()), "Content-Type": "application/json" },
+    body: JSON.stringify({ destaque }),
+  });
+  const json = (await res.json().catch(() => null)) as unknown;
+  if (!res.ok) {
+    const mensagem =
+      (json as { error?: string } | null)?.error ??
+      (res.status === 403
+        ? "Apenas o admin pode destacar leads."
+        : `A atualização do destaque respondeu ${res.status}.`);
+    throw new DataError(mensagem, res.status === 404 ? "not_found" : "request_failed");
+  }
+  const parsed = DestaqueResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new DataError(
+      `Resposta do destaque fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      "invalid_contract",
+    );
+  }
+  return parsed.data.lead;
 }
 
 export async function fetchLeadDetail(

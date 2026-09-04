@@ -89,8 +89,8 @@ export function LeadsView() {
       ) : (
         <>
           <p className="text-xs text-texto-sec" role="status">
-            {filtrados.length} {filtrados.length === 1 ? "lead" : "leads"} · ordenados por
-            score (prioridade recomendada)
+            {filtrados.length} {filtrados.length === 1 ? "lead" : "leads"} · destaques no
+            topo, depois por score (prioridade recomendada)
           </p>
           <div className="space-y-3">
             {filtrados.map((item, i) => (

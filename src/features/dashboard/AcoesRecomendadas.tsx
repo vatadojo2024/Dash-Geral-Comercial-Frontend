@@ -5,7 +5,7 @@ import { ChevronRight, Zap } from "lucide-react";
 import type { LeadListItem } from "@/lib/api/contracts";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
-import { AlertaBadge, ScoreBadge } from "@/components/domain/Badges";
+import { AlertaBadge, EstrelaDestaque, ScoreBadge } from "@/components/domain/Badges";
 
 // Ações recomendadas (6.1.3): lista curta derivada dos leads visíveis no
 // recorte atual — proxima_acao + nome + score + alerta, por score desc.
@@ -41,6 +41,7 @@ export function AcoesRecomendadas({
                 <p className="truncate text-sm text-texto">
                   {l.proxima_acao}
                   <span className="text-texto-sec"> — {l.nome_exibicao}</span>
+                  {l.destaque && <EstrelaDestaque size="sm" className="ml-1 inline align-[-2px]" />}
                 </p>
                 {l.alertas.length > 0 && (
                   <span className="mt-1 inline-flex flex-wrap gap-1">

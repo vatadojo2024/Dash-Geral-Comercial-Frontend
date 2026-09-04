@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
 import {
   AlertaBadge,
+  EstrelaDestaque,
   HanaBadge,
   ScoreBadge,
   TemperatureBadge,
@@ -58,7 +59,10 @@ export function RecortePanel({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-texto">{l.nome_exibicao}</p>
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-texto">
+                    {l.destaque && <EstrelaDestaque size="sm" />}
+                    <span className="truncate">{l.nome_exibicao}</span>
+                  </p>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-texto-sec">
                     <Package className="h-3 w-3 shrink-0" aria-hidden />
                     {l.produto_sugerido ?? "Sem produto sugerido"}

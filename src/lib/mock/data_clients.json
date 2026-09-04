@@ -193,7 +193,10 @@
         "descricao": "Score recalculado pelo motor: 96",
         "occurred_at": "2026-06-11T00:21:17.244Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0002",
@@ -367,7 +370,10 @@
         "descricao": "Score recalculado pelo motor: 93",
         "occurred_at": "2026-06-10T11:40:24.235Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0003",
@@ -557,7 +563,10 @@
         "descricao": "Score recalculado pelo motor: 91",
         "occurred_at": "2026-06-11T04:11:39.766Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0004",
@@ -751,7 +760,10 @@
         "descricao": "Score recalculado pelo motor: 90",
         "occurred_at": "2026-06-11T01:38:53.451Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0005",
@@ -945,7 +957,10 @@
         "descricao": "Score recalculado pelo motor: 94",
         "occurred_at": "2026-06-10T05:36:07.666Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0006",
@@ -1139,7 +1154,10 @@
         "descricao": "Score recalculado pelo motor: 88",
         "occurred_at": "2026-06-11T06:57:22.921Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0007",
@@ -1329,7 +1347,10 @@
         "descricao": "Score recalculado pelo motor: 84",
         "occurred_at": "2026-06-11T11:03:25.106Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0008",
@@ -1501,7 +1522,10 @@
         "descricao": "Score recalculado pelo motor: 82",
         "occurred_at": "2026-06-11T09:03:05.662Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0009",
@@ -1695,7 +1719,10 @@
         "descricao": "Score recalculado pelo motor: 79",
         "occurred_at": "2026-06-11T09:40:56.571Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0010",
@@ -1887,7 +1914,10 @@
         "descricao": "Score recalculado pelo motor: 77",
         "occurred_at": "2026-06-11T02:34:25.046Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0011",
@@ -2075,7 +2105,10 @@
         "descricao": "Score recalculado pelo motor: 75",
         "occurred_at": "2026-06-11T03:58:08.266Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0012",
@@ -2232,7 +2265,10 @@
         "descricao": "Score recalculado pelo motor: 86",
         "occurred_at": "2026-06-11T08:39:05.681Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0013",
@@ -2434,7 +2470,10 @@
         "descricao": "Score recalculado pelo motor: 60",
         "occurred_at": "2026-06-11T02:53:26.757Z"
       }
-    ]
+    ],
+    "destaque": true,
+    "destaque_por": "admin",
+    "destaque_em": "2026-09-01T13:40:00.000Z"
   },
   {
     "lead_id": "ld_0014",
@@ -2622,7 +2661,10 @@
         "descricao": "Score recalculado pelo motor: 50",
         "occurred_at": "2026-06-11T08:20:08.290Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0015",
@@ -2816,7 +2858,10 @@
         "descricao": "Score recalculado pelo motor: 65",
         "occurred_at": "2026-06-11T02:24:30.263Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0016",
@@ -3011,7 +3056,10 @@
         "descricao": "Score recalculado pelo motor: 60",
         "occurred_at": "2026-06-10T08:49:27.295Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0017",
@@ -3201,7 +3249,10 @@
         "descricao": "Score recalculado pelo motor: 50",
         "occurred_at": "2026-06-09T22:08:26.662Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0018",
@@ -3371,7 +3422,10 @@
         "descricao": "Score recalculado pelo motor: 72",
         "occurred_at": "2026-06-11T10:21:23.125Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0019",
@@ -3563,7 +3617,10 @@
         "descricao": "Score recalculado pelo motor: 70",
         "occurred_at": "2026-06-11T08:52:06.504Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0020",
@@ -3755,7 +3812,10 @@
         "descricao": "Score recalculado pelo motor: 67",
         "occurred_at": "2026-06-11T07:38:37.429Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0021",
@@ -3947,7 +4007,10 @@
         "descricao": "Score recalculado pelo motor: 64",
         "occurred_at": "2026-06-11T11:44:20.349Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0022",
@@ -4137,7 +4200,10 @@
         "descricao": "Score recalculado pelo motor: 61",
         "occurred_at": "2026-06-11T01:17:24.267Z"
       }
-    ]
+    ],
+    "destaque": true,
+    "destaque_por": "admin",
+    "destaque_em": "2026-09-01T13:40:00.000Z"
   },
   {
     "lead_id": "ld_0023",
@@ -4299,7 +4365,10 @@
         "descricao": "Score recalculado pelo motor: 58",
         "occurred_at": "2026-06-11T06:06:56.226Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0024",
@@ -4477,7 +4546,10 @@
         "descricao": "Score recalculado pelo motor: 55",
         "occurred_at": "2026-06-11T05:26:23.377Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0025",
@@ -4643,7 +4715,10 @@
         "descricao": "Score recalculado pelo motor: 52",
         "occurred_at": "2026-06-11T00:44:24.393Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0026",
@@ -4823,7 +4898,10 @@
         "descricao": "Score recalculado pelo motor: 49",
         "occurred_at": "2026-06-11T05:11:24.614Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0027",
@@ -4962,7 +5040,10 @@
         "descricao": "Score recalculado pelo motor: 47",
         "occurred_at": "2026-06-11T07:10:26.532Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0028",
@@ -5138,7 +5219,10 @@
         "descricao": "Score recalculado pelo motor: 46",
         "occurred_at": "2026-06-11T10:36:50.215Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0029",
@@ -5292,7 +5376,10 @@
         "descricao": "Score recalculado pelo motor: 43",
         "occurred_at": "2026-06-11T06:54:33.857Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0030",
@@ -5460,7 +5547,10 @@
         "descricao": "Score recalculado pelo motor: 41",
         "occurred_at": "2026-06-11T06:14:16.935Z"
       }
-    ]
+    ],
+    "destaque": true,
+    "destaque_por": "admin",
+    "destaque_em": "2026-09-01T13:40:00.000Z"
   },
   {
     "lead_id": "ld_0031",
@@ -5632,7 +5722,10 @@
         "descricao": "Score recalculado pelo motor: 38",
         "occurred_at": "2026-06-11T08:42:06.899Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0032",
@@ -5804,7 +5897,10 @@
         "descricao": "Score recalculado pelo motor: 35",
         "occurred_at": "2026-06-11T07:47:03.284Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0033",
@@ -5976,7 +6072,10 @@
         "descricao": "Score recalculado pelo motor: 33",
         "occurred_at": "2026-06-11T09:42:46.882Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0034",
@@ -6115,7 +6214,10 @@
         "descricao": "Score recalculado pelo motor: 31",
         "occurred_at": "2026-06-11T08:47:10.208Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0035",
@@ -6291,7 +6393,10 @@
         "descricao": "Score recalculado pelo motor: 27",
         "occurred_at": "2026-06-11T02:22:39.884Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0036",
@@ -6451,7 +6556,10 @@
         "descricao": "Score recalculado pelo motor: 22",
         "occurred_at": "2026-06-11T06:20:03.377Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0037",
@@ -6613,7 +6721,10 @@
         "descricao": "Score recalculado pelo motor: 19",
         "occurred_at": "2026-06-11T01:13:03.986Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0038",
@@ -6771,7 +6882,10 @@
         "descricao": "Score recalculado pelo motor: 16",
         "occurred_at": "2026-06-11T00:08:27.444Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0039",
@@ -6927,7 +7041,10 @@
         "descricao": "Score recalculado pelo motor: 8",
         "occurred_at": "2026-06-11T08:07:01.224Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   },
   {
     "lead_id": "ld_0040",
@@ -7097,6 +7214,9 @@
         "descricao": "Score recalculado pelo motor: 25",
         "occurred_at": "2026-06-10T12:13:28.409Z"
       }
-    ]
+    ],
+    "destaque": false,
+    "destaque_por": null,
+    "destaque_em": null
   }
 ]

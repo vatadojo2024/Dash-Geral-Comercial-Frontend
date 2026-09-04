@@ -27,6 +27,7 @@ function lead(over: Partial<LeadListItem>): LeadListItem {
     next_call_at: null,
     next_call_numero: null,
     score_calculated_at: "",
+    destaque: false,
     ...over,
   };
 }

@@ -159,6 +159,11 @@ const ApiLeadDetailSchema = z
     sdr_nome: z.string().nullish(),
     sdr_pool: z.boolean().nullish(),
     last_activity_at: z.string().nullish(),
+    // Destaque manual do admin + auditoria (quem marcou / quando). Ausência ou
+    // null → false/null; nada aqui pode derrubar o detalhe.
+    destaque: z.boolean().nullish(),
+    destaque_por: z.string().nullish(),
+    destaque_em: z.string().nullish(),
     analise_sdr: ApiAnaliseSchema,
     analise_call: ApiAnaliseSchema,
     timeline: z.array(ApiTimelineEventSchema).nullish(),
@@ -436,6 +441,9 @@ function mapApiLeadDetail(api: ApiLeadDetail): LeadDetail {
     guia_sdr: textoOuNull(api.guia_sdr),
     ficha: mapFicha(api),
     score_breakdown: mapBreakdown(api),
+    destaque: api.destaque ?? false,
+    destaque_por: api.destaque_por ?? null,
+    destaque_em: api.destaque_em ?? null,
     resumo_analises: {
       sdr: mapAnalise(api.analise_sdr, scoreCalc),
       call: mapAnalise(api.analise_call, scoreCalc),
@@ -478,6 +486,9 @@ function defaultsPorCampo(lead: LeadDetail): Partial<Record<keyof LeadDetail, un
     conducao_da_call: null,
     guia_sdr: null,
     ficha: FICHA_VAZIA,
+    destaque: false,
+    destaque_por: null,
+    destaque_em: null,
     resumo_analises: { sdr: null, call: null },
     timeline: [],
   };

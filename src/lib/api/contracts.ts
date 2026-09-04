@@ -105,6 +105,10 @@ export const LeadListItemSchema = z.object({
   // do filtro de data na fila. Opcional/tolerante: a API pode não expor ainda
   // (o filtro cai no score_calculated_at) e o mock não traz.
   last_activity_at: z.string().nullish(),
+  // Destaque manual do admin (só exibição/priorização — NÃO entra em score).
+  // A API já devolve a lista ordenada com destaque no topo; o front apenas
+  // exibe a estrela. .default(false): fonte antiga sem o campo segue válida.
+  destaque: z.boolean().default(false),
 });
 export type LeadListItem = z.infer<typeof LeadListItemSchema>;
 
@@ -219,5 +223,23 @@ export const LeadDetailSchema = LeadListItemSchema.extend({
   // Ficha do Clint (dados frios). .default: idem — mock antigo segue válido.
   ficha: FichaLeadSchema.default(FICHA_VAZIA),
   timeline: z.array(LeadEventSchema),
+  // Auditoria do destaque (só o detalhe traz): quem marcou e quando. Exibição
+  // opcional; null quando o lead nunca foi destacado.
+  destaque_por: z.string().nullable().default(null),
+  destaque_em: z.string().nullable().default(null),
 });
 export type LeadDetail = z.infer<typeof LeadDetailSchema>;
+
+// PATCH /api/leads/:id/destaque → { lead: { ... } }. Resposta enxuta: só o que
+// o backend confirma após a escrita. A UI usa isso para fechar o ciclo do
+// update otimista (confirmar o valor que o servidor de fato gravou).
+export const DestaqueResponseSchema = z.object({
+  lead: z.object({
+    id: z.string(),
+    nome_exibicao: z.string().nullish(),
+    destaque: z.boolean(),
+    destaque_por: z.string().nullish(),
+    destaque_em: z.string().nullish(),
+  }),
+});
+export type DestaqueResponse = z.infer<typeof DestaqueResponseSchema>;
