@@ -15,6 +15,7 @@ import {
   Eye,
   Database,
   Download,
+  ExternalLink,
   FileText,
   Gem,
   Hand,
@@ -24,6 +25,7 @@ import {
   RefreshCw,
   Search,
   Users,
+  X,
 } from "lucide-react";
 import { fetchOportunidades, OportunidadesError } from "@/lib/data/dataClient";
 import {
@@ -54,7 +56,7 @@ import {
   type OportunidadesResponse,
   type TierChave,
 } from "@/lib/sdr/oportunidades";
-import { dataHora, tempoRelativo } from "@/lib/formatters/date";
+import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
 import { MqlBadge } from "@/components/domain/Badges";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -103,6 +105,8 @@ export function LevantouMaoPanel() {
   const [busca, setBusca] = useState("");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>(null);
   const [pagina, setPagina] = useState(1);
+  // Pendente aberto no painel lateral de detalhe (clique no nome).
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
 
   const leads = useMemo(() => data?.leads ?? [], [data]);
   const contagem = useMemo(() => contarPorTier(leads), [leads]);
@@ -111,6 +115,10 @@ export function LevantouMaoPanel() {
     [leads, tiersSel, busca, ordenacao],
   );
   const multiEvento = (data?.eventos.length ?? 0) > 1;
+  const selecionado = useMemo(
+    () => leads.find((l) => l.clint_contact_id === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
 
   useEffect(() => setPagina(1), [tiersSel, busca, ordenacao, data]);
 
@@ -331,6 +339,7 @@ export function LevantouMaoPanel() {
                       multiEvento={multiEvento}
                       ordenacao={ordenacao}
                       onOrdenar={alternarOrdenacao}
+                      onAbrir={setSelecionadoId}
                     />
                   )}
                 </CardContent>
@@ -340,6 +349,10 @@ export function LevantouMaoPanel() {
 
           <Rodape data={data} atualizando={isFetching} onAtualizar={() => refetch()} />
         </>
+      )}
+
+      {selecionado && (
+        <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />
       )}
     </div>
   );
@@ -684,31 +697,166 @@ function LinkWhatsApp({ telefone, destaque = false }: { telefone: string | null 
   );
 }
 
-// Nome do pendente: link para a ficha (/leads/:id) quando o backend casou o
-// contato com um lead; senão texto com a explicação no tooltip.
-function NomePendente({ lead, className }: { lead: LeadPendente; className?: string }) {
-  if (lead.lead_id) {
-    return (
-      <Link
-        href={`/leads/${encodeURIComponent(lead.lead_id)}`}
-        title="Abrir a ficha do lead no Mapa de Calor"
-        className={cn(
-          "inline-flex max-w-full items-center gap-1 font-medium text-texto hover:text-azul-claro hover:underline",
-          className,
-        )}
-      >
-        <span className="truncate">{lead.nome}</span>
-        <FileText className="h-3.5 w-3.5 shrink-0 text-azul-claro" aria-hidden />
-      </Link>
-    );
-  }
+// Nome do pendente: botão que abre o painel lateral com os dados do contato.
+// O ícone de ficha sinaliza que o backend casou o contato com um lead do Mapa
+// de Calor (o link para /leads/:id fica dentro do painel).
+function NomePendente({
+  lead,
+  onAbrir,
+  className,
+}: {
+  lead: LeadPendente;
+  onAbrir: (id: string) => void;
+  className?: string;
+}) {
   return (
-    <span
-      title="Sem ficha no Mapa de Calor — o contato ainda não entrou em nenhum estágio na Clint"
-      className={cn("block truncate font-medium text-texto", className)}
+    <button
+      type="button"
+      onClick={() => onAbrir(lead.clint_contact_id)}
+      title={
+        lead.lead_id
+          ? "Ver detalhes — tem ficha no Mapa de Calor"
+          : "Ver detalhes do contato (sem ficha no Mapa de Calor)"
+      }
+      className={cn(
+        "inline-flex max-w-full items-center gap-1 text-left font-medium text-texto hover:text-azul-claro hover:underline",
+        className,
+      )}
     >
-      {lead.nome}
-    </span>
+      <span className="truncate">{lead.nome}</span>
+      {lead.lead_id && <FileText className="h-3.5 w-3.5 shrink-0 text-azul-claro" aria-hidden />}
+    </button>
+  );
+}
+
+// --- Painel lateral de detalhe do pendente -----------------------------------
+
+function LinhaDetalhe({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
+  return (
+    <div className="border-b border-borda/40 py-2.5 last:border-0">
+      <p className="text-[11px] uppercase tracking-wide text-texto-sec">{rotulo}</p>
+      <div className="mt-0.5 text-sm text-texto">{children}</div>
+    </div>
+  );
+}
+
+function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () => void }) {
+  useEffect(() => {
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", aoTeclar);
+    return () => document.removeEventListener("keydown", aoTeclar);
+  }, [onClose]);
+
+  const wa = linkWhatsApp(lead.telefone);
+  const tags = lead.tags ?? [];
+
+  return (
+    <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={`Detalhes de ${lead.nome}`}>
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-borda bg-painel shadow-lg">
+        <div className="flex items-start justify-between gap-3 border-b border-borda/60 px-4 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-texto">{lead.nome}</p>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <MqlBadge lead={lead} size="sm" />
+              {lead.evento_tag && <span className="text-xs text-texto-sec">{lead.evento_tag}</span>}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="rounded-md p-1 text-texto-sec hover:bg-painel-claro hover:text-texto"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          <LinhaDetalhe rotulo="Ficha no Mapa de Calor">
+            {lead.lead_id ? (
+              <Link
+                href={`/leads/${encodeURIComponent(lead.lead_id)}`}
+                className="inline-flex items-center gap-1 font-medium text-azul-claro hover:underline"
+              >
+                <FileText className="h-3.5 w-3.5" aria-hidden />
+                Abrir ficha do lead
+                <ExternalLink className="h-3 w-3" aria-hidden />
+              </Link>
+            ) : (
+              <span className="text-texto-sec">
+                Sem ficha — o contato ainda não entrou em nenhum estágio na Clint, então o motor
+                de score não o conhece. Aja pelo WhatsApp ou e-mail.
+              </span>
+            )}
+          </LinhaDetalhe>
+
+          <LinhaDetalhe rotulo="Telefone">
+            {lead.telefone ? (
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="tabular-nums">{lead.telefone}</span>
+                <BotaoCopiar valor={lead.telefone} rotulo="telefone" />
+                {wa && <LinkWhatsApp telefone={lead.telefone} destaque />}
+              </span>
+            ) : (
+              <span className="text-texto-sec">—</span>
+            )}
+          </LinhaDetalhe>
+
+          <LinhaDetalhe rotulo="E-mail">
+            {lead.email ? (
+              <span className="flex flex-wrap items-center gap-1">
+                <a href={`mailto:${lead.email}`} className="break-all hover:text-azul-claro hover:underline">
+                  {lead.email}
+                </a>
+                <BotaoCopiar valor={lead.email} rotulo="e-mail" />
+              </span>
+            ) : (
+              <span className="text-texto-sec">—</span>
+            )}
+          </LinhaDetalhe>
+
+          <LinhaDetalhe rotulo="Entrou em">
+            {lead.created_at ? (
+              <span>
+                {dataCompleta(lead.created_at)}{" "}
+                <span className="text-texto-sec">
+                  ({dataHora(lead.created_at)} · {tempoRelativo(lead.created_at)})
+                </span>
+              </span>
+            ) : (
+              <span className="text-texto-sec">—</span>
+            )}
+          </LinhaDetalhe>
+
+          <LinhaDetalhe rotulo={`Tags na Clint (${tags.length})`}>
+            {tags.length === 0 ? (
+              <span className="text-texto-sec">—</span>
+            ) : (
+              <span className="flex flex-wrap gap-1">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full border border-borda bg-painel-claro px-2 py-0.5 text-[11px] text-texto-sec"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </span>
+            )}
+          </LinhaDetalhe>
+
+          <LinhaDetalhe rotulo="Id do contato na Clint">
+            <span className="flex items-center gap-1 text-xs text-texto-sec">
+              <span className="font-mono">{lead.clint_contact_id}</span>
+              <BotaoCopiar valor={lead.clint_contact_id} rotulo="id do contato" />
+            </span>
+          </LinhaDetalhe>
+        </div>
+      </aside>
+    </div>
   );
 }
 
@@ -787,6 +935,7 @@ function ListaPendentes({
   multiEvento,
   ordenacao,
   onOrdenar,
+  onAbrir,
 }: {
   leads: LeadPendente[];
   pagina: number;
@@ -794,6 +943,7 @@ function ListaPendentes({
   multiEvento: boolean;
   ordenacao: Ordenacao;
   onOrdenar: (c: "nome" | "tier") => void;
+  onAbrir: (id: string) => void;
 }) {
   const paginar = leads.length > TAMANHO_PAGINA;
   const totalPaginas = Math.max(1, Math.ceil(leads.length / TAMANHO_PAGINA));
@@ -826,7 +976,7 @@ function ListaPendentes({
             {visiveis.map((l) => (
               <tr key={l.clint_contact_id} className="border-b border-borda/40 align-top">
                 <td className="max-w-[220px] px-2 py-2">
-                  <NomePendente lead={l} />
+                  <NomePendente lead={l} onAbrir={onAbrir} />
                 </td>
                 <td className="px-2 py-2">
                   <MqlBadge lead={l} size="sm" />
@@ -877,7 +1027,7 @@ function ListaPendentes({
           <li key={l.clint_contact_id} className="rounded-xl border border-borda bg-painel-claro/40 p-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <NomePendente lead={l} />
+                <NomePendente lead={l} onAbrir={onAbrir} />
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <MqlBadge lead={l} size="sm" />
                   {multiEvento && l.evento_tag && (
