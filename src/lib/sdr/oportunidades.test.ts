@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   altoValorPendente,
+  baseDeLevantaram,
+  etapasDoFunil,
+  OportunidadesResponseSchema,
   contarPorTier,
   csvDePendentes,
   distribuicaoPorTier,
@@ -168,5 +171,36 @@ describe("percentuais, WhatsApp e CSV", () => {
       '"Ana ""Nina""";"MQL";"WG - 08.09.26";"+5511999990001";"ana@ex.com";"2026-09-08T12:00:00Z";"Levantou a Mão, MQL"',
     );
     expect(csvDePendentes([lead({})], false).split("\r\n")[0]).not.toContain("Evento");
+  });
+});
+
+describe("assistiram (opcional no contrato)", () => {
+  const base = { no_evento: 186, levantaram_mao: 40, agendaram: 10, pendentes: 30 };
+  const resp = { de: "2026-09-15", ate: "2026-09-21", eventos: [], leads: [], gerado_em: "x", cache: "miss" };
+  it("contrato aceita totais com e sem assistiram", () => {
+    expect(OportunidadesResponseSchema.safeParse({ ...resp, totais: base }).success).toBe(true);
+    expect(
+      OportunidadesResponseSchema.safeParse({ ...resp, totais: { ...base, assistiram: 90 } }).success,
+    ).toBe(true);
+  });
+  it("sem assistiram: 3 etapas e base = no evento", () => {
+    expect(etapasDoFunil(base).map((e) => [e.chave, e.valor])).toEqual([
+      ["inscritos", 186],
+      ["levantaram", 40],
+      ["agendaram", 10],
+    ]);
+    expect(etapasDoFunil(base)[0].rotulo).toBe("No evento");
+    expect(baseDeLevantaram(base)).toEqual({ valor: 186, rotulo: "do no evento" });
+  });
+  it("com assistiram: 4 etapas e base = assistiram", () => {
+    const t = { ...base, assistiram: 90 };
+    expect(etapasDoFunil(t).map((e) => [e.chave, e.valor])).toEqual([
+      ["inscritos", 186],
+      ["assistiram", 90],
+      ["levantaram", 40],
+      ["agendaram", 10],
+    ]);
+    expect(etapasDoFunil(t)[0].rotulo).toBe("Inscritos");
+    expect(baseDeLevantaram(t)).toEqual({ valor: 90, rotulo: "dos que assistiram" });
   });
 });

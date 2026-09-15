@@ -85,7 +85,13 @@ export type OportunidadesMock = {
   de: string;
   ate: string;
   eventos: string[];
-  totais: { no_evento: number; levantaram_mao: number; agendaram: number; pendentes: number };
+  totais: {
+    no_evento: number;
+    assistiram: number;
+    levantaram_mao: number;
+    agendaram: number;
+    pendentes: number;
+  };
   leads: LeadPendenteMock[];
   gerado_em: string;
   cache: "hit" | "miss";
@@ -102,12 +108,22 @@ export function mockOportunidades(
   const base = { de, ate, eventos, gerado_em: new Date().toISOString(), cache: "miss" as const };
 
   if (eventos.length === 0 || simular === "sem_contatos") {
-    return { ...base, totais: { no_evento: 0, levantaram_mao: 0, agendaram: 0, pendentes: 0 }, leads: [] };
+    return {
+      ...base,
+      totais: { no_evento: 0, assistiram: 0, levantaram_mao: 0, agendaram: 0, pendentes: 0 },
+      leads: [],
+    };
   }
   if (simular === "vazio") {
     return {
       ...base,
-      totais: { no_evento: 214 * eventos.length, levantaram_mao: 38 * eventos.length, agendaram: 38 * eventos.length, pendentes: 0 },
+      totais: {
+        no_evento: 214 * eventos.length,
+        assistiram: 120 * eventos.length,
+        levantaram_mao: 38 * eventos.length,
+        agendaram: 38 * eventos.length,
+        pendentes: 0,
+      },
       leads: [],
     };
   }
@@ -157,10 +173,11 @@ export function mockOportunidades(
   const pendentes = leads.length;
   const agendaram = 22 * eventos.length;
   const levantaram = pendentes + agendaram;
-  const noEvento = 214 * eventos.length;
+  const noEvento = 214 * eventos.length; // inscritos (tag WG)
+  const assistiram = 120 * eventos.length; // Participou / Pós WG / Levantou a Mão
   return {
     ...base,
-    totais: { no_evento: noEvento, levantaram_mao: levantaram, agendaram, pendentes },
+    totais: { no_evento: noEvento, assistiram, levantaram_mao: levantaram, agendaram, pendentes },
     leads,
   };
 }

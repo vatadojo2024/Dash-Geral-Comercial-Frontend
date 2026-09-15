@@ -31,7 +31,11 @@ export const OportunidadesResponseSchema = z.object({
   ate: z.string(),
   eventos: z.array(z.string()),
   totais: z.object({
+    // Inscritos no evento (contatos com a tag WG).
     no_evento: z.number().int(),
+    // Quem ASSISTIU (tags "Participou" / "Pós WG" / "Levantou a Mão"). Opcional:
+    // backend anterior à correção de set/2026 não manda — a UI cai em no_evento.
+    assistiram: z.number().int().nullish(),
     levantaram_mao: z.number().int(),
     agendaram: z.number().int(),
     pendentes: z.number().int(),
@@ -41,6 +45,34 @@ export const OportunidadesResponseSchema = z.object({
   cache: z.enum(["hit", "miss"]).nullish(),
 });
 export type OportunidadesResponse = z.infer<typeof OportunidadesResponseSchema>;
+export type TotaisOportunidades = OportunidadesResponse["totais"];
+
+// Etapas do funil na ordem. Com `assistiram` presente são 4 (inscritos →
+// assistiram → levantaram → agendaram); sem ele, as 3 originais.
+export type EtapaFunil = {
+  chave: "inscritos" | "assistiram" | "levantaram" | "agendaram";
+  rotulo: string;
+  valor: number;
+};
+
+export function etapasDoFunil(t: TotaisOportunidades): EtapaFunil[] {
+  const temAssistiram = t.assistiram != null;
+  return [
+    { chave: "inscritos", rotulo: temAssistiram ? "Inscritos" : "No evento", valor: t.no_evento },
+    ...(temAssistiram
+      ? [{ chave: "assistiram" as const, rotulo: "Assistiram", valor: t.assistiram ?? 0 }]
+      : []),
+    { chave: "levantaram", rotulo: "Levantou a mão", valor: t.levantaram_mao },
+    { chave: "agendaram", rotulo: "Agendou", valor: t.agendaram },
+  ];
+}
+
+// Base sobre a qual "levantaram a mão" faz sentido: quem assistiu, se houver.
+export function baseDeLevantaram(t: TotaisOportunidades): { valor: number; rotulo: string } {
+  return t.assistiram != null
+    ? { valor: t.assistiram, rotulo: "dos que assistiram" }
+    : { valor: t.no_evento, rotulo: "do no evento" };
+}
 
 // Códigos de erro do endpoint (seção 10 do backend) → tratamento da UI.
 export type CodigoErroOportunidades =

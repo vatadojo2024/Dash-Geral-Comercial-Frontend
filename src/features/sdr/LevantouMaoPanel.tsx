@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Eye,
   Database,
   Download,
   Gem,
@@ -32,9 +33,11 @@ import {
 } from "@/lib/sdr/ciclo";
 import {
   altoValorPendente,
+  baseDeLevantaram,
   contarPorTier,
   csvDePendentes,
   distribuicaoPorTier,
+  etapasDoFunil,
   filtrarPendentes,
   formatarPct,
   linkWhatsApp,
@@ -424,19 +427,35 @@ function ErroOportunidades({ error, onRetry }: { error: unknown; onRetry: () => 
 function Kpis({ data }: { data: OportunidadesResponse }) {
   const t = data.totais;
   const altoValor = altoValorPendente(data.leads);
+  const temAssistiram = t.assistiram != null;
+  const base = baseDeLevantaram(t);
+  const nEventos = `${data.eventos.length} ${data.eventos.length === 1 ? "evento" : "eventos"}`;
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-3 sm:grid-cols-3",
+        temAssistiram ? "xl:grid-cols-6" : "xl:grid-cols-5",
+      )}
+    >
       <KpiChip
         icon={Users}
-        rotulo="No evento"
+        rotulo={temAssistiram ? "Inscritos" : "No evento"}
         valor={String(t.no_evento)}
-        detalhe={`${data.eventos.length} ${data.eventos.length === 1 ? "evento" : "eventos"}`}
+        detalhe={temAssistiram ? `tag do evento · ${nEventos}` : nEventos}
       />
+      {temAssistiram && (
+        <KpiChip
+          icon={Eye}
+          rotulo="Assistiram"
+          valor={String(t.assistiram)}
+          detalhe={`${formatarPct(pct(t.assistiram ?? 0, t.no_evento))} dos inscritos`}
+        />
+      )}
       <KpiChip
         icon={Hand}
         rotulo="Levantaram a mão"
         valor={String(t.levantaram_mao)}
-        detalhe={`${formatarPct(pct(t.levantaram_mao, t.no_evento))} do no evento`}
+        detalhe={`${formatarPct(pct(t.levantaram_mao, base.valor))} ${base.rotulo}`}
       />
       <KpiChip
         icon={CalendarCheck2}
@@ -461,18 +480,23 @@ function Kpis({ data }: { data: OportunidadesResponse }) {
   );
 }
 
+// Cor de cada etapa do funil (tokens do tema). "Assistiram" só aparece quando
+// o backend manda `totais.assistiram`.
+const COR_ETAPA: Record<string, string> = {
+  inscritos: "bg-azul/25 text-azul-claro",
+  assistiram: "bg-violeta/25 text-violeta",
+  levantaram: "bg-teal/25 text-teal",
+  agendaram: "bg-verde/25 text-verde",
+};
+
 function Funil({ totais }: { totais: OportunidadesResponse["totais"] }) {
-  const etapas = [
-    { rotulo: "No evento", valor: totais.no_evento, classe: "bg-azul/25 text-azul-claro" },
-    { rotulo: "Levantou a mão", valor: totais.levantaram_mao, classe: "bg-teal/25 text-teal" },
-    { rotulo: "Agendou", valor: totais.agendaram, classe: "bg-verde/25 text-verde" },
-  ];
+  const etapas = etapasDoFunil(totais);
   const base = totais.no_evento || 1;
   return (
     <Card>
       <CardContent className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
         {etapas.map((e, i) => (
-          <div key={e.rotulo} className="contents">
+          <div key={e.chave} className="contents">
             {i > 0 && (
               <div
                 className="flex shrink-0 items-center justify-center px-1 text-xs font-medium text-texto-sec sm:flex-col"
@@ -484,7 +508,7 @@ function Funil({ totais }: { totais: OportunidadesResponse["totais"] }) {
               </div>
             )}
             <div
-              className={cn("min-w-0 rounded-lg px-3 py-2", e.classe)}
+              className={cn("min-w-0 rounded-lg px-3 py-2", COR_ETAPA[e.chave])}
               style={{ flexGrow: Math.max(e.valor / base, 0.18), flexBasis: 0 }}
             >
               <p className="text-[11px] font-medium opacity-90">{e.rotulo}</p>
