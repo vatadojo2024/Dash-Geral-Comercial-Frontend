@@ -177,6 +177,13 @@ describe("percentuais, WhatsApp e CSV", () => {
 describe("assistiram (opcional no contrato)", () => {
   const base = { no_evento: 186, levantaram_mao: 40, agendaram: 10, pendentes: 30 };
   const resp = { de: "2026-09-15", ate: "2026-09-21", eventos: [], leads: [], gerado_em: "x", cache: "miss" };
+  it("lead_id do pendente é opcional (link para a ficha só quando vem)", () => {
+    const resp = { de: "x", ate: "x", eventos: [], totais: base, gerado_em: "x", cache: "miss" };
+    const semId = OportunidadesResponseSchema.safeParse({ ...resp, leads: [lead({})] });
+    const comId = OportunidadesResponseSchema.safeParse({ ...resp, leads: [lead({ lead_id: "ld_0001" })] });
+    expect(semId.success && semId.data.leads[0].lead_id).toBeUndefined();
+    expect(comId.success && comId.data.leads[0].lead_id).toBe("ld_0001");
+  });
   it("contrato aceita totais com e sem assistiram", () => {
     expect(OportunidadesResponseSchema.safeParse({ ...resp, totais: base }).success).toBe(true);
     expect(

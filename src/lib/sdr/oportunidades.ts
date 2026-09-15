@@ -22,6 +22,11 @@ export const LeadPendenteSchema = z
     evento_tag: z.string().nullish(),
     tags: z.array(z.string()).nullish(),
     created_at: z.string().nullish(),
+    // Id do lead no Mapa de Calor quando o backend casou o contato (e-mail ou
+    // telefone) com a tabela `leads`. null = sem ficha (quem só se inscreveu e
+    // levantou a mão não passa pelo webhook da Clint). Opcional: backend antigo
+    // não manda.
+    lead_id: z.string().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;

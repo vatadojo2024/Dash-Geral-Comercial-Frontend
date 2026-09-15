@@ -79,6 +79,7 @@ export type LeadPendenteMock = {
   evento_tag: string | null;
   tags: string[];
   created_at: string | null;
+  lead_id: string | null;
 };
 
 export type OportunidadesMock = {
@@ -151,6 +152,8 @@ export function mockOportunidades(
         evento_tag: evento,
         tags: [evento, "Levantou a Mão", ...(tier.tag ? [tier.tag] : []), ...extras],
         created_at: `${isoDaTag(evento)}T${String(9 + (i % 10)).padStart(2, "0")}:${String((i * 17) % 60).padStart(2, "0")}:00-03:00`,
+        // 1 em cada 3 tem ficha no Mapa de Calor (ids do mock data_clients.json).
+        lead_id: i % 3 === 0 ? `ld_${String((i % 40) + 1).padStart(4, "0")}` : null,
       });
       if (diasDepois > 0) {
         // Entrou alguns dias depois do evento (mantém ordem estável no mock).

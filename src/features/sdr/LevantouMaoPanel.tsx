@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
@@ -14,6 +15,7 @@ import {
   Eye,
   Database,
   Download,
+  FileText,
   Gem,
   Hand,
   Hourglass,
@@ -156,7 +158,8 @@ export function LevantouMaoPanel() {
           </h2>
           <p className="mt-0.5 text-xs text-texto-sec">
             Contatos com a tag do evento (WG) que marcaram &ldquo;Levantou a Mão&rdquo; na Clint e
-            ainda não têm 1ª call agendada. Métrica de time — sem escopo por papel.
+            ainda não têm call agendada (em nenhum estágio). Métrica de time — sem escopo por
+            papel. Nome com ícone de ficha abre o lead no Mapa de Calor.
           </p>
         </div>
 
@@ -681,6 +684,34 @@ function LinkWhatsApp({ telefone, destaque = false }: { telefone: string | null 
   );
 }
 
+// Nome do pendente: link para a ficha (/leads/:id) quando o backend casou o
+// contato com um lead; senão texto com a explicação no tooltip.
+function NomePendente({ lead, className }: { lead: LeadPendente; className?: string }) {
+  if (lead.lead_id) {
+    return (
+      <Link
+        href={`/leads/${encodeURIComponent(lead.lead_id)}`}
+        title="Abrir a ficha do lead no Mapa de Calor"
+        className={cn(
+          "inline-flex max-w-full items-center gap-1 font-medium text-texto hover:text-azul-claro hover:underline",
+          className,
+        )}
+      >
+        <span className="truncate">{lead.nome}</span>
+        <FileText className="h-3.5 w-3.5 shrink-0 text-azul-claro" aria-hidden />
+      </Link>
+    );
+  }
+  return (
+    <span
+      title="Sem ficha no Mapa de Calor — o contato ainda não entrou em nenhum estágio na Clint"
+      className={cn("block truncate font-medium text-texto", className)}
+    >
+      {lead.nome}
+    </span>
+  );
+}
+
 function Tags({ tags }: { tags: string[] | null | undefined }) {
   const lista = tags ?? [];
   if (lista.length === 0) return <span className="text-texto-sec/50">—</span>;
@@ -794,10 +825,8 @@ function ListaPendentes({
           <tbody>
             {visiveis.map((l) => (
               <tr key={l.clint_contact_id} className="border-b border-borda/40 align-top">
-                <td className="max-w-[220px] px-2 py-2 font-medium text-texto">
-                  <span className="block truncate" title={l.nome}>
-                    {l.nome}
-                  </span>
+                <td className="max-w-[220px] px-2 py-2">
+                  <NomePendente lead={l} />
                 </td>
                 <td className="px-2 py-2">
                   <MqlBadge lead={l} size="sm" />
@@ -848,7 +877,7 @@ function ListaPendentes({
           <li key={l.clint_contact_id} className="rounded-xl border border-borda bg-painel-claro/40 p-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate font-medium text-texto">{l.nome}</p>
+                <NomePendente lead={l} />
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <MqlBadge lead={l} size="sm" />
                   {multiEvento && l.evento_tag && (
