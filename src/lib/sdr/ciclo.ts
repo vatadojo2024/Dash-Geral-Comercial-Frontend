@@ -67,3 +67,45 @@ function ddmm(dataISO: string): string {
   const [, mes, dia] = dataISO.split("-");
   return `${dia}/${mes}`;
 }
+
+// ---------------------------------------------------------------------------
+// Tag de evento do ciclo (aba "Levantou a Mão"). O evento (WG) acontece na
+// TERÇA que abre o ciclo e a Clint marca os contatos com `WG - DD.MM.AA`.
+// Mesmo formato do backend (lib/eventos-tags.ts: formatarTagWG/tagsDasTercas).
+// ---------------------------------------------------------------------------
+
+// "2026-09-08" → "WG - 08.09.26".
+export function tagEventoDoDia(dataISO: string): string {
+  const [ano, mes, dia] = dataISO.slice(0, 10).split("-");
+  return `WG - ${dia}.${mes}.${ano.slice(2)}`;
+}
+
+// Tag do evento que abre o ciclo (a terça de início).
+export function tagEventoDoCiclo(ciclo: Ciclo): string {
+  return tagEventoDoDia(ciclo.inicio);
+}
+
+// "WG - 08.09.26 (08/09 a 14/09)" — rótulo do seletor na aba "Levantou a Mão".
+export function rotuloCicloEvento(ciclo: Ciclo): string {
+  return `${tagEventoDoCiclo(ciclo)} (${rotuloCiclo(ciclo)})`;
+}
+
+// Tags de TODAS as terças dentro de [de, ate] — espelho de tagsDasTercas do
+// backend, usada pelo mock e para mostrar ao usuário quais tags serão consultadas.
+export function tagsEventoNoIntervalo(de: string, ate: string): string[] {
+  const inicio = diaUTC(de);
+  const fim = diaUTC(ate);
+  const saida: string[] = [];
+  const delta = (TERCA - inicio.getUTCDay() + 7) % 7;
+  let cursor = new Date(inicio.getTime() + delta * DIA_MS);
+  while (cursor.getTime() <= fim.getTime()) {
+    saida.push(tagEventoDoDia(iso(cursor)));
+    cursor = new Date(cursor.getTime() + 7 * DIA_MS);
+  }
+  return saida;
+}
+
+// Dias civis entre duas datas (fim − início). Negativo se ate < de.
+export function diasEntre(de: string, ate: string): number {
+  return Math.round((diaUTC(ate).getTime() - diaUTC(de).getTime()) / DIA_MS);
+}

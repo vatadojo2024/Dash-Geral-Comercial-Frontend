@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpenCheck,
@@ -13,7 +14,6 @@ import {
   Target,
   UserCheck2,
   UserX,
-  type LucideIcon,
 } from "lucide-react";
 import {
   agregarDashboard,
@@ -35,10 +35,13 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
+import { ABAS_SDR, hrefDaAba, type AbaSdr } from "./abas";
 import { AgendamentosPanel } from "./AgendamentosPanel";
 import { ChartsPanel } from "./ChartsPanel";
 import { ComissoesPanel } from "./ComissoesPanel";
 import { InsightsPanel } from "./InsightsPanel";
+import { KpiChip } from "./KpiChip";
+import { LevantouMaoPanel } from "./LevantouMaoPanel";
 import { PerformanceTable } from "./PerformanceTable";
 import { LeadershipPanel } from "./LeadershipPanel";
 
@@ -123,32 +126,9 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
   );
 }
 
-function KpiChip({
-  icon: Icon,
-  rotulo,
-  valor,
-}: {
-  icon: LucideIcon;
-  rotulo: string;
-  valor: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-borda bg-painel px-4 py-3">
-      <Icon className="h-4 w-4 shrink-0 text-azul-claro" aria-hidden />
-      <div>
-        <p className="text-xs text-texto-sec">{rotulo}</p>
-        <p className="text-lg font-bold tabular-nums text-texto">{valor}</p>
-      </div>
-    </div>
-  );
-}
-
-type Aba = "dashboard" | "agendamentos" | "comissoes" | "lideranca";
-
-export function SdrView() {
+export function SdrView({ aba }: { aba: AbaSdr }) {
   const user = useSession();
   const hojeISO = new Date().toISOString().slice(0, 10);
-  const [aba, setAba] = useState<Aba>("dashboard");
   const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
 
   const { data: payload, isLoading, isError, error, refetch } = useQuery({
@@ -178,56 +158,28 @@ export function SdrView() {
   // filtro de mês (que depende do payload) só entra quando há meses e na aba certa.
   const barraAbas = (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div role="tablist" aria-label="Abas da produtividade" className="flex gap-1 rounded-xl border border-borda bg-painel p-1">
-        <button
-          role="tab"
-          aria-selected={aba === "dashboard"}
-          onClick={() => setAba("dashboard")}
-          className={cn(
-            "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-            aba === "dashboard" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
-          )}
-        >
-          Dashboard SDR
-        </button>
-        <button
-          role="tab"
-          aria-selected={aba === "agendamentos"}
-          onClick={() => setAba("agendamentos")}
-          className={cn(
-            "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-            aba === "agendamentos" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
-          )}
-        >
-          Calls por Ciclo
-        </button>
-        <button
-          role="tab"
-          aria-selected={aba === "comissoes"}
-          onClick={() => setAba("comissoes")}
-          className={cn(
-            "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-            aba === "comissoes" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
-          )}
-        >
-          Comissões
-        </button>
-        {user.role === "admin" && (
-          <button
+      <div
+        role="tablist"
+        aria-label="Abas da produtividade"
+        className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-borda bg-painel p-1"
+      >
+        {ABAS_SDR.filter((a) => !a.soAdmin || user.role === "admin").map((a) => (
+          <Link
+            key={a.aba}
             role="tab"
-            aria-selected={aba === "lideranca"}
-            onClick={() => setAba("lideranca")}
+            href={hrefDaAba(a.aba)}
+            aria-selected={aba === a.aba}
             className={cn(
-              "rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-              aba === "lideranca" ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+              "whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
+              aba === a.aba ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
             )}
           >
-            Liderança Pré-venda
-          </button>
-        )}
+            {a.label}
+          </Link>
+        ))}
       </div>
 
-      {aba !== "lideranca" && aba !== "agendamentos" && meses.length > 0 && mes && (
+      {(aba === "dashboard" || aba === "comissoes") && meses.length > 0 && mes && (
         <div className="flex items-center gap-2">
           <label htmlFor="mes-sdr" className="text-xs text-texto-sec">
             Filtrar por mês (data da call):
@@ -249,13 +201,13 @@ export function SdrView() {
     </div>
   );
 
-  // "Calls por Ciclo" é autossuficiente (fetchAgendamentos, fonte própria) — NÃO
-  // depende do payload do Dashboard SDR. Renderiza antes dos guards desse payload.
-  if (aba === "agendamentos") {
+  // "Calls por Ciclo" e "Levantou a Mão" são autossuficientes (fontes próprias) —
+  // NÃO dependem do payload do Dashboard SDR. Renderizam antes dos guards dele.
+  if (aba === "agendamentos" || aba === "levantou") {
     return (
       <div className="space-y-4">
         {barraAbas}
-        <AgendamentosPanel />
+        {aba === "agendamentos" ? <AgendamentosPanel /> : <LevantouMaoPanel />}
       </div>
     );
   }

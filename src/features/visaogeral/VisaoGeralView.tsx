@@ -25,7 +25,7 @@ import { metasPorCloser } from "@/lib/config/salesops";
 import { formatarBRL, formatarPct } from "@/lib/formatters/moeda";
 import { TEMPERATURA_CONFIG, TEMPERATURAS_ORDENADAS } from "@/lib/formatters/score";
 import { leadAtivo } from "@/features/dashboard/derivacoes";
-import { tiposDoLead } from "@/features/acoes/acoes";
+import { tiposDoLead } from "@/lib/leads/alertas";
 import { CLOSERS, nomeDoUsuario } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -181,7 +181,7 @@ export function VisaoGeralView() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <CardNumero icon={Gauge} rotulo="Score médio (ativos)" valor={String(scoreMedio)} href="/dashboard" />
-        <CardNumero icon={PauseCircle} rotulo="Leads parados" valor={String(parados)} href="/acoes?alerta=parado" />
+        <CardNumero icon={PauseCircle} rotulo="Leads parados" valor={String(parados)} href="/leads" />
         <CardNumero icon={CalendarX2} rotulo="No-shows a recuperar" valor={String(noShows)} href="/leads?etapa=no_show_1a,no-show" />
       </div>
 
@@ -262,7 +262,7 @@ export function VisaoGeralView() {
             subtitle={`${qualificadosEquipe} reuniões qualificadas no mês`}
             action={
               <Link
-                href="/sdr"
+                href="/produtividade-sdr"
                 className="inline-flex items-center gap-1 text-xs font-medium text-azul-claro hover:underline"
               >
                 Produtividade <ArrowRight className="h-3 w-3" aria-hidden />

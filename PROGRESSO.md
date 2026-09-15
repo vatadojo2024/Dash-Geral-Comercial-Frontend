@@ -131,6 +131,14 @@ Dois bugs com a MESMA raiz do bug da fila (contrato real ≠ mock): a API respon
 
 - **BLOQUEADOR (backend):** `https://mapacalor-api.infradojo.pro` respondia **404 (Go default) em TODOS** os caminhos testados — `/api/me`, `/api/leads`, `/api/leads/:id`, `/`, `/health`, `/v1/*` etc. O front está correto contra o contrato e degrada com erro claro (502 "A API respondeu 404"), mas o **load real depende das rotas existirem na API** (ou do prefixo correto). Pendente: confirmar com o backend as rotas reais + liberar `FRONT_ORIGIN` (mesmo que CORS não seja acionado pelo proxy, o Supabase precisa do projeto correto).
 
+### Aba "Levantou a Mão" + remoção de Ações/Agenda/Gestão (15/09/2026)
+
+- **Rotas por sub-aba:** Produtividade SDR mudou de `/sdr` para `/produtividade-sdr[/<slug>]` (`src/app/(private)/produtividade-sdr/[[...aba]]/page.tsx`; slugs em `src/features/sdr/abas.ts` — módulo SEM "use client" porque a página server lê o array). `/sdr`, `/acoes` e `/agenda` redirecionam via `next.config.mjs`.
+- **Aba "Levantou a Mão"** (`LevantouMaoPanel.tsx`, spec `specs/modulo-agendamento-por-ciclo/`): fonte `GET /api/eventos/oportunidades?de&ate` via route handler (`LEADS_MODE` mock|api; em api repassa status/código do backend intactos). `dataClient.fetchOportunidades` lança `OportunidadesError { status, codigo }` — a UI decide a mensagem por código (`clint_auth`, `clint_indisponivel`, `agendamentos_indisponivel`, `intervalo_muito_grande`, 400 destaca as datas). Lógica pura em `src/lib/sdr/oportunidades.ts` (tiers + cores por token de temperatura, filtro/busca/ordenação, validação ≤ 90 dias, CSV `;` com BOM; 16 testes). Ciclo/tag em `ciclo.ts` (`tagEventoDoCiclo`, `rotuloCicloEvento`, `tagsEventoNoIntervalo`).
+- **Mock:** `src/lib/mock/eventos_oportunidades.ts` gera 40 pendentes (7 tiers) distribuídos pelas terças do intervalo; `?simular=vazio|sem_contatos|clint_auth|clint_indisponivel|intervalo_muito_grande` (só em mock) exercita os estados.
+- **Reuso extraído:** `CicloSelect` (dropdown de ciclo, agora compartilhado com Calls por Ciclo), `KpiChip` (antes local do SdrView), `MqlBadge` em `Badges.tsx`; `EmptyState` ganhou `tom="positivo"` e `ErrorState` ganhou `retryLabel`.
+- **Removidos:** menu/rotas/views de Ações e Agenda e o item "Gestão (Em breve)". A categorização de alertas (`tiposDoLead`) que a Visão Geral usa mudou para `src/lib/leads/alertas.ts`; o card "Leads parados" passou a linkar para `/leads`.
+
 ## Decisões de implementação (registradas, não explícitas no roadmap)
 
 - Filtros do heatmap escolhidos: busca + closer/SDR (admin) + pool da Hana (admin/SDR) — temperatura/etapa são os próprios eixos da grade, então o "filtro fino" deles vive na fila.

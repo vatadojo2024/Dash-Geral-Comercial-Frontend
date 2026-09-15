@@ -3,7 +3,11 @@ import {
   cicloDe,
   dentroDoCiclo,
   inicioDoCiclo,
+  diasEntre,
   rotuloCiclo,
+  rotuloCicloEvento,
+  tagEventoDoCiclo,
+  tagsEventoNoIntervalo,
   ultimosCiclos,
 } from "./ciclo";
 
@@ -77,5 +81,35 @@ describe("ultimosCiclos", () => {
 describe("rotuloCiclo", () => {
   it("formata dd/MM a dd/MM", () => {
     expect(rotuloCiclo({ inicio: "2026-07-21", fim: "2026-07-27" })).toBe("21/07 a 27/07");
+  });
+});
+
+describe("tag de evento (WG - DD.MM.AA)", () => {
+  it("formata a terça do ciclo como tag da Clint", () => {
+    expect(tagEventoDoCiclo({ inicio: "2026-09-08", fim: "2026-09-14" })).toBe("WG - 08.09.26");
+  });
+
+  it("rótulo do seletor junta tag e intervalo", () => {
+    expect(rotuloCicloEvento({ inicio: "2026-09-08", fim: "2026-09-14" })).toBe(
+      "WG - 08.09.26 (08/09 a 14/09)",
+    );
+  });
+
+  it("lista as terças do intervalo (mesmo exemplo do backend)", () => {
+    expect(tagsEventoNoIntervalo("2026-09-01", "2026-09-14")).toEqual([
+      "WG - 01.09.26",
+      "WG - 08.09.26",
+    ]);
+  });
+
+  it("intervalo sem terça → nenhuma tag", () => {
+    // 09/09/2026 (quarta) a 14/09/2026 (segunda).
+    expect(tagsEventoNoIntervalo("2026-09-09", "2026-09-14")).toEqual([]);
+  });
+
+  it("diasEntre conta dias civis (fim − início)", () => {
+    expect(diasEntre("2026-09-01", "2026-09-01")).toBe(0);
+    expect(diasEntre("2026-09-01", "2026-11-30")).toBe(90);
+    expect(diasEntre("2026-09-02", "2026-09-01")).toBe(-1);
   });
 });

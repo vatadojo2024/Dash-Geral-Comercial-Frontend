@@ -18,6 +18,7 @@ import {
   SEM_PRODUTO,
   type Agregado,
 } from "@/lib/sdr/agendamentos";
+import { CicloSelect } from "./CicloSelect";
 
 // Cor de cada produto (ticket crescente) para a barra empilhada e a legenda.
 const COR_PRODUTO: Record<string, CorToken> = {
@@ -68,27 +69,15 @@ export function AgendamentosPanel() {
             a segunda. Métrica de time: mostra todos os SDRs e closers.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="ciclo-sdr" className="text-xs text-texto-sec">
-            Ciclo do evento:
-          </label>
-          <select
-            id="ciclo-sdr"
-            value={inicioSel}
-            onChange={(e) => {
-              setInicioSel(e.target.value);
-              setCelula(null);
-            }}
-            className="h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm text-texto"
-          >
-            {ciclos.map((c, i) => (
-              <option key={c.inicio} value={c.inicio}>
-                {rotuloCiclo(c)}
-                {i === 0 ? " (atual)" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
+        <CicloSelect
+          id="ciclo-sdr"
+          ciclos={ciclos}
+          value={inicioSel}
+          onChange={(inicio) => {
+            setInicioSel(inicio);
+            setCelula(null);
+          }}
+        />
       </div>
 
       {isLoading ? (

@@ -13,6 +13,11 @@ import {
   AgendamentosResponseSchema,
   type Agendamento,
 } from "@/lib/sdr/agendamentos";
+import {
+  OportunidadesResponseSchema,
+  type CodigoErroOportunidades,
+  type OportunidadesResponse,
+} from "@/lib/sdr/oportunidades";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de acesso a dados de leads no client. Os componentes só
@@ -111,6 +116,66 @@ export async function fetchAgendamentos(
     );
   }
   return parsed.data.agendamentos;
+}
+
+// Aba "Levantou a Mão": erro tipado com o STATUS e o CÓDIGO do backend
+// (seção 10 do endpoint) — a UI escolhe a mensagem/ação por eles, não pelo texto.
+export class OportunidadesError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly codigo: CodigoErroOportunidades,
+  ) {
+    super(message);
+  }
+}
+
+function codigoDoCorpo(status: number, corpo: unknown): CodigoErroOportunidades {
+  const erro = (corpo as { erro?: unknown } | null)?.erro;
+  if (
+    erro === "clint_auth" ||
+    erro === "clint_indisponivel" ||
+    erro === "agendamentos_indisponivel" ||
+    erro === "intervalo_muito_grande"
+  ) {
+    return erro;
+  }
+  if (status === 422) return "intervalo_muito_grande";
+  if (status === 400) return "parametros_invalidos";
+  return "desconhecido";
+}
+
+// Única porta da aba "Levantou a Mão" (GET /api/eventos/oportunidades?de&ate).
+// O corte por período é do backend; MQL/busca ficam no cliente (lib/sdr/oportunidades).
+export async function fetchOportunidades(
+  de: string,
+  ate: string,
+): Promise<OportunidadesResponse> {
+  const qs = `de=${encodeURIComponent(de)}&ate=${encodeURIComponent(ate)}`;
+  const res = await fetch(`/api/eventos/oportunidades?${qs}`, {
+    headers: await headersComToken(),
+  });
+  const corpo = (await res.json().catch(() => null)) as unknown;
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      const { limparCookieSessao } = await import("@/lib/auth/clientSession");
+      limparCookieSessao();
+      window.location.href = "/login";
+    }
+    const mensagem =
+      (corpo as { error?: string } | null)?.error ??
+      `A consulta de oportunidades respondeu ${res.status}.`;
+    throw new OportunidadesError(mensagem, res.status, codigoDoCorpo(res.status, corpo));
+  }
+  const parsed = OportunidadesResponseSchema.safeParse(corpo);
+  if (!parsed.success) {
+    throw new OportunidadesError(
+      `Resposta de /api/eventos/oportunidades fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      res.status,
+      "desconhecido",
+    );
+  }
+  return parsed.data;
 }
 
 // PATCH do destaque do lead (só admin — a API responde 403 para os demais).

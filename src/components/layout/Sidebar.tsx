@@ -3,12 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
-  CalendarDays,
   Flame,
   Gauge,
   LayoutDashboard,
-  ListChecks,
   MessageSquare,
   PhoneCall,
   Users,
@@ -19,24 +16,19 @@ import {
 import type { Role } from "@/lib/api/contracts";
 import { cn } from "@/lib/utils/cn";
 
-type NavItem =
-  | { tipo: "link"; href: string; label: string; icon: LucideIcon; roles: Role[] }
-  | { tipo: "em_breve"; label: string; icon: LucideIcon; roles: Role[] };
+type NavItem = { href: string; label: string; icon: LucideIcon; roles: Role[] };
 
 const TODOS: Role[] = ["admin", "closer", "sdr"];
 
-// Iteração 3 (Parte 7): Ações e Agenda entram ATIVAS; Visão Geral é a home
-// do admin; Gestão é a única que permanece "Em breve" (decisão Vata 7.4).
+// Visão Geral é a home do admin. Ações, Agenda e Gestão foram REMOVIDAS do menu
+// (spec set/2026, Parte 2.1) — não existe backend para elas.
 const NAV_ITEMS: NavItem[] = [
-  { tipo: "link", href: "/visao-geral", label: "Visão Geral", icon: Gauge, roles: ["admin"] },
-  { tipo: "link", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: TODOS },
-  { tipo: "link", href: "/leads", label: "Leads", icon: Users, roles: TODOS },
-  { tipo: "link", href: "/acoes", label: "Ações", icon: ListChecks, roles: TODOS },
-  { tipo: "link", href: "/agenda", label: "Agenda", icon: CalendarDays, roles: TODOS },
-  { tipo: "link", href: "/chat", label: "Chat IA", icon: MessageSquare, roles: TODOS },
-  { tipo: "link", href: "/salesops", label: "Sales Ops", icon: Wallet, roles: ["closer", "admin"] },
-  { tipo: "link", href: "/sdr", label: "Produtividade SDR", icon: PhoneCall, roles: ["sdr", "admin"] },
-  { tipo: "em_breve", label: "Gestão", icon: BarChart3, roles: TODOS },
+  { href: "/visao-geral", label: "Visão Geral", icon: Gauge, roles: ["admin"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: TODOS },
+  { href: "/leads", label: "Leads", icon: Users, roles: TODOS },
+  { href: "/chat", label: "Chat IA", icon: MessageSquare, roles: TODOS },
+  { href: "/salesops", label: "Sales Ops", icon: Wallet, roles: ["closer", "admin"] },
+  { href: "/produtividade-sdr", label: "Produtividade SDR", icon: PhoneCall, roles: ["sdr", "admin"] },
 ];
 
 function NavContent({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
@@ -58,22 +50,6 @@ function NavContent({ role, onNavigate }: { role: Role; onNavigate?: () => void 
       <nav className="flex-1 space-y-1 px-3" aria-label="Navegação principal">
         {itens.map((item) => {
           const Icon = item.icon;
-          if (item.tipo === "em_breve") {
-            return (
-              <div
-                key={item.label}
-                aria-disabled="true"
-                title="Disponível em breve"
-                className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm text-texto-sec/60"
-              >
-                <Icon className="h-4 w-4 opacity-60" aria-hidden />
-                <span className="opacity-60">{item.label}</span>
-                <span className="ml-auto rounded-full border border-borda px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-texto-sec">
-                  Em breve
-                </span>
-              </div>
-            );
-          }
           const ativo = pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
