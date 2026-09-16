@@ -7,6 +7,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Ban,
   CalendarCheck2,
   Check,
   ChevronLeft,
@@ -24,6 +25,7 @@ import {
   PartyPopper,
   RefreshCw,
   Search,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
@@ -36,6 +38,7 @@ import {
   type Ciclo,
 } from "@/lib/sdr/ciclo";
 import {
+  agruparPorDono,
   altoValorPendente,
   baseDeLevantaram,
   contarPorTier,
@@ -46,18 +49,22 @@ import {
   formatarPct,
   linkWhatsApp,
   MAX_DIAS_INTERVALO,
+  opcoesDeDono,
   ordenarPendentes,
   pct,
   TIERS,
   TIERS_ALTO_VALOR,
+  todosDesqualificados,
   validarIntervalo,
+  type CampoOrdenacao,
   type LeadPendente,
+  type OpcaoDono,
   type Ordenacao,
   type OportunidadesResponse,
   type TierChave,
 } from "@/lib/sdr/oportunidades";
 import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
-import { MqlBadge } from "@/components/domain/Badges";
+import { DonoBadge, MqlBadge } from "@/components/domain/Badges";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -73,6 +80,7 @@ import { KpiChip } from "./KpiChip";
 // ---------------------------------------------------------------------------
 
 type ModoPeriodo = "ciclo" | "intervalo";
+type Visao = "lista" | "por_sdr";
 const TAMANHO_PAGINA = 50;
 const CLASSE_INPUT = "h-9 rounded-lg border bg-painel-claro px-2 text-sm text-texto";
 
@@ -102,6 +110,8 @@ export function LevantouMaoPanel() {
 
   // --- Filtros client-side --------------------------------------------------
   const [tiersSel, setTiersSel] = useState<TierChave[]>([]);
+  const [donosSel, setDonosSel] = useState<string[]>([]);
+  const [visao, setVisao] = useState<Visao>("lista");
   const [busca, setBusca] = useState("");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>(null);
   const [pagina, setPagina] = useState(1);
@@ -110,9 +120,21 @@ export function LevantouMaoPanel() {
 
   const leads = useMemo(() => data?.leads ?? [], [data]);
   const contagem = useMemo(() => contarPorTier(leads), [leads]);
+  const opcoesDono = useMemo(() => opcoesDeDono(leads, data?.por_dono), [leads, data]);
   const filtrados = useMemo(
-    () => ordenarPendentes(filtrarPendentes(leads, { tiers: tiersSel, busca }), ordenacao),
-    [leads, tiersSel, busca, ordenacao],
+    () =>
+      ordenarPendentes(
+        filtrarPendentes(leads, { tiers: tiersSel, donos: donosSel, busca }),
+        ordenacao,
+      ),
+    [leads, tiersSel, donosSel, busca, ordenacao],
+  );
+  // "Por SDR": seções a partir do MESMO recorte filtrado, na ordem do backend
+  // (tier desc) — a ordenação por coluna não se aplica nesta visão.
+  const grupos = useMemo(
+    () =>
+      agruparPorDono(filtrarPendentes(leads, { tiers: tiersSel, donos: donosSel, busca })),
+    [leads, tiersSel, donosSel, busca],
   );
   const multiEvento = (data?.eventos.length ?? 0) > 1;
   const selecionado = useMemo(
@@ -120,28 +142,34 @@ export function LevantouMaoPanel() {
     [leads, selecionadoId],
   );
 
-  useEffect(() => setPagina(1), [tiersSel, busca, ordenacao, data]);
+  useEffect(() => setPagina(1), [tiersSel, donosSel, busca, ordenacao, data]);
 
   function alternarTier(chave: TierChave) {
     setTiersSel((atual) =>
       atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave],
     );
   }
+  function alternarDono(chave: string) {
+    setDonosSel((atual) =>
+      atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave],
+    );
+  }
   const soAltoValor =
     tiersSel.length === TIERS_ALTO_VALOR.length && TIERS_ALTO_VALOR.every((t) => tiersSel.includes(t));
 
-  function alternarOrdenacao(campo: "nome" | "tier") {
+  function alternarOrdenacao(campo: CampoOrdenacao) {
+    // Nome e dono começam em asc; tier começa em desc (melhor primeiro).
+    const inicial = campo === "tier" ? "desc" : "asc";
+    const oposta = inicial === "asc" ? "desc" : "asc";
     setOrdenacao((atual) => {
-      if (!atual || atual.campo !== campo) return { campo, direcao: campo === "nome" ? "asc" : "desc" };
-      if (atual.direcao === (campo === "nome" ? "asc" : "desc")) {
-        return { campo, direcao: campo === "nome" ? "desc" : "asc" };
-      }
+      if (!atual || atual.campo !== campo) return { campo, direcao: inicial };
+      if (atual.direcao === inicial) return { campo, direcao: oposta };
       return null; // terceiro clique volta à ordem do backend
     });
   }
 
   function exportarCsv() {
-    const csv = "﻿" + csvDePendentes(filtrados, multiEvento);
+    const csv = "﻿" + csvDePendentes(filtrados);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -172,27 +200,15 @@ export function LevantouMaoPanel() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            role="radiogroup"
-            aria-label="Modo do período"
-            className="flex gap-1 rounded-lg border border-borda bg-painel p-0.5"
-          >
-            {(["ciclo", "intervalo"] as ModoPeriodo[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={modo === m}
-                onClick={() => setModo(m)}
-                className={cn(
-                  "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                  modo === m ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
-                )}
-              >
-                {m === "ciclo" ? "Ciclo" : "Intervalo"}
-              </button>
-            ))}
-          </div>
+          <Alternador<ModoPeriodo>
+            rotulo="Modo do período"
+            valor={modo}
+            onChange={setModo}
+            opcoes={[
+              { valor: "ciclo", label: "Ciclo" },
+              { valor: "intervalo", label: "Intervalo" },
+            ]}
+          />
 
           {modo === "ciclo" ? (
             <CicloSelect
@@ -248,6 +264,14 @@ export function LevantouMaoPanel() {
         <Carregando />
       ) : isError || !data ? (
         <ErroOportunidades error={error} onRetry={() => refetch()} />
+      ) : todosDesqualificados(data.totais) ? (
+        <Card>
+          <EmptyState
+            icon={Ban}
+            titulo="Nenhum lead ativo neste ciclo"
+            descricao={`${data.totais.desqualificados} ${data.totais.desqualificados === 1 ? "contato foi desqualificado" : "contatos foram desqualificados"} na Clint e ${data.totais.desqualificados === 1 ? "saiu" : "saíram"} da base. Tag consultada: ${data.eventos.join(", ")}.`}
+          />
+        </Card>
       ) : data.totais.no_evento === 0 ? (
         <Card>
           <EmptyState
@@ -290,6 +314,12 @@ export function LevantouMaoPanel() {
                     onAltoValor={() => setTiersSel(soAltoValor ? [] : [...TIERS_ALTO_VALOR])}
                     onLimpar={() => setTiersSel([])}
                   />
+                  <FiltroDono
+                    opcoes={opcoesDono}
+                    selecionados={donosSel}
+                    onAlternar={alternarDono}
+                    onLimpar={() => setDonosSel([])}
+                  />
                   <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
                 </CardContent>
               </Card>
@@ -311,27 +341,38 @@ export function LevantouMaoPanel() {
                   }
                 />
                 <CardContent className="space-y-3">
-                  <div className="relative max-w-sm">
-                    <Search
-                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
-                      aria-hidden
-                    />
-                    <input
-                      type="search"
-                      value={busca}
-                      onChange={(e) => setBusca(e.target.value)}
-                      placeholder="Buscar por nome, e-mail ou telefone"
-                      aria-label="Buscar pendente"
-                      className="h-9 w-full rounded-lg border border-borda bg-noite pl-9 pr-3 text-sm text-texto placeholder:text-texto-sec/70"
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="relative w-full max-w-sm">
+                      <Search
+                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
+                        aria-hidden
+                      />
+                      <input
+                        type="search"
+                        value={busca}
+                        onChange={(e) => setBusca(e.target.value)}
+                        placeholder="Buscar por nome, e-mail ou telefone"
+                        aria-label="Buscar pendente"
+                        className="h-9 w-full rounded-lg border border-borda bg-noite pl-9 pr-3 text-sm text-texto placeholder:text-texto-sec/70"
+                      />
+                    </div>
+                    <Alternador<Visao>
+                      rotulo="Visão da lista"
+                      valor={visao}
+                      onChange={setVisao}
+                      opcoes={[
+                        { valor: "lista", label: "Lista" },
+                        { valor: "por_sdr", label: "Por SDR" },
+                      ]}
                     />
                   </div>
 
                   {filtrados.length === 0 ? (
                     <EmptyState
                       titulo="Nenhum pendente neste recorte"
-                      descricao="Ajuste os chips de MQL ou a busca."
+                      descricao="Ajuste os chips de MQL, de dono ou a busca."
                     />
-                  ) : (
+                  ) : visao === "lista" ? (
                     <ListaPendentes
                       leads={filtrados}
                       pagina={pagina}
@@ -341,6 +382,38 @@ export function LevantouMaoPanel() {
                       onOrdenar={alternarOrdenacao}
                       onAbrir={setSelecionadoId}
                     />
+                  ) : (
+                    <div className="space-y-5">
+                      {grupos.map((g) => (
+                        <section key={g.chave} aria-label={`Pendentes de ${g.nome}`}>
+                          <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borda/60 pb-1.5">
+                            <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                              <UserRound className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
+                              {g.nome}
+                            </h3>
+                            <span className="text-xs text-texto-sec">
+                              <span className="font-semibold tabular-nums text-texto">{g.leads.length}</span>{" "}
+                              {g.leads.length === 1 ? "pendente" : "pendentes"}
+                              {" · "}
+                              <span className="font-semibold tabular-nums text-texto">{g.altoValor}</span> alto
+                              valor
+                            </span>
+                          </header>
+                          <ListaPendentes
+                            leads={g.leads}
+                            pagina={1}
+                            onPagina={() => {}}
+                            multiEvento={multiEvento}
+                            ordenacao={null}
+                            onOrdenar={() => {}}
+                            onAbrir={setSelecionadoId}
+                            ordenavel={false}
+                            paginar={false}
+                            semColunaDono
+                          />
+                        </section>
+                      ))}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -444,21 +517,28 @@ function Kpis({ data }: { data: OportunidadesResponse }) {
   const t = data.totais;
   const altoValor = altoValorPendente(data.leads);
   const temAssistiram = t.assistiram != null;
+  const temDesqualificados = t.desqualificados != null;
   const base = baseDeLevantaram(t);
   const nEventos = `${data.eventos.length} ${data.eventos.length === 1 ? "evento" : "eventos"}`;
+  const totalCards = 5 + (temAssistiram ? 1 : 0) + (temDesqualificados ? 1 : 0);
+  const colunasXl = { 5: "xl:grid-cols-5", 6: "xl:grid-cols-6", 7: "xl:grid-cols-7" }[totalCards];
   return (
-    <div
-      className={cn(
-        "grid grid-cols-2 gap-3 sm:grid-cols-3",
-        temAssistiram ? "xl:grid-cols-6" : "xl:grid-cols-5",
-      )}
-    >
+    <div className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3", colunasXl)}>
       <KpiChip
         icon={Users}
         rotulo={temAssistiram ? "Inscritos" : "No evento"}
         valor={String(t.no_evento)}
         detalhe={temAssistiram ? `tag do evento · ${nEventos}` : nEventos}
       />
+      {temDesqualificados && (
+        <KpiChip
+          icon={Ban}
+          tom="neutro"
+          rotulo="Desqualificados"
+          valor={String(t.desqualificados)}
+          detalhe="fora da base · conferência"
+        />
+      )}
       {temAssistiram && (
         <KpiChip
           icon={Eye}
@@ -539,6 +619,51 @@ function Funil({ totais }: { totais: OportunidadesResponse["totais"] }) {
 
 // --- Filtro por MQL --------------------------------------------------------------
 
+// Grupo de chips multi-seleção (MQL e dono usam o MESMO componente). Nenhum
+// selecionado = todos. `classeAtivo` permite a cor por tier; sem ela, o chip
+// ativo usa o neutro do tema.
+type OpcaoChip = { chave: string; label: string; contagem: number; classeAtivo?: string };
+
+function Chips({
+  rotulo,
+  opcoes,
+  selecionados,
+  onAlternar,
+  children,
+}: {
+  rotulo: string;
+  opcoes: OpcaoChip[];
+  selecionados: readonly string[];
+  onAlternar: (chave: string) => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={rotulo}>
+      {opcoes.map((o) => {
+        const ativo = selecionados.includes(o.chave);
+        return (
+          <button
+            key={o.chave}
+            type="button"
+            aria-pressed={ativo}
+            onClick={() => onAlternar(o.chave)}
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+              ativo
+                ? (o.classeAtivo ?? "border-azul/60 bg-azul/15 text-azul-claro")
+                : "border-borda text-texto-sec hover:text-texto",
+              o.contagem === 0 && !ativo && "opacity-50",
+            )}
+          >
+            {o.label} <span className="tabular-nums">({o.contagem})</span>
+          </button>
+        );
+      })}
+      {children}
+    </div>
+  );
+}
+
 function FiltroMql({
   contagem,
   selecionados,
@@ -555,25 +680,17 @@ function FiltroMql({
   onLimpar: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filtrar por MQL">
-      {TIERS.map((t) => {
-        const ativo = selecionados.includes(t.chave);
-        return (
-          <button
-            key={t.chave}
-            type="button"
-            aria-pressed={ativo}
-            onClick={() => onAlternar(t.chave)}
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-              ativo ? t.chipAtivo : "border-borda text-texto-sec hover:text-texto",
-              contagem[t.chave] === 0 && !ativo && "opacity-50",
-            )}
-          >
-            {t.label} <span className="tabular-nums">({contagem[t.chave]})</span>
-          </button>
-        );
-      })}
+    <Chips
+      rotulo="Filtrar por MQL"
+      opcoes={TIERS.map((t) => ({
+        chave: t.chave,
+        label: t.label,
+        contagem: contagem[t.chave],
+        classeAtivo: t.chipAtivo,
+      }))}
+      selecionados={selecionados}
+      onAlternar={(chave) => onAlternar(chave as TierChave)}
+    >
       <span className="mx-1 h-4 w-px bg-borda" aria-hidden />
       <button
         type="button"
@@ -598,6 +715,82 @@ function FiltroMql({
           Limpar
         </button>
       )}
+    </Chips>
+  );
+}
+
+// Chips de dono (SDR). Contagens de totais.por_dono; "Sem dono" já vem por último.
+function FiltroDono({
+  opcoes,
+  selecionados,
+  onAlternar,
+  onLimpar,
+}: {
+  opcoes: OpcaoDono[];
+  selecionados: string[];
+  onAlternar: (chave: string) => void;
+  onLimpar: () => void;
+}) {
+  if (opcoes.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+        <UserRound className="h-3.5 w-3.5" aria-hidden />
+        Dono:
+      </span>
+      <Chips
+        rotulo="Filtrar por dono (SDR)"
+        opcoes={opcoes.map((o) => ({ chave: o.chave, label: o.nome, contagem: o.pendentes }))}
+        selecionados={selecionados}
+        onAlternar={onAlternar}
+      >
+        {selecionados.length > 0 && (
+          <button
+            type="button"
+            onClick={onLimpar}
+            className="text-xs text-texto-sec underline-offset-2 hover:text-texto hover:underline"
+          >
+            Limpar
+          </button>
+        )}
+      </Chips>
+    </div>
+  );
+}
+
+// Controle segmentado de duas ou mais opções (Ciclo | Intervalo, Lista | Por SDR).
+function Alternador<T extends string>({
+  rotulo,
+  valor,
+  onChange,
+  opcoes,
+}: {
+  rotulo: string;
+  valor: T;
+  onChange: (v: T) => void;
+  opcoes: { valor: T; label: string }[];
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={rotulo}
+      className="flex gap-1 rounded-lg border border-borda bg-painel p-0.5"
+    >
+      {opcoes.map((o) => (
+        <button
+          key={o.valor}
+          type="button"
+          role="radio"
+          aria-checked={valor === o.valor}
+          onClick={() => onChange(o.valor)}
+          className={cn(
+            "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+            valor === o.valor ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -761,6 +954,7 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
             <p className="truncate text-base font-semibold text-texto">{lead.nome}</p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <MqlBadge lead={lead} size="sm" />
+              <DonoBadge dono={lead.dono} size="sm" />
               {lead.evento_tag && <span className="text-xs text-texto-sec">{lead.evento_tag}</span>}
             </div>
           </div>
@@ -775,6 +969,20 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
+          <LinhaDetalhe rotulo="Negócio na Clint">
+            {lead.url_clint ? (
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <LinkClint url={lead.url_clint} destaque />
+                <span className="text-texto-sec">
+                  {lead.etapa ? `Etapa: ${lead.etapa}` : "Etapa não informada"}
+                  {lead.dono ? ` · Dono: ${lead.dono.nome}` : " · Sem dono"}
+                </span>
+              </span>
+            ) : (
+              <span className="text-texto-sec">Sem negócio na Clint para este contato.</span>
+            )}
+          </LinhaDetalhe>
+
           <LinhaDetalhe rotulo="Ficha no Mapa de Calor">
             {lead.lead_id ? (
               <Link
@@ -860,6 +1068,28 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
   );
 }
 
+// "Abrir na Clint": usa EXATAMENTE a url_clint recebida (o front nunca monta
+// URL). Sem url → não renderiza.
+function LinkClint({ url, destaque = false }: { url: string | null | undefined; destaque?: boolean }) {
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Abrir na Clint"
+      title="Abrir na Clint"
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md font-medium text-azul-claro transition-colors hover:bg-azul/10",
+        destaque ? "border border-azul/40 bg-azul/10 px-3 py-1.5 text-sm" : "p-1 text-xs",
+      )}
+    >
+      <ExternalLink className={destaque ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden />
+      {destaque && "Clint"}
+    </a>
+  );
+}
+
 function Tags({ tags }: { tags: string[] | null | undefined }) {
   const lista = tags ?? [];
   if (lista.length === 0) return <span className="text-texto-sec/50">—</span>;
@@ -906,9 +1136,9 @@ function CabecalhoOrdenavel({
   onOrdenar,
 }: {
   rotulo: string;
-  campo: "nome" | "tier";
+  campo: CampoOrdenacao;
   ordenacao: Ordenacao;
-  onOrdenar: (c: "nome" | "tier") => void;
+  onOrdenar: (c: CampoOrdenacao) => void;
 }) {
   const ativo = ordenacao?.campo === campo;
   const Icone = !ativo ? ArrowUpDown : ordenacao.direcao === "asc" ? ArrowUp : ArrowDown;
@@ -936,16 +1166,29 @@ function ListaPendentes({
   ordenacao,
   onOrdenar,
   onAbrir,
+  ordenavel = true,
+  paginar: permitePaginar = true,
+  semColunaDono = false,
 }: {
   leads: LeadPendente[];
   pagina: number;
   onPagina: (p: number) => void;
   multiEvento: boolean;
   ordenacao: Ordenacao;
-  onOrdenar: (c: "nome" | "tier") => void;
+  onOrdenar: (c: CampoOrdenacao) => void;
   onAbrir: (id: string) => void;
+  // "Por SDR": ordem fixa (tier desc), sem paginação e sem a coluna Dono (é o título da seção).
+  ordenavel?: boolean;
+  paginar?: boolean;
+  semColunaDono?: boolean;
 }) {
-  const paginar = leads.length > TAMANHO_PAGINA;
+  const paginar = permitePaginar && leads.length > TAMANHO_PAGINA;
+  const th = (rotulo: string, campo: CampoOrdenacao) =>
+    ordenavel ? (
+      <CabecalhoOrdenavel rotulo={rotulo} campo={campo} ordenacao={ordenacao} onOrdenar={onOrdenar} />
+    ) : (
+      <span className="font-medium">{rotulo}</span>
+    );
   const totalPaginas = Math.max(1, Math.ceil(leads.length / TAMANHO_PAGINA));
   const paginaAtual = Math.min(pagina, totalPaginas);
   const visiveis = paginar
@@ -959,12 +1202,9 @@ function ListaPendentes({
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-borda text-xs text-texto-sec">
-              <th className="px-2 py-2 text-left">
-                <CabecalhoOrdenavel rotulo="Nome" campo="nome" ordenacao={ordenacao} onOrdenar={onOrdenar} />
-              </th>
-              <th className="px-2 py-2 text-left">
-                <CabecalhoOrdenavel rotulo="MQL" campo="tier" ordenacao={ordenacao} onOrdenar={onOrdenar} />
-              </th>
+              <th className="px-2 py-2 text-left">{th("Nome", "nome")}</th>
+              <th className="px-2 py-2 text-left">{th("MQL", "tier")}</th>
+              {!semColunaDono && <th className="px-2 py-2 text-left">{th("Dono", "dono")}</th>}
               {multiEvento && <th className="px-2 py-2 text-left font-medium">Evento</th>}
               <th className="px-2 py-2 text-left font-medium">Telefone</th>
               <th className="px-2 py-2 text-left font-medium">E-mail</th>
@@ -981,21 +1221,29 @@ function ListaPendentes({
                 <td className="px-2 py-2">
                   <MqlBadge lead={l} size="sm" />
                 </td>
+                {!semColunaDono && (
+                  <td className="px-2 py-2">
+                    <DonoBadge dono={l.dono} size="sm" />
+                  </td>
+                )}
                 {multiEvento && (
                   <td className="whitespace-nowrap px-2 py-2 text-xs text-texto-sec">
                     {l.evento_tag ?? "—"}
                   </td>
                 )}
                 <td className="whitespace-nowrap px-2 py-2">
-                  {l.telefone ? (
-                    <span className="inline-flex items-center gap-0.5">
-                      <span className="tabular-nums text-texto">{l.telefone}</span>
-                      <BotaoCopiar valor={l.telefone} rotulo="telefone" />
-                      <LinkWhatsApp telefone={l.telefone} />
-                    </span>
-                  ) : (
-                    <span className="text-texto-sec/50">—</span>
-                  )}
+                  <span className="inline-flex items-center gap-0.5">
+                    {l.telefone ? (
+                      <>
+                        <span className="tabular-nums text-texto">{l.telefone}</span>
+                        <BotaoCopiar valor={l.telefone} rotulo="telefone" />
+                        <LinkWhatsApp telefone={l.telefone} />
+                      </>
+                    ) : (
+                      <span className="text-texto-sec/50">—</span>
+                    )}
+                    <LinkClint url={l.url_clint} />
+                  </span>
                 </td>
                 <td className="max-w-[240px] px-2 py-2">
                   {l.email ? (
@@ -1030,13 +1278,17 @@ function ListaPendentes({
                 <NomePendente lead={l} onAbrir={onAbrir} />
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <MqlBadge lead={l} size="sm" />
+                  {!semColunaDono && <DonoBadge dono={l.dono} size="sm" />}
                   {multiEvento && l.evento_tag && (
                     <span className="text-[11px] text-texto-sec">{l.evento_tag}</span>
                   )}
                   <EntrouEm iso={l.created_at} />
                 </div>
               </div>
-              <LinkWhatsApp telefone={l.telefone} destaque />
+              <span className="flex shrink-0 items-center gap-1.5">
+                <LinkWhatsApp telefone={l.telefone} destaque />
+                <LinkClint url={l.url_clint} destaque />
+              </span>
             </div>
             <div className="mt-2 space-y-1 text-xs">
               {l.telefone && (

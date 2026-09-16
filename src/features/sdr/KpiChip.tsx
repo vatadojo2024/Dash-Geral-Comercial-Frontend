@@ -13,6 +13,8 @@ export function KpiChip({
   valor,
   detalhe,
   destaque = false,
+  // "neutro": número de conferência (cinza), não de ação.
+  tom = "padrao",
   className,
 }: {
   icon: LucideIcon;
@@ -20,23 +22,34 @@ export function KpiChip({
   valor: string;
   detalhe?: string;
   destaque?: boolean;
+  tom?: "padrao" | "neutro";
   className?: string;
 }) {
+  const neutro = tom === "neutro" && !destaque;
   return (
     <div
       className={cn(
         "flex items-center gap-3 rounded-xl border px-4 py-3",
         destaque ? "border-laranja/50 bg-laranja/10" : "border-borda bg-painel",
+        neutro && "border-dashed",
         className,
       )}
     >
       <Icon
-        className={cn("h-4 w-4 shrink-0", destaque ? "text-laranja" : "text-azul-claro")}
+        className={cn(
+          "h-4 w-4 shrink-0",
+          destaque ? "text-laranja" : neutro ? "text-cinza" : "text-azul-claro",
+        )}
         aria-hidden
       />
       <div className="min-w-0">
         <p className="text-xs text-texto-sec">{rotulo}</p>
-        <p className={cn("text-lg font-bold tabular-nums", destaque ? "text-laranja" : "text-texto")}>
+        <p
+          className={cn(
+            "text-lg font-bold tabular-nums",
+            destaque ? "text-laranja" : neutro ? "text-cinza" : "text-texto",
+          )}
+        >
           {valor}
         </p>
         {detalhe && <p className="text-[11px] text-texto-sec">{detalhe}</p>}

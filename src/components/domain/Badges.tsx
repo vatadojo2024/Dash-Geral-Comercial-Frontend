@@ -2,8 +2,33 @@ import { AlertTriangle, Bot, Lock, Star } from "lucide-react";
 import type { Etapa, Temperatura } from "@/lib/api/contracts";
 import { etapaLabel, TEMPERATURA_CONFIG } from "@/lib/formatters/score";
 import { labelTrava } from "@/lib/formatters/labels";
-import { tierDoLead, type LeadPendente } from "@/lib/sdr/oportunidades";
+import { nomeDono, tierDoLead, type LeadPendente } from "@/lib/sdr/oportunidades";
 import { cn } from "@/lib/utils/cn";
+
+// Dono do negócio na Clint (SDR responsável). null → "Sem dono", neutro e
+// tracejado, no mesmo estilo da etapa nula (EtapaBadge).
+export function DonoBadge({
+  dono,
+  size = "md",
+}: {
+  dono: LeadPendente["dono"];
+  size?: "sm" | "md";
+}) {
+  return (
+    <span
+      title={dono?.email ?? undefined}
+      className={cn(
+        "inline-flex items-center whitespace-nowrap rounded-full border font-medium",
+        dono
+          ? "border-borda bg-painel-claro text-texto-sec"
+          : "border-dashed border-borda bg-transparent text-texto-sec/80",
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+      )}
+    >
+      {nomeDono(dono)}
+    </span>
+  );
+}
 
 // Classificação MQL (tags da Clint: UMQL+ … MQL, ou sem classificação). Cor
 // pela escala de temperatura do tema (config em lib/sdr/oportunidades) — o

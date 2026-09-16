@@ -80,7 +80,20 @@ export type LeadPendenteMock = {
   tags: string[];
   created_at: string | null;
   lead_id: string | null;
+  clint_deal_id: string | null;
+  url_clint: string | null;
+  etapa: string | null;
+  dono: { id: string; nome: string; email: string | null } | null;
 };
+
+// Donos (SDRs) do mock. null = negócio sem dono.
+const DONOS: (LeadPendenteMock["dono"] | null)[] = [
+  { id: "u-benhur", nome: "Benhur Ramos", email: "benhur@vatadojo.com.br" },
+  { id: "u-glaucio", nome: "Glaucio Portela", email: "glaucio@vatadojo.com.br" },
+  { id: "u-delrue", nome: "Guilherme Delrue", email: null },
+  null,
+];
+const ETAPAS_CLINT = ["Prospecção", "Qualificação", "Contato feito", "Sem resposta"];
 
 export type OportunidadesMock = {
   de: string;
@@ -88,11 +101,13 @@ export type OportunidadesMock = {
   eventos: string[];
   totais: {
     no_evento: number;
+    desqualificados: number;
     assistiram: number;
     levantaram_mao: number;
     agendaram: number;
     pendentes: number;
   };
+  por_dono: { dono_id: string | null; dono_nome: string; pendentes: number; alto_valor: number }[];
   leads: LeadPendenteMock[];
   gerado_em: string;
   cache: "hit" | "miss";
@@ -108,10 +123,18 @@ export function mockOportunidades(
   const eventos = tagsEventoNoIntervalo(de, ate);
   const base = { de, ate, eventos, gerado_em: new Date().toISOString(), cache: "miss" as const };
 
-  if (eventos.length === 0 || simular === "sem_contatos") {
+  if (eventos.length === 0 || simular === "sem_contatos" || simular === "desqualificados") {
     return {
       ...base,
-      totais: { no_evento: 0, assistiram: 0, levantaram_mao: 0, agendaram: 0, pendentes: 0 },
+      totais: {
+        no_evento: 0,
+        desqualificados: simular === "desqualificados" ? 9 * eventos.length : 0,
+        assistiram: 0,
+        levantaram_mao: 0,
+        agendaram: 0,
+        pendentes: 0,
+      },
+      por_dono: [],
       leads: [],
     };
   }
@@ -120,11 +143,13 @@ export function mockOportunidades(
       ...base,
       totais: {
         no_evento: 214 * eventos.length,
+        desqualificados: 9 * eventos.length,
         assistiram: 120 * eventos.length,
         levantaram_mao: 38 * eventos.length,
         agendaram: 38 * eventos.length,
         pendentes: 0,
       },
+      por_dono: [],
       leads: [],
     };
   }
@@ -154,6 +179,16 @@ export function mockOportunidades(
         created_at: `${isoDaTag(evento)}T${String(9 + (i % 10)).padStart(2, "0")}:${String((i * 17) % 60).padStart(2, "0")}:00-03:00`,
         // 1 em cada 3 tem ficha no Mapa de Calor (ids do mock data_clients.json).
         lead_id: i % 3 === 0 ? `ld_${String((i % 40) + 1).padStart(4, "0")}` : null,
+        // 3 em 4 têm negócio na Clint (deal + url + etapa); dono só existe com negócio,
+        // e 1 em 4 negócios está sem dono.
+        ...(i % 4 === 3
+          ? { clint_deal_id: null, url_clint: null, etapa: null, dono: null }
+          : {
+              clint_deal_id: `deal-${1000 + i}`,
+              url_clint: `https://app.clint.digital/deal/deal-${1000 + i}`,
+              etapa: ETAPAS_CLINT[i % ETAPAS_CLINT.length],
+              dono: DONOS[i % 3],
+            }),
       });
       if (diasDepois > 0) {
         // Entrou alguns dias depois do evento (mantém ordem estável no mock).
@@ -176,11 +211,34 @@ export function mockOportunidades(
   const pendentes = leads.length;
   const agendaram = 22 * eventos.length;
   const levantaram = pendentes + agendaram;
-  const noEvento = 214 * eventos.length; // inscritos (tag WG)
+  const noEvento = 214 * eventos.length; // inscritos (tag WG), já sem desqualificados
   const assistiram = 120 * eventos.length; // Participou / Pós WG / Levantou a Mão
+  const desqualificados = 9 * eventos.length;
+
+  // por_dono: pendentes desc, "Sem dono" por último (mesma regra do backend).
+  const porDono = new Map<string, { dono_id: string | null; dono_nome: string; pendentes: number; alto_valor: number }>();
+  for (const l of leads) {
+    const chave = l.dono?.id ?? "sem";
+    const atual = porDono.get(chave) ?? {
+      dono_id: l.dono?.id ?? null,
+      dono_nome: l.dono?.nome ?? "Sem dono",
+      pendentes: 0,
+      alto_valor: 0,
+    };
+    atual.pendentes += 1;
+    if (l.tier_rank >= 4) atual.alto_valor += 1;
+    porDono.set(chave, atual);
+  }
+  const por_dono = [...porDono.values()].sort((a, b) => {
+    if (a.dono_id === null) return 1;
+    if (b.dono_id === null) return -1;
+    return b.pendentes - a.pendentes || a.dono_nome.localeCompare(b.dono_nome, "pt-BR");
+  });
+
   return {
     ...base,
-    totais: { no_evento: noEvento, assistiram, levantaram_mao: levantaram, agendaram, pendentes },
+    totais: { no_evento: noEvento, desqualificados, assistiram, levantaram_mao: levantaram, agendaram, pendentes },
+    por_dono,
     leads,
   };
 }

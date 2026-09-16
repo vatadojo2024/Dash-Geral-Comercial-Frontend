@@ -27,9 +27,29 @@ export const LeadPendenteSchema = z
     // levantou a mão não passa pelo webhook da Clint). Opcional: backend antigo
     // não manda.
     lead_id: z.string().nullish(),
+    // --- V2 (todos opcionais: backend V1 segue válido) ---
+    // Negócio escolhido na Clint e o card dele. url_clint vem PRONTA do backend;
+    // o front nunca monta a URL. null = contato sem negócio.
+    clint_deal_id: z.string().nullish(),
+    url_clint: z.string().nullish(),
+    // Etapa do negócio na Clint (ex.: "Prospecção").
+    etapa: z.string().nullish(),
+    // Dono do negócio (SDR responsável). null = "Sem dono".
+    dono: z
+      .object({ id: z.string().nullish(), nome: z.string(), email: z.string().nullish() })
+      .nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
+
+// Pendentes por dono (V2), já ordenado pelo backend: pendentes desc, "Sem dono" último.
+export const DonoAgregadoSchema = z.object({
+  dono_id: z.string().nullish(),
+  dono_nome: z.string(),
+  pendentes: z.number().int(),
+  alto_valor: z.number().int(),
+});
+export type DonoAgregado = z.infer<typeof DonoAgregadoSchema>;
 
 export const OportunidadesResponseSchema = z.object({
   de: z.string(),
@@ -41,10 +61,14 @@ export const OportunidadesResponseSchema = z.object({
     // Quem ASSISTIU (tags "Participou" / "Pós WG" / "Levantou a Mão"). Opcional:
     // backend anterior à correção de set/2026 não manda — a UI cai em no_evento.
     assistiram: z.number().int().nullish(),
+    // V2: contatos removidos da base por estarem em "Desqualificado" (conferência).
+    // no_evento já vem SEM eles.
+    desqualificados: z.number().int().nullish(),
     levantaram_mao: z.number().int(),
     agendaram: z.number().int(),
     pendentes: z.number().int(),
   }),
+  por_dono: z.array(DonoAgregadoSchema).nullish(),
   leads: z.array(LeadPendenteSchema),
   gerado_em: z.string(),
   cache: z.enum(["hit", "miss"]).nullish(),
@@ -214,6 +238,84 @@ export function altoValorPendente(leads: LeadPendente[]): number {
 }
 
 // ---------------------------------------------------------------------------
+// Dono (SDR responsável pelo negócio na Clint) — V2.
+// ---------------------------------------------------------------------------
+
+export const SEM_DONO_CHAVE = "sem";
+export const SEM_DONO_LABEL = "Sem dono";
+
+// Chave estável do dono para filtro/agrupamento: id do dono; sem id, o nome;
+// sem dono, "sem".
+export function chaveDono(dono: LeadPendente["dono"]): string {
+  if (!dono) return SEM_DONO_CHAVE;
+  return dono.id ?? `nome:${dono.nome}`;
+}
+
+export function nomeDono(dono: LeadPendente["dono"]): string {
+  return dono?.nome?.trim() || SEM_DONO_LABEL;
+}
+
+export type OpcaoDono = { chave: string; nome: string; pendentes: number; altoValor: number };
+
+// Chips de dono. Fonte preferida: totais.por_dono (contagens do backend). Sem
+// ele (backend V1), deriva dos próprios leads. Sempre pendentes desc, "Sem dono"
+// por último.
+export function opcoesDeDono(
+  leads: LeadPendente[],
+  porDono?: DonoAgregado[] | null,
+): OpcaoDono[] {
+  const opcoes: OpcaoDono[] = [];
+  if (porDono && porDono.length > 0) {
+    for (const d of porDono) {
+      opcoes.push({
+        chave: d.dono_id ?? (d.dono_nome === SEM_DONO_LABEL ? SEM_DONO_CHAVE : `nome:${d.dono_nome}`),
+        nome: d.dono_id || d.dono_nome !== SEM_DONO_LABEL ? d.dono_nome : SEM_DONO_LABEL,
+        pendentes: d.pendentes,
+        altoValor: d.alto_valor,
+      });
+    }
+  } else {
+    const mapa = new Map<string, OpcaoDono>();
+    for (const l of leads) {
+      const chave = chaveDono(l.dono);
+      const atual = mapa.get(chave) ?? { chave, nome: nomeDono(l.dono), pendentes: 0, altoValor: 0 };
+      atual.pendentes += 1;
+      if (ehAltoValor(l)) atual.altoValor += 1;
+      mapa.set(chave, atual);
+    }
+    opcoes.push(...mapa.values());
+  }
+  return opcoes.sort(compararDonos);
+}
+
+function compararDonos(a: { chave: string; pendentes: number; nome: string }, b: { chave: string; pendentes: number; nome: string }): number {
+  if (a.chave === SEM_DONO_CHAVE) return 1;
+  if (b.chave === SEM_DONO_CHAVE) return -1;
+  return b.pendentes - a.pendentes || a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+}
+
+export type GrupoDono = { chave: string; nome: string; leads: LeadPendente[]; altoValor: number };
+
+// Visão "Por SDR": uma seção por dono, pendentes desc, "Sem dono" por último.
+// Dentro de cada seção mantém a ordem recebida (a do backend: tier desc).
+export function agruparPorDono(leads: LeadPendente[]): GrupoDono[] {
+  const mapa = new Map<string, GrupoDono>();
+  for (const l of leads) {
+    const chave = chaveDono(l.dono);
+    const g = mapa.get(chave) ?? { chave, nome: nomeDono(l.dono), leads: [], altoValor: 0 };
+    g.leads.push(l);
+    if (ehAltoValor(l)) g.altoValor += 1;
+    mapa.set(chave, g);
+  }
+  return [...mapa.values()].sort((a, b) =>
+    compararDonos(
+      { chave: a.chave, pendentes: a.leads.length, nome: a.nome },
+      { chave: b.chave, pendentes: b.leads.length, nome: b.nome },
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Filtros e ordenação (client-side).
 // ---------------------------------------------------------------------------
 
@@ -231,6 +333,8 @@ function soDigitos(s: string | null | undefined): string {
 export type FiltroPendentes = {
   // Nenhum tier selecionado = todos.
   tiers: readonly TierChave[];
+  // Chaves de dono (chaveDono). Nenhum selecionado = todos. Aplica em série com tiers.
+  donos?: readonly string[];
   busca: string;
 };
 
@@ -238,10 +342,12 @@ export type FiltroPendentes = {
 // dígitos contam, então "21 9123" casa com "+5521 9123…").
 export function filtrarPendentes(leads: LeadPendente[], f: FiltroPendentes): LeadPendente[] {
   const tiers = new Set(f.tiers);
+  const donos = new Set(f.donos ?? []);
   const termo = normalizar(f.busca.trim());
   const termoDigitos = soDigitos(termo);
   return leads.filter((l) => {
     if (tiers.size > 0 && !tiers.has(tierDoLead(l).chave)) return false;
+    if (donos.size > 0 && !donos.has(chaveDono(l.dono))) return false;
     if (!termo) return true;
     if (normalizar(l.nome).includes(termo)) return true;
     if (normalizar(l.email).includes(termo)) return true;
@@ -250,16 +356,24 @@ export function filtrarPendentes(leads: LeadPendente[], f: FiltroPendentes): Lea
   });
 }
 
-export type Ordenacao = { campo: "nome" | "tier"; direcao: "asc" | "desc" } | null;
+export type CampoOrdenacao = "nome" | "tier" | "dono";
+export type Ordenacao = { campo: CampoOrdenacao; direcao: "asc" | "desc" } | null;
 
 // null = ordem do backend (já correta). Ordenação estável: empate mantém a
-// ordem original.
+// ordem original. Por dono: alfabético, "Sem dono" SEMPRE no fim nas duas direções.
 export function ordenarPendentes(leads: LeadPendente[], ord: Ordenacao): LeadPendente[] {
   if (!ord) return leads;
   const sinal = ord.direcao === "asc" ? 1 : -1;
   return leads
     .map((l, i) => ({ l, i }))
     .sort((a, b) => {
+      if (ord.campo === "dono") {
+        const semA = !a.l.dono;
+        const semB = !b.l.dono;
+        if (semA !== semB) return semA ? 1 : -1;
+        const cmp = nomeDono(a.l.dono).localeCompare(nomeDono(b.l.dono), "pt-BR", { sensitivity: "base" });
+        return cmp !== 0 ? cmp * sinal : a.i - b.i;
+      }
       const cmp =
         ord.campo === "nome"
           ? a.l.nome.localeCompare(b.l.nome, "pt-BR", { sensitivity: "base" })
@@ -316,30 +430,42 @@ export function linkWhatsApp(telefone: string | null | undefined): string | null
 }
 
 // CSV do recorte filtrado — separador ";" (abre certo no Excel pt-BR) e aspas
-// escapadas. A primeira linha é o cabeçalho.
-export function csvDePendentes(leads: LeadPendente[], comEvento: boolean): string {
+// escapadas. Colunas fixas na ordem da spec V2.
+export function csvDePendentes(leads: LeadPendente[]): string {
   const cabecalho = [
-    "Nome",
-    "MQL",
-    ...(comEvento ? ["Evento"] : []),
-    "Telefone",
-    "E-mail",
-    "Entrou em",
-    "Tags",
+    "nome",
+    "mql",
+    "dono",
+    "etapa",
+    "telefone",
+    "email",
+    "evento",
+    "entrou_em",
+    "url_clint",
+    "tags",
   ];
   const celula = (v: string | null | undefined) => `"${(v ?? "").replace(/"/g, '""')}"`;
   const linhas = leads.map((l) =>
     [
       l.nome,
       tierDoLead(l).label,
-      ...(comEvento ? [l.evento_tag ?? ""] : []),
+      nomeDono(l.dono),
+      l.etapa ?? "",
       l.telefone ?? "",
       l.email ?? "",
+      l.evento_tag ?? "",
       l.created_at ?? "",
+      l.url_clint ?? "",
       (l.tags ?? []).join(", "),
     ]
       .map(celula)
       .join(";"),
   );
   return [cabecalho.map(celula).join(";"), ...linhas].join("\r\n");
+}
+
+// Estado "todos desqualificados": o ciclo tinha contatos, mas todos saíram da
+// base por "Desqualificado" — nenhum lead ativo para trabalhar.
+export function todosDesqualificados(t: TotaisOportunidades): boolean {
+  return t.no_evento === 0 && (t.desqualificados ?? 0) > 0;
 }

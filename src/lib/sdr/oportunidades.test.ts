@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  agruparPorDono,
   altoValorPendente,
+  chaveDono,
+  opcoesDeDono,
+  todosDesqualificados,
   baseDeLevantaram,
   etapasDoFunil,
   OportunidadesResponseSchema,
@@ -163,14 +167,26 @@ describe("percentuais, WhatsApp e CSV", () => {
     expect(linkWhatsApp("1234")).toBeNull();
     expect(linkWhatsApp(null)).toBeNull();
   });
-  it("CSV com cabeçalho, coluna Evento opcional e aspas escapadas", () => {
-    const csv = csvDePendentes([lead({ nome: 'Ana "Nina"', tags: ["Levantou a Mão", "MQL"] })], true);
-    const [cabecalho, linha] = csv.split("\r\n");
-    expect(cabecalho).toBe('"Nome";"MQL";"Evento";"Telefone";"E-mail";"Entrou em";"Tags"');
-    expect(linha).toBe(
-      '"Ana ""Nina""";"MQL";"WG - 08.09.26";"+5511999990001";"ana@ex.com";"2026-09-08T12:00:00Z";"Levantou a Mão, MQL"',
+  it("CSV V2: colunas fixas (nome, mql, dono, etapa, telefone, email, evento, entrou_em, url_clint, tags) e aspas escapadas", () => {
+    const csv = csvDePendentes([
+      lead({
+        nome: 'Ana "Nina"',
+        tags: ["Levantou a Mão", "MQL"],
+        dono: { id: "u1", nome: "Benhur Ramos", email: null },
+        etapa: "Prospecção",
+        url_clint: "https://app.clint.digital/deal/abc",
+      }),
+      lead({ clint_contact_id: "c2", nome: "Zé" }),
+    ]);
+    const [cabecalho, l1, l2] = csv.split("\r\n");
+    expect(cabecalho).toBe(
+      '"nome";"mql";"dono";"etapa";"telefone";"email";"evento";"entrou_em";"url_clint";"tags"',
     );
-    expect(csvDePendentes([lead({})], false).split("\r\n")[0]).not.toContain("Evento");
+    expect(l1).toBe(
+      '"Ana ""Nina""";"MQL";"Benhur Ramos";"Prospecção";"+5511999990001";"ana@ex.com";"WG - 08.09.26";"2026-09-08T12:00:00Z";"https://app.clint.digital/deal/abc";"Levantou a Mão, MQL"',
+    );
+    expect(l2).toContain('"Zé";"MQL";"Sem dono";"";');
+    expect(l2).toContain(';"";"Levantou a Mão, MQL"'); // url_clint vazia
   });
 });
 
@@ -209,5 +225,75 @@ describe("assistiram (opcional no contrato)", () => {
     ]);
     expect(etapasDoFunil(t)[0].rotulo).toBe("Inscritos");
     expect(baseDeLevantaram(t)).toEqual({ valor: 90, rotulo: "dos que assistiram" });
+  });
+});
+
+describe("dono (V2)", () => {
+  const benhur = { id: "u-benhur", nome: "Benhur Ramos", email: "b@x.com" };
+  const glaucio = { id: "u-glaucio", nome: "Glaucio Portela", email: null };
+  const leads = [
+    lead({ clint_contact_id: "1", nome: "Ana", tier: "UMQL", tier_rank: 5, dono: glaucio }),
+    lead({ clint_contact_id: "2", nome: "Bia", tier: "MQL", tier_rank: 1, dono: null }),
+    lead({ clint_contact_id: "3", nome: "Caio", tier: "HMQL", tier_rank: 4, dono: benhur }),
+    lead({ clint_contact_id: "4", nome: "Dudu", tier: "MQL", tier_rank: 1, dono: benhur }),
+    lead({ clint_contact_id: "5", nome: "Eva", tier: "SMQL", tier_rank: 3 }), // dono ausente (V1)
+  ];
+
+  it("chaveDono: id → nome → 'sem'", () => {
+    expect(chaveDono(benhur)).toBe("u-benhur");
+    expect(chaveDono({ id: null, nome: "X", email: null })).toBe("nome:X");
+    expect(chaveDono(null)).toBe("sem");
+    expect(chaveDono(undefined)).toBe("sem");
+  });
+
+  it("opcoesDeDono usa totais.por_dono quando vem, com 'Sem dono' por último", () => {
+    const op = opcoesDeDono(leads, [
+      { dono_id: null, dono_nome: "Sem dono", pendentes: 2, alto_valor: 0 },
+      { dono_id: "u-benhur", dono_nome: "Benhur Ramos", pendentes: 2, alto_valor: 1 },
+      { dono_id: "u-glaucio", dono_nome: "Glaucio Portela", pendentes: 1, alto_valor: 1 },
+    ]);
+    expect(op.map((o) => [o.chave, o.pendentes, o.altoValor])).toEqual([
+      ["u-benhur", 2, 1],
+      ["u-glaucio", 1, 1],
+      ["sem", 2, 0],
+    ]);
+  });
+
+  it("opcoesDeDono deriva dos leads sem por_dono (backend V1)", () => {
+    const op = opcoesDeDono(leads, null);
+    expect(op.map((o) => [o.chave, o.nome, o.pendentes, o.altoValor])).toEqual([
+      ["u-benhur", "Benhur Ramos", 2, 1],
+      ["u-glaucio", "Glaucio Portela", 1, 1],
+      ["sem", "Sem dono", 2, 0],
+    ]);
+  });
+
+  it("filtro por dono combina em série com MQL", () => {
+    expect(filtrarPendentes(leads, { tiers: [], donos: ["u-benhur"], busca: "" }).map((l) => l.nome)).toEqual(["Caio", "Dudu"]);
+    expect(filtrarPendentes(leads, { tiers: ["MQL"], donos: ["u-benhur"], busca: "" }).map((l) => l.nome)).toEqual(["Dudu"]);
+    expect(filtrarPendentes(leads, { tiers: [], donos: ["sem"], busca: "" }).map((l) => l.nome)).toEqual(["Bia", "Eva"]);
+    expect(filtrarPendentes(leads, { tiers: [], donos: [], busca: "" })).toHaveLength(5);
+  });
+
+  it("ordenação por dono: alfabética com 'Sem dono' no fim nas DUAS direções", () => {
+    expect(ordenarPendentes(leads, { campo: "dono", direcao: "asc" }).map((l) => l.nome)).toEqual(["Caio", "Dudu", "Ana", "Bia", "Eva"]);
+    expect(ordenarPendentes(leads, { campo: "dono", direcao: "desc" }).map((l) => l.nome)).toEqual(["Ana", "Caio", "Dudu", "Bia", "Eva"]);
+  });
+
+  it("agruparPorDono: seções por pendentes desc, 'Sem dono' último, ordem interna preservada", () => {
+    const g = agruparPorDono(leads);
+    expect(g.map((x) => [x.nome, x.leads.map((l) => l.nome), x.altoValor])).toEqual([
+      ["Benhur Ramos", ["Caio", "Dudu"], 1],
+      ["Glaucio Portela", ["Ana"], 1],
+      ["Sem dono", ["Bia", "Eva"], 0],
+    ]);
+  });
+
+  it("todosDesqualificados só quando no_evento = 0 e há desqualificados", () => {
+    const base = { levantaram_mao: 0, agendaram: 0, pendentes: 0 };
+    expect(todosDesqualificados({ ...base, no_evento: 0, desqualificados: 7 })).toBe(true);
+    expect(todosDesqualificados({ ...base, no_evento: 0, desqualificados: 0 })).toBe(false);
+    expect(todosDesqualificados({ ...base, no_evento: 0 })).toBe(false);
+    expect(todosDesqualificados({ ...base, no_evento: 3, desqualificados: 7 })).toBe(false);
   });
 });
