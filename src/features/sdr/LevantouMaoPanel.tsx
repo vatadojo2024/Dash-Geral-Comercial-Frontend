@@ -40,9 +40,11 @@ import {
   type Ciclo,
 } from "@/lib/sdr/ciclo";
 import {
+  acessaramDoTotal,
   agruparPorDono,
   altoValorPendente,
   baseDeLevantaram,
+  blocosDoCiclo,
   celulaMatriz,
   contarPorOrigem,
   contarPorTier,
@@ -55,7 +57,6 @@ import {
   viuReplayTambem,
   csvDePendentes,
   distribuicaoPorTier,
-  etapasDoFunil,
   filtrarPendentes,
   formatarPct,
   linkWhatsApp,
@@ -63,10 +64,13 @@ import {
   opcoesDeDono,
   ordenarPendentes,
   pct,
+  presencaIndisponivel,
   TIERS,
   TIERS_ALTO_VALOR,
   todosDesqualificados,
+  traduzirAvisos,
   validarIntervalo,
+  type BlocoFunil,
   type CampoOrdenacao,
   type ContagemOrigem,
   type LeadPendente,
@@ -317,6 +321,7 @@ export function LevantouMaoPanel() {
         </Card>
       ) : (
         <>
+          <FaixaAvisos avisos={data.avisos} />
           {data.matriz ? (
             <MatrizOrigem
               data={data}
@@ -326,7 +331,7 @@ export function LevantouMaoPanel() {
           ) : (
             <Kpis data={data} />
           )}
-          <Funil totais={data.totais} />
+          <Funil data={data} />
           {data.resgate && <FunilResgate resgate={data.resgate} />}
 
           {data.totais.pendentes === 0 || leads.length === 0 ? (
@@ -639,53 +644,99 @@ const COR_ETAPA: Record<string, string> = {
   pendentes: "bg-laranja/20 text-laranja",
 };
 
-type BlocoFunil = { chave: string; rotulo: string; valor: number; taxa: string | null };
-
-// Blocos proporcionais com a taxa de passagem entre eles. A ESCALA é de quem
-// chama (`base` = valor do primeiro bloco): o funil do ciclo e o do resgate
-// usam o mesmo componente, cada um com o seu denominador — nunca o mesmo eixo.
+// Blocos proporcionais com a passagem entre eles. A ESCALA é de quem chama
+// (`base` = valor do primeiro bloco): o funil do ciclo e o do resgate usam o
+// mesmo componente, cada um com o seu denominador — nunca o mesmo eixo.
+// Passagem (V3.1): porcentagem | "sem dado" | "verificar base" (acima de 100%
+// nunca vira número — é sinal de base errada, em âmbar e discreto).
 function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
   const base = blocos[0]?.valor || 1;
   return (
     <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-      {blocos.map((e, i) => (
-        <div key={e.chave} className="contents">
-          {i > 0 && (
+      {blocos.map((e, i) => {
+        const p = e.passagem;
+        return (
+          <div key={e.chave} className="contents">
+            {i > 0 && (
+              <div
+                className="flex shrink-0 items-center justify-center gap-1 px-1 text-xs font-medium text-texto-sec sm:flex-col sm:gap-0"
+                aria-label={
+                  !p
+                    ? undefined
+                    : p.tipo === "pct"
+                      ? `Taxa de passagem: ${p.texto}`
+                      : p.tipo === "sem_dado"
+                        ? "Taxa de passagem: sem dado"
+                        : "Taxa de passagem acima de 100%: verificar base"
+                }
+              >
+                <ArrowDown className="h-3.5 w-3.5 sm:hidden" aria-hidden />
+                <ChevronRight className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
+                {p?.tipo === "pct" && <span className="tabular-nums">{p.texto}</span>}
+                {p?.tipo === "sem_dado" && (
+                  <span
+                    className="whitespace-nowrap font-normal italic text-texto-sec/80"
+                    title="Um dos lados desta passagem não pode ser calculado neste período"
+                  >
+                    sem dado
+                  </span>
+                )}
+                {p?.tipo === "verificar" && (
+                  <span
+                    className="whitespace-nowrap rounded-full border border-laranja/40 bg-laranja/10 px-1.5 py-px text-[10px] font-medium text-laranja"
+                    title="Passagem acima de 100% — o degrau é maior que o anterior. A base consultada precisa ser verificada."
+                  >
+                    verificar base
+                  </span>
+                )}
+              </div>
+            )}
             <div
-              className="flex shrink-0 items-center justify-center px-1 text-xs font-medium text-texto-sec sm:flex-col"
-              aria-label={e.taxa ? `Taxa de passagem: ${e.taxa}` : undefined}
+              className={cn("min-w-0 rounded-lg px-3 py-2", COR_ETAPA[e.chave])}
+              style={{
+                flexGrow: Math.min(Math.max((e.valor ?? 0) / base, 0.18), 1),
+                flexBasis: 0,
+              }}
             >
-              <ArrowDown className="h-3.5 w-3.5 sm:hidden" aria-hidden />
-              <ChevronRight className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
-              {e.taxa && <span className="tabular-nums">{e.taxa}</span>}
+              <p className="truncate text-[11px] font-medium opacity-90">{e.rotulo}</p>
+              <p className="text-xl font-bold tabular-nums">{celulaMatriz(e.valor)}</p>
             </div>
-          )}
-          <div
-            className={cn("min-w-0 rounded-lg px-3 py-2", COR_ETAPA[e.chave])}
-            style={{ flexGrow: Math.max(e.valor / base, 0.18), flexBasis: 0 }}
-          >
-            <p className="truncate text-[11px] font-medium opacity-90">{e.rotulo}</p>
-            <p className="text-xl font-bold tabular-nums">{e.valor}</p>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-// Funil do CICLO: taxas calculadas entre os degraus (inscritos → … → agendou).
-function Funil({ totais }: { totais: OportunidadesResponse["totais"] }) {
-  const etapas = etapasDoFunil(totais);
-  const blocos = etapas.map((e, i) => ({
-    ...e,
-    taxa: i > 0 ? formatarPct(pct(e.valor, etapas[i - 1].valor)) : null,
-  }));
+// Funil do CICLO: passagens calculadas entre os degraus (inscritos → … → agendou).
+function Funil({ data }: { data: OportunidadesResponse }) {
   return (
     <Card>
       <CardContent>
-        <FunilBlocos blocos={blocos} />
+        <FunilBlocos blocos={blocosDoCiclo(data.totais, data.matriz, data.sinais_indisponiveis)} />
       </CardContent>
     </Card>
+  );
+}
+
+// Avisos de sanidade do backend (V3.1): faixa cinza ACIMA da matriz, em
+// linguagem direta. A chave crua nunca aparece (traduzirAvisos).
+function FaixaAvisos({ avisos }: { avisos: readonly string[] | null | undefined }) {
+  const textos = traduzirAvisos(avisos);
+  if (textos.length === 0) return null;
+  return (
+    <div
+      role="note"
+      aria-label="Avisos sobre os números deste período"
+      className="rounded-xl border border-borda bg-painel-claro/60 px-4 py-2.5 text-xs text-texto-sec"
+    >
+      <p className="font-medium text-texto">Atenção aos números deste período</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+        {textos.map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -739,11 +790,17 @@ function MatrizOrigem({
   onLinha: (o: OrigemChave) => void;
 }) {
   const m = data.matriz!;
+  // Replay inteiramente indisponível → "Acessaram" do Total é travessão, nunca 0.
+  const total = { ...m.total, acessaram: acessaramDoTotal(m) };
   const linhas = [
     { chave: "ao_vivo" as const, rotulo: "Ao vivo", valores: valoresDaLinha(m.ao_vivo, true) },
     { chave: "replay" as const, rotulo: "Replay", valores: valoresDaLinha(m.replay, true) },
-    { chave: "total" as const, rotulo: "Total", valores: valoresDaLinha(m.total, false) },
+    { chave: "total" as const, rotulo: "Total", valores: valoresDaLinha(total, false) },
   ];
+  const semPresenca = presencaIndisponivel(m, data.sinais_indisponiveis);
+  const dicaAssistiram = semPresenca
+    ? "Sem a tag datada de presença neste ciclo — não dá para saber quem assistiu ao vivo"
+    : undefined;
   const t = data.totais;
 
   return (
@@ -801,7 +858,9 @@ function MatrizOrigem({
                       )}
                     </th>
                     <td className="px-3 py-2 text-right">{l.valores.acessaram}</td>
-                    <td className="px-3 py-2 text-right">{l.valores.assistiram}</td>
+                    <td className="px-3 py-2 text-right" title={l.valores.assistiram === TRAVESSAO ? dicaAssistiram : undefined}>
+                      {l.valores.assistiram}
+                    </td>
                     <td className="px-3 py-2 text-right">{l.valores.aplicaram}</td>
                     <td className="px-3 py-2 text-right">
                       {l.valores.agendaram}{" "}
@@ -1330,6 +1389,7 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
                 {lead.acessou_replay ? " · abriu o replay" : ""}
                 {lead.assistiu_replay ? " · assistiu 30+ min do replay" : ""}
                 {lead.convidado_resgate ? " · convidado da campanha de resgate" : ""}
+                {lead.aplicacao_por_fallback ? " · aplicação identificada por tag sem data" : ""}
               </span>
             </LinhaDetalhe>
           )}

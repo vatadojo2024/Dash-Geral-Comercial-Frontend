@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  acessaramDoTotal,
+  blocosDoCiclo,
+  passagemCalculada,
+  passagemPronta,
+  presencaIndisponivel,
+  traduzirAvisos,
   celulaMatriz,
   contarPorOrigem,
   degrausDoResgate,
@@ -374,11 +380,11 @@ describe("origem, matriz e resgate (V3)", () => {
       convidados: 2600, assistiram: 180, aplicaram: 42, agendaram: 15, pendentes: 27,
       taxa_retorno: 0.069, taxa_aplicacao: 0.233, taxa_agendamento: null,
     });
-    expect(d.map((x) => [x.rotulo, x.valor, x.taxa])).toEqual([
+    expect(d.map((x) => [x.rotulo, x.valor, x.passagem])).toEqual([
       ["Convidados", 2600, null],
-      ["Assistiram", 180, "6,9%"],
-      ["Levantaram a mão", 42, "23%"],
-      ["Agendaram", 15, "—"],
+      ["Assistiram", 180, { tipo: "pct", texto: "6,9%" }],
+      ["Levantaram a mão", 42, { tipo: "pct", texto: "23%" }],
+      ["Agendaram", 15, { tipo: "pct", texto: "—" }],
       ["Pendentes", 27, null],
     ]);
   });
@@ -388,5 +394,91 @@ describe("origem, matriz e resgate (V3)", () => {
       totais: { no_evento: 1, levantaram_mao: 0, agendaram: 0, pendentes: 0 } };
     expect(OportunidadesResponseSchema.safeParse(base).success).toBe(true);
     expect(OportunidadesResponseSchema.safeParse({ ...base, resgate: null, atribuicao_parcial: true }).success).toBe(true);
+  });
+});
+
+describe("coerência de exibição (V3.1)", () => {
+  const linha = (p: Partial<{ acessaram: number | null; assistiram: number | null; aplicaram: number; agendaram: number; pendentes: number }>) => ({
+    acessaram: 0, assistiram: 0, aplicaram: 0, agendaram: 0, taxa_agendamento: null, pendentes: 0, alto_valor_pendente: 0, ...p,
+  });
+  const totais = { no_evento: 171, assistiram: 0, levantaram_mao: 40, agendaram: 10, pendentes: 30 };
+
+  it("passagem: null de qualquer lado → 'sem dado'; acima de 100% → 'verificar', nunca porcentagem", () => {
+    expect(passagemCalculada(40, 171)).toEqual({ tipo: "pct", texto: "23%" });
+    expect(passagemCalculada(null, 171)).toEqual({ tipo: "sem_dado" });
+    expect(passagemCalculada(40, null)).toEqual({ tipo: "sem_dado" });
+    expect(passagemCalculada(1292, 171)).toEqual({ tipo: "verificar" });
+    expect(passagemCalculada(171, 171)).toEqual({ tipo: "pct", texto: "100%" });
+    expect(passagemPronta(1.2)).toEqual({ tipo: "verificar" });
+    expect(passagemPronta(1)).toEqual({ tipo: "pct", texto: "100%" });
+    expect(passagemPronta(null)).toEqual({ tipo: "pct", texto: "—" });
+  });
+
+  it("presença indisponível: pelo sinal OU por ao_vivo.assistiram null", () => {
+    const m = { ao_vivo: linha({ assistiram: null }), replay: linha({}), total: linha({}) };
+    expect(presencaIndisponivel(m, [])).toBe(true);
+    expect(presencaIndisponivel({ ...m, ao_vivo: linha({ assistiram: 5 }) }, ["participou"])).toBe(true);
+    expect(presencaIndisponivel({ ...m, ao_vivo: linha({ assistiram: 5 }) }, [])).toBe(false);
+    expect(presencaIndisponivel(null, null)).toBe(false); // backend sem matriz
+  });
+
+  it("funil do ciclo: sinal indisponível → 'Assistiram' sem zero falso e as duas passagens 'sem dado'", () => {
+    const m = {
+      ao_vivo: linha({ assistiram: null, aplicaram: 30 }),
+      replay: linha({ acessaram: 20, assistiram: 12, aplicaram: 10 }),
+      total: linha({ acessaram: 20, assistiram: null, aplicaram: 40, agendaram: 10, pendentes: 30 }),
+    };
+    const b = blocosDoCiclo(totais, m, ["participou"]);
+    expect(b.map((x) => [x.chave, x.valor, x.passagem?.tipo ?? null])).toEqual([
+      ["inscritos", 171, null],
+      ["assistiram", null, "sem_dado"],
+      ["levantaram", 40, "sem_dado"],
+      ["agendaram", 10, "pct"],
+    ]);
+  });
+
+  it("funil do ciclo: base inflada → 'verificar' no lugar de 756%", () => {
+    const m = { ao_vivo: linha({ assistiram: 1292 }), replay: linha({}), total: linha({ assistiram: 1292 }) };
+    const b = blocosDoCiclo({ ...totais, assistiram: 1292, levantaram_mao: 819 }, m, []);
+    expect(b[1]).toMatchObject({ valor: 1292, passagem: { tipo: "verificar" } });
+    expect(b[2].passagem).toEqual({ tipo: "pct", texto: "63%" });
+  });
+
+  it("funil do ciclo sem matriz (backend antigo) segue pelos totais", () => {
+    const b = blocosDoCiclo({ ...totais, assistiram: 90 }, null, null);
+    expect(b.map((x) => [x.chave, x.valor, x.passagem])).toEqual([
+      ["inscritos", 171, null],
+      ["assistiram", 90, { tipo: "pct", texto: "53%" }],
+      ["levantaram", 40, { tipo: "pct", texto: "44%" }],
+      ["agendaram", 10, { tipo: "pct", texto: "25%" }],
+    ]);
+    const semAssistiram = { no_evento: 171, levantaram_mao: 40, agendaram: 10, pendentes: 30 };
+    expect(blocosDoCiclo(semAssistiram).map((x) => x.chave)).toEqual(["inscritos", "levantaram", "agendaram"]);
+  });
+
+  it("replay inteiramente indisponível → 'Acessaram' do Total é null (travessão), nunca 0", () => {
+    const base = { ao_vivo: linha({ assistiram: 84, aplicaram: 39 }), total: linha({ acessaram: 0, assistiram: 84, aplicaram: 39 }) };
+    expect(acessaramDoTotal({ ...base, replay: linha({}) })).toBeNull();
+    expect(acessaramDoTotal({ ...base, replay: linha({ acessaram: 58 }), total: linha({ acessaram: 58 }) })).toBe(58);
+    expect(celulaMatriz(acessaramDoTotal({ ...base, replay: linha({}) }))).toBe("—");
+  });
+
+  it("avisos viram frases; chave crua e código desconhecido nunca aparecem", () => {
+    const textos = traduzirAvisos(["taxa_acima_de_100", "sem_origem_elevado", "codigo_novo_x", "outro_codigo"]);
+    expect(textos).toHaveLength(3); // os dois desconhecidos colapsam na frase genérica
+    for (const t of textos) expect(t).not.toMatch(/_/);
+    expect(textos[0]).toContain("acima de 100%");
+    expect(traduzirAvisos(null)).toEqual([]);
+    expect(traduzirAvisos([])).toEqual([]);
+  });
+
+  it("contrato: campos V3.1 opcionais (com e sem eles)", () => {
+    const base = { de: "x", ate: "x", eventos: [], leads: [lead({ aplicacao_por_fallback: true })], gerado_em: "x",
+      totais: { no_evento: 1, levantaram_mao: 0, agendaram: 0, pendentes: 0 } };
+    expect(OportunidadesResponseSchema.safeParse(base).success).toBe(true);
+    expect(OportunidadesResponseSchema.safeParse({
+      ...base, sinais_indisponiveis: ["participou"], avisos: ["taxa_acima_de_100"],
+      matriz: { ao_vivo: linha({ assistiram: null }), replay: linha({}), total: linha({ assistiram: null }) },
+    }).success).toBe(true);
   });
 });

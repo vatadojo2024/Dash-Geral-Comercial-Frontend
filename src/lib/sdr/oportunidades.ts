@@ -45,6 +45,8 @@ export const LeadPendenteSchema = z
     convidado_resgate: z.boolean().nullish(),
     acessou_replay: z.boolean().nullish(),
     assistiu_replay: z.boolean().nullish(),
+    // V3.1: a aplicação veio só da tag SEM data (fallback).
+    aplicacao_por_fallback: z.boolean().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
@@ -97,6 +99,10 @@ export const OportunidadesResponseSchema = z.object({
   eventos: z.array(z.string()),
   // V3: intervalo com 2+ eventos — tags sem data foram ignoradas (subcontagem).
   atribuicao_parcial: z.boolean().nullish(),
+  // V3.1: sinais que a base não permite calcular (hoje só "participou" → o
+  // ao vivo não tem como saber quem assistiu) e travas de sanidade do backend.
+  sinais_indisponiveis: z.array(z.string()).nullish(),
+  avisos: z.array(z.string()).nullish(),
   totais: z.object({
     // Inscritos no evento (contatos com a tag WG).
     no_evento: z.number().int(),
@@ -147,6 +153,104 @@ export function baseDeLevantaram(t: TotaisOportunidades): { valor: number; rotul
   return t.assistiram != null
     ? { valor: t.assistiram, rotulo: "dos que assistiram" }
     : { valor: t.no_evento, rotulo: "do no evento" };
+}
+
+// ---------------------------------------------------------------------------
+// Passagem entre degraus do funil (V3.1). Três saídas possíveis além da
+// porcentagem: "sem dado" (um dos lados é desconhecido) e "verificar base"
+// (passagem acima de 100% — nunca exibida como porcentagem).
+// ---------------------------------------------------------------------------
+
+export type PassagemFunil =
+  | { tipo: "pct"; texto: string }
+  | { tipo: "sem_dado" }
+  | { tipo: "verificar" };
+
+export type BlocoFunil = {
+  chave: string;
+  rotulo: string;
+  // null = valor desconhecido (exibe travessão, nunca zero).
+  valor: number | null;
+  // Passagem a partir do degrau anterior; null = sem conector de taxa.
+  passagem: PassagemFunil | null;
+};
+
+// Passagem calculada no cliente (funil do ciclo).
+export function passagemCalculada(
+  valor: number | null | undefined,
+  anterior: number | null | undefined,
+): PassagemFunil {
+  if (valor == null || anterior == null) return { tipo: "sem_dado" };
+  if (valor > anterior) return { tipo: "verificar" };
+  return { tipo: "pct", texto: formatarPct(pct(valor, anterior)) };
+}
+
+// Passagem que vem PRONTA do backend como fração (funil de resgate).
+export function passagemPronta(taxa: number | null | undefined): PassagemFunil {
+  if (taxa != null && taxa > 1) return { tipo: "verificar" };
+  return { tipo: "pct", texto: formatarTaxa(taxa) };
+}
+
+// O sinal de presença AO VIVO está indisponível? (nenhum contato com a tag
+// datada "Participou WG - DD.MM.AA" — não é "ninguém assistiu", é "não dá
+// para saber").
+export function presencaIndisponivel(
+  matriz: Matriz | null | undefined,
+  sinaisIndisponiveis?: readonly string[] | null,
+): boolean {
+  if (sinaisIndisponiveis?.includes("participou")) return true;
+  return matriz != null && matriz.ao_vivo.assistiram == null;
+}
+
+// Blocos do funil do CICLO. Com a matriz (V3+), "Assistiram" vem de
+// matriz.total.assistiram — totais.assistiram chega 0 quando o sinal está
+// indisponível, e zero aqui seria mentira. Sinal indisponível → as duas
+// passagens que tocam "Assistiram" viram "sem dado".
+export function blocosDoCiclo(
+  t: TotaisOportunidades,
+  matriz?: Matriz | null,
+  sinaisIndisponiveis?: readonly string[] | null,
+): BlocoFunil[] {
+  const semPresenca = presencaIndisponivel(matriz, sinaisIndisponiveis);
+  const etapas: { chave: string; rotulo: string; valor: number | null; incerto?: boolean }[] =
+    etapasDoFunil(t).map((e) =>
+      e.chave === "assistiram"
+        ? {
+            ...e,
+            valor: matriz ? (matriz.total.assistiram ?? null) : e.valor,
+            incerto: semPresenca,
+          }
+        : e,
+    );
+  return etapas.map((e, i) => {
+    if (i === 0) return { chave: e.chave, rotulo: e.rotulo, valor: e.valor, passagem: null };
+    const anterior = etapas[i - 1];
+    const passagem: PassagemFunil =
+      e.incerto || anterior.incerto
+        ? { tipo: "sem_dado" }
+        : passagemCalculada(e.valor, anterior.valor);
+    return { chave: e.chave, rotulo: e.rotulo, valor: e.valor, passagem };
+  });
+}
+
+// Avisos de sanidade do backend → linguagem direta. A chave crua NUNCA vai para
+// a tela: código desconhecido cai numa frase genérica.
+const TEXTO_AVISO: Record<string, string> = {
+  assistiram_acima_de_inscritos:
+    "Há mais pessoas marcadas como \"assistiu\" do que inscritos no ciclo. A base consultada provavelmente inclui contatos de outros eventos.",
+  aplicaram_acima_da_base:
+    "O número de quem levantou a mão é maior que a base do ciclo (inscritos + convidados de resgate).",
+  sem_origem_elevado:
+    "Mais da metade dos inscritos levantou a mão sem sinal de presença (ao vivo ou replay). Confira as tags do evento na Clint.",
+  taxa_acima_de_100:
+    "Alguma taxa de passagem ficou acima de 100%. Os números deste período precisam ser verificados.",
+};
+const TEXTO_AVISO_GENERICO =
+  "O backend sinalizou uma inconsistência na base deste período. Avise o time técnico.";
+
+export function traduzirAvisos(avisos: readonly string[] | null | undefined): string[] {
+  const textos = (avisos ?? []).map((a) => TEXTO_AVISO[a] ?? TEXTO_AVISO_GENERICO);
+  return [...new Set(textos)];
 }
 
 // Códigos de erro do endpoint (seção 10 do backend) → tratamento da UI.
@@ -440,6 +544,12 @@ export function linhaSemDados(l: LinhaMatriz): boolean {
   );
 }
 
+// "Acessaram" só existe no recorte replay. Replay inteiramente indisponível →
+// o Total mostra travessão (null), NUNCA 0.
+export function acessaramDoTotal(m: Matriz): number | null {
+  return linhaSemDados(m.replay) ? null : (m.total.acessaram ?? null);
+}
+
 // Conferência da matriz: Total.aplicaram = Ao vivo + Replay + sem_origem.
 export function matrizFecha(m: Matriz, semOrigem: number | null | undefined): boolean {
   return (
@@ -448,22 +558,15 @@ export function matrizFecha(m: Matriz, semOrigem: number | null | undefined): bo
   );
 }
 
-// Degraus do funil de resgate. `taxa` é a passagem a partir do degrau anterior,
-// exatamente como o backend mandou; o último degrau (Pendentes) não tem taxa.
-export type DegrauResgate = {
-  chave: "convidados" | "assistiram" | "levantaram" | "agendaram" | "pendentes";
-  rotulo: string;
-  valor: number;
-  taxa: string | null;
-};
-
-export function degrausDoResgate(r: Resgate): DegrauResgate[] {
+// Degraus do funil de resgate. A passagem vem PRONTA do backend (fração); o
+// último degrau (Pendentes) não tem taxa. Acima de 100% → "verificar base".
+export function degrausDoResgate(r: Resgate): BlocoFunil[] {
   return [
-    { chave: "convidados", rotulo: "Convidados", valor: r.convidados, taxa: null },
-    { chave: "assistiram", rotulo: "Assistiram", valor: r.assistiram, taxa: formatarTaxa(r.taxa_retorno) },
-    { chave: "levantaram", rotulo: "Levantaram a mão", valor: r.aplicaram, taxa: formatarTaxa(r.taxa_aplicacao) },
-    { chave: "agendaram", rotulo: "Agendaram", valor: r.agendaram, taxa: formatarTaxa(r.taxa_agendamento) },
-    { chave: "pendentes", rotulo: "Pendentes", valor: r.pendentes, taxa: null },
+    { chave: "convidados", rotulo: "Convidados", valor: r.convidados, passagem: null },
+    { chave: "assistiram", rotulo: "Assistiram", valor: r.assistiram, passagem: passagemPronta(r.taxa_retorno) },
+    { chave: "levantaram", rotulo: "Levantaram a mão", valor: r.aplicaram, passagem: passagemPronta(r.taxa_aplicacao) },
+    { chave: "agendaram", rotulo: "Agendaram", valor: r.agendaram, passagem: passagemPronta(r.taxa_agendamento) },
+    { chave: "pendentes", rotulo: "Pendentes", valor: r.pendentes, passagem: null },
   ];
 }
 

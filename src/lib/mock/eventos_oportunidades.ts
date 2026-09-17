@@ -88,11 +88,12 @@ export type LeadPendenteMock = {
   convidado_resgate: boolean;
   acessou_replay: boolean;
   assistiu_replay: boolean;
+  aplicacao_por_fallback: boolean;
 };
 
 type LinhaMatrizMock = {
   acessaram: number | null;
-  assistiram: number;
+  assistiram: number | null;
   aplicaram: number;
   agendaram: number;
   taxa_agendamento: number | null;
@@ -114,6 +115,8 @@ export type OportunidadesMock = {
   ate: string;
   eventos: string[];
   atribuicao_parcial: boolean;
+  sinais_indisponiveis: string[];
+  avisos: string[];
   matriz: { ao_vivo: LinhaMatrizMock; replay: LinhaMatrizMock; total: LinhaMatrizMock };
   resgate: {
     convidados: number;
@@ -154,7 +157,9 @@ const taxa = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 10000) / 10
 
 // `simular` (só mock): "vazio" = todos agendaram; "sem_contatos" = tag sem
 // contatos na Clint; "sem_replay" = ciclo sem dados de replay; "sem_resgate" =
-// resgate null. Serve para validar os estados da tela sem o backend.
+// resgate null; "sem_participou" = sinal de presença ao vivo indisponível
+// (assistiram null); "base_inflada" = o bug da V3 (assistiram > inscritos, taxa
+// acima de 100% e avisos). Serve para validar os estados da tela sem o backend.
 export function mockOportunidades(
   de: string,
   ate: string,
@@ -166,6 +171,8 @@ export function mockOportunidades(
     ate,
     eventos,
     atribuicao_parcial: eventos.length > 1,
+    sinais_indisponiveis: [] as string[],
+    avisos: [] as string[],
     gerado_em: new Date().toISOString(),
     cache: "miss" as const,
   };
@@ -257,6 +264,7 @@ export function mockOportunidades(
             convidado_resgate: simular !== "sem_resgate" && i % 4 === 2,
             acessou_replay: assistiuReplay || (simular !== "sem_replay" && i % 6 === 0),
             assistiu_replay: assistiuReplay,
+            aplicacao_por_fallback: i % 9 === 4,
           };
         })(),
         ...(i % 4 === 3
@@ -339,9 +347,13 @@ export function mockOportunidades(
   const aoVivo = linha(pend("ao_vivo"), agAoVivo, (semReplay ? 120 : 84) * n, null);
   const replay = semReplay ? LINHA_VAZIA : linha(pend("replay"), agReplay, 36 * n, 58 * n);
   const semOrigem = pend(null).length + agSem;
+  const semParticipou = simular === "sem_participou";
+  const inflada = simular === "base_inflada";
+  if (semParticipou) aoVivo.assistiram = null;
+  if (inflada) aoVivo.assistiram = 1292 * n;
   const total: LinhaMatrizMock = {
     acessaram: replay.acessaram,
-    assistiram: aoVivo.assistiram + replay.assistiram,
+    assistiram: semParticipou ? null : (aoVivo.assistiram ?? 0) + (replay.assistiram ?? 0),
     aplicaram: aoVivo.aplicaram + replay.aplicaram + semOrigem,
     agendaram: agAoVivo + agReplay + agSem,
     taxa_agendamento: taxa(agAoVivo + agReplay + agSem, aoVivo.aplicaram + replay.aplicaram + semOrigem),
@@ -366,14 +378,17 @@ export function mockOportunidades(
 
   return {
     ...base,
+    sinais_indisponiveis: semParticipou ? ["participou"] : [],
+    avisos: inflada ? ["assistiram_acima_de_inscritos", "taxa_acima_de_100"] : [],
     matriz: { ao_vivo: aoVivo, replay, total },
-    resgate,
+    resgate: inflada && resgate ? { ...resgate, taxa_aplicacao: 1.35 } : resgate,
     totais: {
       inscritos: noEvento,
       sem_origem: semOrigem,
       no_evento: noEvento,
       desqualificados,
-      assistiram: total.assistiram,
+      // Igual ao backend: totais.assistiram cai em 0 quando o sinal é null.
+      assistiram: total.assistiram ?? 0,
       levantaram_mao: total.aplicaram,
       agendaram: total.agendaram,
       pendentes,
