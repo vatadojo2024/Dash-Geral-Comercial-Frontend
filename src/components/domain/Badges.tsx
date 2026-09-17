@@ -5,8 +5,9 @@ import { labelTrava } from "@/lib/formatters/labels";
 import { nomeDono, origemDoLead, tierDoLead, type LeadPendente } from "@/lib/sdr/oportunidades";
 import { cn } from "@/lib/utils/cn";
 
-// Origem do lead no ciclo (ao vivo | replay | sem origem). Cor por token
-// (config em lib/sdr/oportunidades); "Sem origem" é neutro e tracejado.
+// Origem do lead no ciclo: "Ao vivo" ou "Replay" (não existe terceiro valor).
+// Cor por token (config em lib/sdr/oportunidades). Valor não reconhecido
+// (backend antigo) não renderiza nada.
 export function OrigemBadge({
   lead,
   size = "md",
@@ -15,6 +16,7 @@ export function OrigemBadge({
   size?: "sm" | "md";
 }) {
   const cfg = origemDoLead(lead);
+  if (!cfg) return null;
   return (
     <span
       className={cn(

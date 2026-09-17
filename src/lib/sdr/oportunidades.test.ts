@@ -1,36 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
-  acessaramDoTotal,
-  blocosDoCiclo,
-  passagemCalculada,
-  passagemPronta,
-  presencaIndisponivel,
-  traduzirAvisos,
-  celulaMatriz,
-  contarPorOrigem,
-  degrausDoResgate,
-  formatarTaxa,
-  linhaSemDados,
-  matrizFecha,
-  origemDoLead,
-  viuReplayTambem,
   agruparPorDono,
   altoValorPendente,
+  blocosDoFunil,
+  blocosDoResgate,
+  celulaMatriz,
+  chaveDaLinha,
   chaveDono,
-  opcoesDeDono,
-  todosDesqualificados,
-  baseDeLevantaram,
-  etapasDoFunil,
-  OportunidadesResponseSchema,
+  contarPorOrigem,
   contarPorTier,
   csvDePendentes,
   distribuicaoPorTier,
   filtrarPendentes,
   formatarPct,
+  formatarTaxa,
+  funilZerado,
   linkWhatsApp,
+  marcadoresDoLead,
+  opcoesDeDono,
+  OportunidadesResponseSchema,
   ordenarPendentes,
+  origemDoLead,
+  passagemCalculada,
   pct,
+  rotuloDoDegrau,
   tierDoLead,
+  todosDesqualificados,
+  traduzirAvisos,
   validarIntervalo,
   type LeadPendente,
 } from "./oportunidades";
@@ -181,7 +177,7 @@ describe("percentuais, WhatsApp e CSV", () => {
     expect(linkWhatsApp("1234")).toBeNull();
     expect(linkWhatsApp(null)).toBeNull();
   });
-  it("CSV V2: colunas fixas (nome, mql, dono, etapa, telefone, email, evento, entrou_em, url_clint, tags) e aspas escapadas", () => {
+  it("CSV: doze colunas fixas e aspas escapadas", () => {
     const csv = csvDePendentes([
       lead({
         nome: 'Ana "Nina"',
@@ -189,6 +185,8 @@ describe("percentuais, WhatsApp e CSV", () => {
         dono: { id: "u1", nome: "Benhur Ramos", email: null },
         etapa: "Prospecção",
         url_clint: "https://app.clint.digital/deal/abc",
+        origem: "replay",
+        convidado_resgate: true,
       }),
       lead({ clint_contact_id: "c2", nome: "Zé" }),
     ]);
@@ -197,48 +195,40 @@ describe("percentuais, WhatsApp e CSV", () => {
       '"nome";"mql";"origem";"resgate";"dono";"etapa";"telefone";"email";"evento";"entrou_em";"url_clint";"tags"',
     );
     expect(l1).toBe(
-      '"Ana ""Nina""";"MQL";"Sem origem";"";"Benhur Ramos";"Prospecção";"+5511999990001";"ana@ex.com";"WG - 08.09.26";"2026-09-08T12:00:00Z";"https://app.clint.digital/deal/abc";"Levantou a Mão, MQL"',
+      '"Ana ""Nina""";"MQL";"Replay";"sim";"Benhur Ramos";"Prospecção";"+5511999990001";"ana@ex.com";"WG - 08.09.26";"2026-09-08T12:00:00Z";"https://app.clint.digital/deal/abc";"Levantou a Mão, MQL"',
     );
-    expect(l2).toContain('"Zé";"MQL";"Sem origem";"";"Sem dono";"";');
+    expect(l2).toContain('"Zé";"MQL";"";"";"Sem dono";"";'); // sem origem reconhecida → vazio
     expect(l2).toContain(';"";"Levantou a Mão, MQL"'); // url_clint vazia
   });
 });
 
-describe("assistiram (opcional no contrato)", () => {
-  const base = { no_evento: 186, levantaram_mao: 40, agendaram: 10, pendentes: 30 };
-  const resp = { de: "2026-09-15", ate: "2026-09-21", eventos: [], leads: [], gerado_em: "x", cache: "miss" };
+describe("contrato", () => {
+  const resp = { de: "x", ate: "x", eventos: [], totais: { pendentes: 0 }, gerado_em: "x", cache: "miss" };
   it("lead_id do pendente é opcional (link para a ficha só quando vem)", () => {
-    const resp = { de: "x", ate: "x", eventos: [], totais: base, gerado_em: "x", cache: "miss" };
     const semId = OportunidadesResponseSchema.safeParse({ ...resp, leads: [lead({})] });
     const comId = OportunidadesResponseSchema.safeParse({ ...resp, leads: [lead({ lead_id: "ld_0001" })] });
     expect(semId.success && semId.data.leads[0].lead_id).toBeUndefined();
     expect(comId.success && comId.data.leads[0].lead_id).toBe("ld_0001");
   });
-  it("contrato aceita totais com e sem assistiram", () => {
-    expect(OportunidadesResponseSchema.safeParse({ ...resp, totais: base }).success).toBe(true);
-    expect(
-      OportunidadesResponseSchema.safeParse({ ...resp, totais: { ...base, assistiram: 90 } }).success,
-    ).toBe(true);
+  it("V4 completo, resgate null e resposta sem matriz/funis (backend antigo) são aceitos", () => {
+    const linha = { acessaram: null, assistiram: 58, aplicaram: 20, agendaram: 11, taxa_agendamento: 0.55, pendentes: 9, alto_valor_pendente: 2 };
+    const v4 = {
+      ...resp,
+      totais: { inscritos: 171, desqualificados: 64, pendentes: 9 },
+      matriz: { ao_vivo: linha, replay: linha, total: linha },
+      funis: { ao_vivo: { degraus: [{ nome: "inscritos", valor: 171 }] }, replay: { degraus: [] } },
+      resgate: null,
+      avisos: [],
+      leads: [lead({ origem: "ao_vivo", assistiu_ao_vivo: true })],
+    };
+    expect(OportunidadesResponseSchema.safeParse(v4).success).toBe(true);
+    expect(OportunidadesResponseSchema.safeParse({ ...resp, leads: [] }).success).toBe(true);
   });
-  it("sem assistiram: 3 etapas e base = no evento", () => {
-    expect(etapasDoFunil(base).map((e) => [e.chave, e.valor])).toEqual([
-      ["inscritos", 186],
-      ["levantaram", 40],
-      ["agendaram", 10],
-    ]);
-    expect(etapasDoFunil(base)[0].rotulo).toBe("No evento");
-    expect(baseDeLevantaram(base)).toEqual({ valor: 186, rotulo: "do no evento" });
-  });
-  it("com assistiram: 4 etapas e base = assistiram", () => {
-    const t = { ...base, assistiram: 90 };
-    expect(etapasDoFunil(t).map((e) => [e.chave, e.valor])).toEqual([
-      ["inscritos", 186],
-      ["assistiram", 90],
-      ["levantaram", 40],
-      ["agendaram", 10],
-    ]);
-    expect(etapasDoFunil(t)[0].rotulo).toBe("Inscritos");
-    expect(baseDeLevantaram(t)).toEqual({ valor: 90, rotulo: "dos que assistiram" });
+  it("chave da linha é (contato, evento): o mesmo contato em dois eventos não colide", () => {
+    const a = lead({ clint_contact_id: "c1", evento_tag: "WG - 08.09.26" });
+    const b = lead({ clint_contact_id: "c1", evento_tag: "WG - 15.09.26" });
+    expect(chaveDaLinha(a)).not.toBe(chaveDaLinha(b));
+    expect(chaveDaLinha(a)).toBe("c1|WG - 08.09.26");
   });
 });
 
@@ -303,182 +293,166 @@ describe("dono (V2)", () => {
     ]);
   });
 
-  it("todosDesqualificados só quando no_evento = 0 e há desqualificados", () => {
-    const base = { levantaram_mao: 0, agendaram: 0, pendentes: 0 };
-    expect(todosDesqualificados({ ...base, no_evento: 0, desqualificados: 7 })).toBe(true);
-    expect(todosDesqualificados({ ...base, no_evento: 0, desqualificados: 0 })).toBe(false);
-    expect(todosDesqualificados({ ...base, no_evento: 0 })).toBe(false);
-    expect(todosDesqualificados({ ...base, no_evento: 3, desqualificados: 7 })).toBe(false);
+  it("todosDesqualificados só quando inscritos = 0 e há desqualificados", () => {
+    expect(todosDesqualificados({ pendentes: 0, inscritos: 0, desqualificados: 7 })).toBe(true);
+    expect(todosDesqualificados({ pendentes: 0, inscritos: 0, desqualificados: 0 })).toBe(false);
+    expect(todosDesqualificados({ pendentes: 0, inscritos: 0 })).toBe(false);
+    expect(todosDesqualificados({ pendentes: 0, inscritos: 3, desqualificados: 7 })).toBe(false);
+    expect(todosDesqualificados({ pendentes: 0, desqualificados: 7 })).toBe(false); // inscritos ausente
   });
 });
 
-describe("origem, matriz e resgate (V3)", () => {
+describe("origem (V4): só ao vivo ou replay", () => {
   const leads = [
-    lead({ clint_contact_id: "1", nome: "Ana", origem: "replay", convidado_resgate: true }),
-    lead({ clint_contact_id: "2", nome: "Bia", origem: null }),
+    lead({ clint_contact_id: "1", nome: "Ana", origem: "replay", convidado_resgate: true, assistiu_ao_vivo: true }),
+    lead({ clint_contact_id: "2", nome: "Bia", origem: "replay" }),
     lead({ clint_contact_id: "3", nome: "Caio", origem: "ao_vivo", assistiu_replay: true, tier: "HMQL", tier_rank: 4 }),
     lead({ clint_contact_id: "4", nome: "Dudu", origem: "ao_vivo", convidado_resgate: true }),
-    lead({ clint_contact_id: "5", nome: "Eva" }), // backend V2: sem o campo
+    lead({ clint_contact_id: "5", nome: "Eva" }), // backend antigo: sem o campo
   ];
 
-  it("origemDoLead: ao_vivo / replay / null, ausente ou valor desconhecido → 'sem'", () => {
-    expect(origemDoLead({ origem: "ao_vivo" }).label).toBe("Ao vivo");
-    expect(origemDoLead({ origem: "replay" }).label).toBe("Replay");
-    expect(origemDoLead({ origem: null }).chave).toBe("sem");
-    expect(origemDoLead({}).chave).toBe("sem");
-    expect(origemDoLead({ origem: "outro" }).chave).toBe("sem");
+  it("origemDoLead reconhece os dois valores; ausente/inesperado → null (sem badge)", () => {
+    expect(origemDoLead({ origem: "ao_vivo" })?.label).toBe("Ao vivo");
+    expect(origemDoLead({ origem: "replay" })?.label).toBe("Replay");
+    expect(origemDoLead({ origem: null })).toBeNull();
+    expect(origemDoLead({})).toBeNull();
+    expect(origemDoLead({ origem: "outro" })).toBeNull();
   });
 
-  it("'viu o replay também' só em lead de origem ao vivo", () => {
-    expect(viuReplayTambem({ origem: "ao_vivo", assistiu_replay: true })).toBe(true);
-    expect(viuReplayTambem({ origem: "replay", assistiu_replay: true })).toBe(false);
-    expect(viuReplayTambem({ origem: "ao_vivo", assistiu_replay: false })).toBe(false);
+  it("marcadores: resgate é independente; os outros apontam o recorte que NÃO é a origem", () => {
+    expect(marcadoresDoLead(leads[0])).toEqual(["resgate", "esteve_ao_vivo"]);
+    expect(marcadoresDoLead(leads[1])).toEqual([]);
+    expect(marcadoresDoLead(leads[2])).toEqual(["viu_replay"]);
+    expect(marcadoresDoLead(leads[3])).toEqual(["resgate"]);
+    // ao vivo que "esteve ao vivo" e replay que "viu o replay" não ganham marcador redundante
+    expect(marcadoresDoLead({ origem: "ao_vivo", assistiu_ao_vivo: true })).toEqual([]);
+    expect(marcadoresDoLead({ origem: "replay", assistiu_replay: true })).toEqual([]);
   });
 
   it("contagens por origem e de convidados de resgate", () => {
-    expect(contarPorOrigem(leads)).toEqual({ ao_vivo: 2, replay: 1, sem: 2, resgate: 2 });
+    expect(contarPorOrigem(leads)).toEqual({ ao_vivo: 2, replay: 2, resgate: 2 });
   });
 
-  it("filtro de origem é multi e aplica em série com MQL; resgate é independente", () => {
+  it("filtro de origem é multi, aplica em série com MQL; resgate é independente", () => {
     const f = (x: Parameters<typeof filtrarPendentes>[1]) => filtrarPendentes(leads, x).map((l) => l.nome);
     expect(f({ tiers: [], origens: ["ao_vivo"], busca: "" })).toEqual(["Caio", "Dudu"]);
-    expect(f({ tiers: [], origens: ["ao_vivo", "sem"], busca: "" })).toEqual(["Bia", "Caio", "Dudu", "Eva"]);
+    expect(f({ tiers: [], origens: ["ao_vivo", "replay"], busca: "" })).toEqual(["Ana", "Bia", "Caio", "Dudu"]);
     expect(f({ tiers: ["HMQL"], origens: ["ao_vivo"], busca: "" })).toEqual(["Caio"]);
     expect(f({ tiers: [], soResgate: true, busca: "" })).toEqual(["Ana", "Dudu"]);
     expect(f({ tiers: [], origens: ["ao_vivo"], soResgate: true, busca: "" })).toEqual(["Dudu"]);
     expect(f({ tiers: [], origens: [], soResgate: false, busca: "" })).toHaveLength(5);
   });
 
-  it("ordenação por origem: 'Sem origem' no fim nas DUAS direções", () => {
+  it("ordenação por origem; linha sem origem reconhecida sempre no fim", () => {
     expect(ordenarPendentes(leads, { campo: "origem", direcao: "asc" }).map((l) => l.nome)).toEqual(["Caio", "Dudu", "Ana", "Bia", "Eva"]);
-    expect(ordenarPendentes(leads, { campo: "origem", direcao: "desc" }).map((l) => l.nome)).toEqual(["Ana", "Caio", "Dudu", "Bia", "Eva"]);
+    expect(ordenarPendentes(leads, { campo: "origem", direcao: "desc" }).map((l) => l.nome)).toEqual(["Ana", "Bia", "Caio", "Dudu", "Eva"]);
   });
 
-  it("célula e taxa: null vira travessão, nunca zero / 0%", () => {
+  it("travessão só para null: célula e % da taxa de agendamento", () => {
     expect(celulaMatriz(null)).toBe("—");
-    expect(celulaMatriz(undefined)).toBe("—");
     expect(celulaMatriz(0)).toBe("0");
     expect(formatarTaxa(null)).toBe("—");
-    expect(formatarTaxa(0.393)).toBe("39%");
-    expect(formatarTaxa(0.069)).toBe("6,9%");
+    expect(formatarTaxa(0.55)).toBe("55%");
     expect(formatarTaxa(0)).toBe("0,0%");
-  });
-
-  it("linha sem dados (ciclo sem replay) e conferência do Total", () => {
-    const vazia = { acessaram: 0, assistiram: 0, aplicaram: 0, agendaram: 0, taxa_agendamento: null, pendentes: 0, alto_valor_pendente: 0 };
-    const aoVivo = { acessaram: null, assistiram: 138, aplicaram: 61, agendaram: 24, taxa_agendamento: 0.393, pendentes: 37, alto_valor_pendente: 12 };
-    const replay = { acessaram: 96, assistiram: 54, aplicaram: 16, agendaram: 5, taxa_agendamento: 0.3125, pendentes: 11, alto_valor_pendente: 3 };
-    const total = { acessaram: 96, assistiram: 192, aplicaram: 81, agendaram: 29, taxa_agendamento: 0.358, pendentes: 52, alto_valor_pendente: 15 };
-    expect(linhaSemDados(vazia)).toBe(true);
-    expect(linhaSemDados(aoVivo)).toBe(false);
-    expect(matrizFecha({ ao_vivo: aoVivo, replay, total }, 4)).toBe(true); // 61 + 16 + 4 = 81
-    expect(matrizFecha({ ao_vivo: aoVivo, replay, total }, 0)).toBe(false);
-  });
-
-  it("degraus do resgate usam as taxas PRONTAS do backend; Pendentes sem taxa", () => {
-    const d = degrausDoResgate({
-      convidados: 2600, assistiram: 180, aplicaram: 42, agendaram: 15, pendentes: 27,
-      taxa_retorno: 0.069, taxa_aplicacao: 0.233, taxa_agendamento: null,
-    });
-    expect(d.map((x) => [x.rotulo, x.valor, x.passagem])).toEqual([
-      ["Convidados", 2600, null],
-      ["Assistiram", 180, { tipo: "pct", texto: "6,9%" }],
-      ["Levantaram a mão", 42, { tipo: "pct", texto: "23%" }],
-      ["Agendaram", 15, { tipo: "pct", texto: "—" }],
-      ["Pendentes", 27, null],
-    ]);
-  });
-
-  it("contrato V3 completo e V2 (sem matriz/resgate) são aceitos", () => {
-    const base = { de: "x", ate: "x", eventos: [], leads: [], gerado_em: "x", cache: "miss",
-      totais: { no_evento: 1, levantaram_mao: 0, agendaram: 0, pendentes: 0 } };
-    expect(OportunidadesResponseSchema.safeParse(base).success).toBe(true);
-    expect(OportunidadesResponseSchema.safeParse({ ...base, resgate: null, atribuicao_parcial: true }).success).toBe(true);
   });
 });
 
-describe("coerência de exibição (V3.1)", () => {
-  const linha = (p: Partial<{ acessaram: number | null; assistiram: number | null; aplicaram: number; agendaram: number; pendentes: number }>) => ({
-    acessaram: 0, assistiram: 0, aplicaram: 0, agendaram: 0, taxa_agendamento: null, pendentes: 0, alto_valor_pendente: 0, ...p,
-  });
-  const totais = { no_evento: 171, assistiram: 0, levantaram_mao: 40, agendaram: 10, pendentes: 30 };
+describe("funis (V4): degraus prontos, taxas no front", () => {
+  const aoVivo = [
+    { nome: "inscritos", valor: 171 },
+    { nome: "assistiram", valor: 58 },
+    { nome: "aplicaram", valor: 20 },
+    { nome: "agendaram", valor: 11 },
+    { nome: "pendentes", valor: 9 },
+  ];
+  const replay = [
+    { nome: "acessaram", valor: 40 },
+    { nome: "assistiram", valor: 22 },
+    { nome: "aplicaram", valor: 6 },
+    { nome: "agendaram", valor: 2 },
+    { nome: "pendentes", valor: 4 },
+  ];
 
-  it("passagem: null de qualquer lado → 'sem dado'; acima de 100% → 'verificar', nunca porcentagem", () => {
-    expect(passagemCalculada(40, 171)).toEqual({ tipo: "pct", texto: "23%" });
-    expect(passagemCalculada(null, 171)).toEqual({ tipo: "sem_dado" });
-    expect(passagemCalculada(40, null)).toEqual({ tipo: "sem_dado" });
-    expect(passagemCalculada(1292, 171)).toEqual({ tipo: "verificar" });
+  it("rótulos: 'aplicaram' muda por recorte; nome desconhecido nunca sai cru", () => {
+    expect(rotuloDoDegrau("aplicaram", "ao_vivo")).toBe("Levantaram a mão");
+    expect(rotuloDoDegrau("aplicaram", "replay")).toBe("Aplicaram");
+    expect(rotuloDoDegrau("aplicaram", "resgate")).toBe("Levantaram a mão");
+    expect(rotuloDoDegrau("acessaram", "replay")).toBe("Acessaram");
+    expect(rotuloDoDegrau("degrau_novo", "ao_vivo")).toBe("Degrau novo");
+  });
+
+  it("passagem: degrau / anterior; anterior zero → travessão; degrau maior → verificar", () => {
+    expect(passagemCalculada(58, 171)).toEqual({ tipo: "pct", texto: "34%" });
+    expect(passagemCalculada(0, 0)).toEqual({ tipo: "pct", texto: "—" });
+    expect(passagemCalculada(5, 0)).toEqual({ tipo: "pct", texto: "—" });
+    expect(passagemCalculada(200, 171)).toEqual({ tipo: "verificar" });
     expect(passagemCalculada(171, 171)).toEqual({ tipo: "pct", texto: "100%" });
-    expect(passagemPronta(1.2)).toEqual({ tipo: "verificar" });
-    expect(passagemPronta(1)).toEqual({ tipo: "pct", texto: "100%" });
-    expect(passagemPronta(null)).toEqual({ tipo: "pct", texto: "—" });
   });
 
-  it("presença indisponível: pelo sinal OU por ao_vivo.assistiram null", () => {
-    const m = { ao_vivo: linha({ assistiram: null }), replay: linha({}), total: linha({}) };
-    expect(presencaIndisponivel(m, [])).toBe(true);
-    expect(presencaIndisponivel({ ...m, ao_vivo: linha({ assistiram: 5 }) }, ["participou"])).toBe(true);
-    expect(presencaIndisponivel({ ...m, ao_vivo: linha({ assistiram: 5 }) }, [])).toBe(false);
-    expect(presencaIndisponivel(null, null)).toBe(false); // backend sem matriz
-  });
-
-  it("funil do ciclo: sinal indisponível → 'Assistiram' sem zero falso e as duas passagens 'sem dado'", () => {
-    const m = {
-      ao_vivo: linha({ assistiram: null, aplicaram: 30 }),
-      replay: linha({ acessaram: 20, assistiram: 12, aplicaram: 10 }),
-      total: linha({ acessaram: 20, assistiram: null, aplicaram: 40, agendaram: 10, pendentes: 30 }),
-    };
-    const b = blocosDoCiclo(totais, m, ["participou"]);
-    expect(b.map((x) => [x.chave, x.valor, x.passagem?.tipo ?? null])).toEqual([
-      ["inscritos", 171, null],
-      ["assistiram", null, "sem_dado"],
-      ["levantaram", 40, "sem_dado"],
-      ["agendaram", 10, "pct"],
+  it("funil ao vivo: taxas consecutivas e Pendentes medido contra quem levantou a mão", () => {
+    const b = blocosDoFunil(aoVivo, "ao_vivo");
+    expect(b.map((x) => [x.rotulo, x.valor, x.passagem])).toEqual([
+      ["Inscritos", 171, null],
+      ["Assistiram", 58, { tipo: "pct", texto: "34%" }],
+      ["Levantaram a mão", 20, { tipo: "pct", texto: "34%" }],
+      ["Agendaram", 11, { tipo: "pct", texto: "55%" }],
+      ["Pendentes", 9, { tipo: "pct", texto: "45%" }],
     ]);
+    expect(b[4].baseDaPassagem).toBe("de quem levantou a mão");
   });
 
-  it("funil do ciclo: base inflada → 'verificar' no lugar de 756%", () => {
-    const m = { ao_vivo: linha({ assistiram: 1292 }), replay: linha({}), total: linha({ assistiram: 1292 }) };
-    const b = blocosDoCiclo({ ...totais, assistiram: 1292, levantaram_mao: 819 }, m, []);
-    expect(b[1]).toMatchObject({ valor: 1292, passagem: { tipo: "verificar" } });
+  it("funil do replay: menos da metade agendou NÃO vira 'verificar base' em Pendentes", () => {
+    // agendaram 2, pendentes 4: contra 'agendaram' seria 200%; contra 'aplicaram' é 67%.
+    const b = blocosDoFunil(replay, "replay");
+    expect(b[2].rotulo).toBe("Aplicaram");
+    expect(b[4]).toMatchObject({ rotulo: "Pendentes", passagem: { tipo: "pct", texto: "67%" }, baseDaPassagem: "de quem aplicou" });
+  });
+
+  it("funil monotônico: se um degrau sobe, aparece 'verificar'", () => {
+    const b = blocosDoFunil(
+      [{ nome: "inscritos", valor: 171 }, { nome: "assistiram", valor: 1292 }, { nome: "aplicaram", valor: 819 }],
+      "ao_vivo",
+    );
+    expect(b[1].passagem).toEqual({ tipo: "verificar" });
     expect(b[2].passagem).toEqual({ tipo: "pct", texto: "63%" });
   });
 
-  it("funil do ciclo sem matriz (backend antigo) segue pelos totais", () => {
-    const b = blocosDoCiclo({ ...totais, assistiram: 90 }, null, null);
-    expect(b.map((x) => [x.chave, x.valor, x.passagem])).toEqual([
-      ["inscritos", 171, null],
-      ["assistiram", 90, { tipo: "pct", texto: "53%" }],
-      ["levantaram", 40, { tipo: "pct", texto: "44%" }],
-      ["agendaram", 10, { tipo: "pct", texto: "25%" }],
+  it("replay sem dados: zerado é detectado, e os blocos continuam existindo com zeros", () => {
+    const zeros = replay.map((d) => ({ ...d, valor: 0 }));
+    expect(funilZerado(zeros)).toBe(true);
+    expect(funilZerado(replay)).toBe(false);
+    expect(funilZerado([])).toBe(true);
+    const b = blocosDoFunil(zeros, "replay");
+    expect(b).toHaveLength(5);
+    expect(b.slice(1).every((x) => x.passagem?.tipo === "pct" && x.passagem.texto === "—")).toBe(true);
+  });
+
+  it("resgate: mesmos blocos, base = convidados, taxas calculadas no front", () => {
+    const b = blocosDoResgate({ convidados: 2600, assistiram: 180, aplicaram: 42, agendaram: 15, pendentes: 27 });
+    expect(b.map((x) => [x.rotulo, x.valor, x.passagem?.tipo === "pct" ? x.passagem.texto : x.passagem])).toEqual([
+      ["Convidados", 2600, null],
+      ["Assistiram", 180, "6,9%"],
+      ["Levantaram a mão", 42, "23%"],
+      ["Agendaram", 15, "36%"],
+      ["Pendentes", 27, "64%"],
     ]);
-    const semAssistiram = { no_evento: 171, levantaram_mao: 40, agendaram: 10, pendentes: 30 };
-    expect(blocosDoCiclo(semAssistiram).map((x) => x.chave)).toEqual(["inscritos", "levantaram", "agendaram"]);
   });
+});
 
-  it("replay inteiramente indisponível → 'Acessaram' do Total é null (travessão), nunca 0", () => {
-    const base = { ao_vivo: linha({ assistiram: 84, aplicaram: 39 }), total: linha({ acessaram: 0, assistiram: 84, aplicaram: 39 }) };
-    expect(acessaramDoTotal({ ...base, replay: linha({}) })).toBeNull();
-    expect(acessaramDoTotal({ ...base, replay: linha({ acessaram: 58 }), total: linha({ acessaram: 58 }) })).toBe(58);
-    expect(celulaMatriz(acessaramDoTotal({ ...base, replay: linha({}) }))).toBe("—");
-  });
-
-  it("avisos viram frases; chave crua e código desconhecido nunca aparecem", () => {
-    const textos = traduzirAvisos(["taxa_acima_de_100", "sem_origem_elevado", "codigo_novo_x", "outro_codigo"]);
-    expect(textos).toHaveLength(3); // os dois desconhecidos colapsam na frase genérica
+describe("avisos (V4)", () => {
+  it("os três códigos têm frase; chave crua e código desconhecido nunca aparecem", () => {
+    const textos = traduzirAvisos([
+      "assistiram_acima_da_base",
+      "aplicaram_acima_de_assistiram",
+      "taxa_acima_de_100",
+      "codigo_novo_x",
+      "outro_codigo",
+    ]);
+    expect(textos).toHaveLength(4); // os dois desconhecidos colapsam na frase genérica
     for (const t of textos) expect(t).not.toMatch(/_/);
-    expect(textos[0]).toContain("acima de 100%");
+    expect(textos[0]).toBe("Assistiram supera a base de inscritos e convidados — verificar tags.");
+    expect(textos[1]).toBe("Aplicaram supera assistiram — inconsistência de cálculo, avise o time técnico.");
+    expect(textos[2]).toBe("Há taxa acima de 100% — verificar base.");
     expect(traduzirAvisos(null)).toEqual([]);
-    expect(traduzirAvisos([])).toEqual([]);
-  });
-
-  it("contrato: campos V3.1 opcionais (com e sem eles)", () => {
-    const base = { de: "x", ate: "x", eventos: [], leads: [lead({ aplicacao_por_fallback: true })], gerado_em: "x",
-      totais: { no_evento: 1, levantaram_mao: 0, agendaram: 0, pendentes: 0 } };
-    expect(OportunidadesResponseSchema.safeParse(base).success).toBe(true);
-    expect(OportunidadesResponseSchema.safeParse({
-      ...base, sinais_indisponiveis: ["participou"], avisos: ["taxa_acima_de_100"],
-      matriz: { ao_vivo: linha({ assistiram: null }), replay: linha({}), total: linha({ assistiram: null }) },
-    }).success).toBe(true);
   });
 });

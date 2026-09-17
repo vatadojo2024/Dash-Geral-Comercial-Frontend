@@ -3,14 +3,16 @@ import { diasEntre } from "./ciclo";
 
 // ---------------------------------------------------------------------------
 // Aba "Levantou a Mão" (Produtividade SDR). Fonte: GET /api/eventos/oportunidades
-// (backend mapacalor-api) — quem aplicou no webinar (tag "Levantou a Mão") e NÃO
-// agendou a 1ª call. `leads` traz SÓ os pendentes, já ordenados pelo backend
-// (tier_rank desc → evento_tag desc → nome asc). Todo filtro de MQL, busca,
-// ordenação e CSV acontece AQUI, no cliente, sobre esse array — sem ida extra
-// ao servidor. Funções puras, sem rede.
+// (backend mapacalor-api, contrato V4) — quem aplicou no webinar e NÃO tem call
+// agendada. `leads` traz SÓ os pendentes, uma linha por (contato, evento), já
+// ordenados pelo backend. Filtros (MQL, dono, origem), busca, ordenação e CSV
+// acontecem AQUI, no cliente — sem ida extra ao servidor. Funções puras.
+//
+// O front lê: matriz, funis, resgate, por_dono, avisos, leads e, de `totais`,
+// só inscritos / desqualificados / pendentes.
 // ---------------------------------------------------------------------------
 
-// Contrato TOLERANTE (um campo nulo/extra nunca derruba a aba).
+// Contrato TOLERANTE (um campo nulo/extra/ausente nunca derruba a aba).
 export const LeadPendenteSchema = z
   .object({
     clint_contact_id: z.string(),
@@ -19,39 +21,40 @@ export const LeadPendenteSchema = z
     email: z.string().nullish(),
     tier: z.string().nullish(),
     tier_rank: z.number().int().nullish(),
+    // Evento a que ESTA linha se refere: com dois eventos no intervalo o mesmo
+    // contato aparece em duas linhas.
     evento_tag: z.string().nullish(),
     tags: z.array(z.string()).nullish(),
     created_at: z.string().nullish(),
     // Id do lead no Mapa de Calor quando o backend casou o contato (e-mail ou
-    // telefone) com a tabela `leads`. null = sem ficha (quem só se inscreveu e
-    // levantou a mão não passa pelo webhook da Clint). Opcional: backend antigo
-    // não manda.
+    // telefone) com a tabela `leads`. null = sem ficha.
     lead_id: z.string().nullish(),
-    // --- V2 (todos opcionais: backend V1 segue válido) ---
     // Negócio escolhido na Clint e o card dele. url_clint vem PRONTA do backend;
     // o front nunca monta a URL. null = contato sem negócio.
     clint_deal_id: z.string().nullish(),
     url_clint: z.string().nullish(),
-    // Etapa do negócio na Clint (ex.: "Prospecção").
     etapa: z.string().nullish(),
     // Dono do negócio (SDR responsável). null = "Sem dono".
     dono: z
       .object({ id: z.string().nullish(), nome: z.string(), email: z.string().nullish() })
       .nullish(),
-    // --- V3 (opcionais: backend V2 segue válido) ---
-    // Recorte do contato no ciclo: "ao_vivo" | "replay" | null (aplicou sem sinal
-    // de presença). String livre de propósito: valor novo não derruba a aba.
+    // "ao_vivo" (levantou a mão) | "replay" (aplicou só pelo replay). String
+    // livre de propósito: valor inesperado não derruba a aba, só fica sem badge.
     origem: z.string().nullish(),
-    convidado_resgate: z.boolean().nullish(),
+    assistiu_ao_vivo: z.boolean().nullish(),
     acessou_replay: z.boolean().nullish(),
     assistiu_replay: z.boolean().nullish(),
-    // V3.1: a aplicação veio só da tag SEM data (fallback).
-    aplicacao_por_fallback: z.boolean().nullish(),
+    convidado_resgate: z.boolean().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
 
-// Pendentes por dono (V2), já ordenado pelo backend: pendentes desc, "Sem dono" último.
+// Chave estável da LINHA da tabela: (contato, evento).
+export function chaveDaLinha(l: Pick<LeadPendente, "clint_contact_id" | "evento_tag">): string {
+  return `${l.clint_contact_id}|${l.evento_tag ?? ""}`;
+}
+
+// Pendentes por dono, já ordenado pelo backend: pendentes desc, "Sem dono" último.
 export const DonoAgregadoSchema = z.object({
   dono_id: z.string().nullish(),
   dono_nome: z.string(),
@@ -60,8 +63,8 @@ export const DonoAgregadoSchema = z.object({
 });
 export type DonoAgregado = z.infer<typeof DonoAgregadoSchema>;
 
-// Linha da matriz ao vivo / replay / total (V3). `acessaram` é null no ao vivo
-// (não é degrau desse recorte) e `taxa_agendamento` é null quando aplicaram = 0.
+// Linha da matriz ao vivo / replay / total. `acessaram` é null no ao vivo (não é
+// degrau desse recorte) e `taxa_agendamento` é null quando aplicaram = 0.
 export const LinhaMatrizSchema = z.object({
   acessaram: z.number().int().nullish(),
   assistiram: z.number().int().nullish(),
@@ -80,16 +83,20 @@ export const MatrizSchema = z.object({
 });
 export type Matriz = z.infer<typeof MatrizSchema>;
 
-// Funil da campanha de resgate (denominador próprio). Taxas vêm PRONTAS.
+// Funis prontos do backend: degraus { nome, valor }. As TAXAS são do front.
+export const DegrauSchema = z.object({ nome: z.string(), valor: z.number().int() });
+export type Degrau = z.infer<typeof DegrauSchema>;
+export const FunilSchema = z.object({ degraus: z.array(DegrauSchema) });
+export const FunisSchema = z.object({ ao_vivo: FunilSchema, replay: FunilSchema });
+export type Funis = z.infer<typeof FunisSchema>;
+
+// Campanha de resgate (denominador próprio = convidados). Só valores; taxas no front.
 export const ResgateSchema = z.object({
   convidados: z.number().int(),
   assistiram: z.number().int(),
   aplicaram: z.number().int(),
   agendaram: z.number().int(),
   pendentes: z.number().int(),
-  taxa_retorno: z.number().nullish(),
-  taxa_aplicacao: z.number().nullish(),
-  taxa_agendamento: z.number().nullish(),
 });
 export type Resgate = z.infer<typeof ResgateSchema>;
 
@@ -97,30 +104,22 @@ export const OportunidadesResponseSchema = z.object({
   de: z.string(),
   ate: z.string(),
   eventos: z.array(z.string()),
-  // V3: intervalo com 2+ eventos — tags sem data foram ignoradas (subcontagem).
-  atribuicao_parcial: z.boolean().nullish(),
-  // V3.1: sinais que a base não permite calcular (hoje só "participou" → o
-  // ao vivo não tem como saber quem assistiu) e travas de sanidade do backend.
-  sinais_indisponiveis: z.array(z.string()).nullish(),
-  avisos: z.array(z.string()).nullish(),
-  totais: z.object({
-    // Inscritos no evento (contatos com a tag WG).
-    no_evento: z.number().int(),
-    // Quem ASSISTIU (tags "Participou" / "Pós WG" / "Levantou a Mão"). Opcional:
-    // backend anterior à correção de set/2026 não manda — a UI cai em no_evento.
-    assistiram: z.number().int().nullish(),
-    // V2: contatos removidos da base por estarem em "Desqualificado" (conferência).
-    // no_evento já vem SEM eles.
-    desqualificados: z.number().int().nullish(),
-    // V3: aplicaram sem nenhum sinal de presença (só entram na linha Total).
-    sem_origem: z.number().int().nullish(),
-    levantaram_mao: z.number().int(),
-    agendaram: z.number().int(),
-    pendentes: z.number().int(),
-  }),
+  totais: z
+    .object({
+      // Pares (contato, evento) com a tag WG do ciclo, já sem os desqualificados.
+      inscritos: z.number().int().nullish(),
+      // Removidos da base por estarem em "Desqualificado" (número de conferência).
+      desqualificados: z.number().int().nullish(),
+      // = matriz.total.pendentes e o tamanho de `leads`.
+      pendentes: z.number().int(),
+    })
+    .passthrough(),
   matriz: MatrizSchema.nullish(),
+  funis: FunisSchema.nullish(),
   resgate: ResgateSchema.nullish(),
   por_dono: z.array(DonoAgregadoSchema).nullish(),
+  // Travas de sanidade do backend (não bloqueiam a resposta).
+  avisos: z.array(z.string()).nullish(),
   leads: z.array(LeadPendenteSchema),
   gerado_em: z.string(),
   cache: z.enum(["hit", "miss"]).nullish(),
@@ -128,122 +127,102 @@ export const OportunidadesResponseSchema = z.object({
 export type OportunidadesResponse = z.infer<typeof OportunidadesResponseSchema>;
 export type TotaisOportunidades = OportunidadesResponse["totais"];
 
-// Etapas do funil na ordem. Com `assistiram` presente são 4 (inscritos →
-// assistiram → levantaram → agendaram); sem ele, as 3 originais.
-export type EtapaFunil = {
-  chave: "inscritos" | "assistiram" | "levantaram" | "agendaram";
-  rotulo: string;
-  valor: number;
-};
-
-export function etapasDoFunil(t: TotaisOportunidades): EtapaFunil[] {
-  const temAssistiram = t.assistiram != null;
-  return [
-    { chave: "inscritos", rotulo: temAssistiram ? "Inscritos" : "No evento", valor: t.no_evento },
-    ...(temAssistiram
-      ? [{ chave: "assistiram" as const, rotulo: "Assistiram", valor: t.assistiram ?? 0 }]
-      : []),
-    { chave: "levantaram", rotulo: "Levantou a mão", valor: t.levantaram_mao },
-    { chave: "agendaram", rotulo: "Agendou", valor: t.agendaram },
-  ];
-}
-
-// Base sobre a qual "levantaram a mão" faz sentido: quem assistiu, se houver.
-export function baseDeLevantaram(t: TotaisOportunidades): { valor: number; rotulo: string } {
-  return t.assistiram != null
-    ? { valor: t.assistiram, rotulo: "dos que assistiram" }
-    : { valor: t.no_evento, rotulo: "do no evento" };
-}
-
 // ---------------------------------------------------------------------------
-// Passagem entre degraus do funil (V3.1). Três saídas possíveis além da
-// porcentagem: "sem dado" (um dos lados é desconhecido) e "verificar base"
-// (passagem acima de 100% — nunca exibida como porcentagem).
+// Funis. Os degraus vêm prontos; a passagem entre degraus consecutivos é
+// calculada aqui. Três saídas: porcentagem, travessão (anterior = 0) e
+// "verificar base" (degrau maior que o anterior — nunca vira porcentagem).
 // ---------------------------------------------------------------------------
 
-export type PassagemFunil =
-  | { tipo: "pct"; texto: string }
-  | { tipo: "sem_dado" }
-  | { tipo: "verificar" };
+export type PassagemFunil = { tipo: "pct"; texto: string } | { tipo: "verificar" };
 
 export type BlocoFunil = {
   chave: string;
   rotulo: string;
-  // null = valor desconhecido (exibe travessão, nunca zero).
-  valor: number | null;
-  // Passagem a partir do degrau anterior; null = sem conector de taxa.
+  valor: number;
+  // Passagem a partir do degrau de referência; null = primeiro degrau.
   passagem: PassagemFunil | null;
+  // Rótulo da base da passagem quando ela NÃO é o degrau imediatamente anterior.
+  baseDaPassagem?: string;
 };
 
-// Passagem calculada no cliente (funil do ciclo).
-export function passagemCalculada(
-  valor: number | null | undefined,
-  anterior: number | null | undefined,
-): PassagemFunil {
-  if (valor == null || anterior == null) return { tipo: "sem_dado" };
-  if (valor > anterior) return { tipo: "verificar" };
-  return { tipo: "pct", texto: formatarPct(pct(valor, anterior)) };
+export type RecorteFunil = "ao_vivo" | "replay" | "resgate";
+
+const ROTULO_DEGRAU: Record<string, string> = {
+  inscritos: "Inscritos",
+  convidados: "Convidados",
+  acessaram: "Acessaram",
+  assistiram: "Assistiram",
+  agendaram: "Agendaram",
+  pendentes: "Pendentes",
+};
+
+// `nome` do degrau → rótulo. "aplicaram" muda por recorte: no ao vivo (e no
+// resgate) é "Levantaram a mão"; no replay é "Aplicaram". Nome desconhecido vira
+// texto legível, nunca a chave crua com underscore.
+export function rotuloDoDegrau(nome: string, recorte: RecorteFunil): string {
+  if (nome === "aplicaram") return recorte === "replay" ? "Aplicaram" : "Levantaram a mão";
+  const conhecido = ROTULO_DEGRAU[nome];
+  if (conhecido) return conhecido;
+  const limpo = nome.replace(/_/g, " ").trim();
+  return limpo ? limpo.charAt(0).toUpperCase() + limpo.slice(1) : "—";
 }
 
-// Passagem que vem PRONTA do backend como fração (funil de resgate).
-export function passagemPronta(taxa: number | null | undefined): PassagemFunil {
-  if (taxa != null && taxa > 1) return { tipo: "verificar" };
-  return { tipo: "pct", texto: formatarTaxa(taxa) };
+// degrau / referência. Referência zero → travessão; degrau maior → "verificar".
+export function passagemCalculada(valor: number, referencia: number): PassagemFunil {
+  if (referencia === 0) return { tipo: "pct", texto: TRAVESSAO };
+  if (valor > referencia) return { tipo: "verificar" };
+  return { tipo: "pct", texto: formatarPct(pct(valor, referencia)) };
 }
 
-// O sinal de presença AO VIVO está indisponível? (nenhum contato com a tag
-// datada "Participou WG - DD.MM.AA" — não é "ninguém assistiu", é "não dá
-// para saber").
-export function presencaIndisponivel(
-  matriz: Matriz | null | undefined,
-  sinaisIndisponiveis?: readonly string[] | null,
-): boolean {
-  if (sinaisIndisponiveis?.includes("participou")) return true;
-  return matriz != null && matriz.ao_vivo.assistiram == null;
-}
-
-// Blocos do funil do CICLO. Com a matriz (V3+), "Assistiram" vem de
-// matriz.total.assistiram — totais.assistiram chega 0 quando o sinal está
-// indisponível, e zero aqui seria mentira. Sinal indisponível → as duas
-// passagens que tocam "Assistiram" viram "sem dado".
-export function blocosDoCiclo(
-  t: TotaisOportunidades,
-  matriz?: Matriz | null,
-  sinaisIndisponiveis?: readonly string[] | null,
-): BlocoFunil[] {
-  const semPresenca = presencaIndisponivel(matriz, sinaisIndisponiveis);
-  const etapas: { chave: string; rotulo: string; valor: number | null; incerto?: boolean }[] =
-    etapasDoFunil(t).map((e) =>
-      e.chave === "assistiram"
-        ? {
-            ...e,
-            valor: matriz ? (matriz.total.assistiram ?? null) : e.valor,
-            incerto: semPresenca,
-          }
-        : e,
-    );
-  return etapas.map((e, i) => {
-    if (i === 0) return { chave: e.chave, rotulo: e.rotulo, valor: e.valor, passagem: null };
-    const anterior = etapas[i - 1];
-    const passagem: PassagemFunil =
-      e.incerto || anterior.incerto
-        ? { tipo: "sem_dado" }
-        : passagemCalculada(e.valor, anterior.valor);
-    return { chave: e.chave, rotulo: e.rotulo, valor: e.valor, passagem };
+// Blocos de um funil. Regra geral: degrau[i] / degrau[i-1]. EXCEÇÃO: "pendentes"
+// não é passagem de "agendaram" — os dois são partes complementares de quem
+// aplicou (pendentes = aplicaram − agendaram). Medir contra "agendaram" daria
+// mais de 100% sempre que menos da metade agendou (falso "verificar base"), então
+// "pendentes" é medido contra "aplicaram", com a base dita no rótulo.
+export function blocosDoFunil(degraus: readonly Degrau[], recorte: RecorteFunil): BlocoFunil[] {
+  const aplicaram = degraus.find((d) => d.nome === "aplicaram");
+  return degraus.map((d, i) => {
+    const bloco = { chave: d.nome, rotulo: rotuloDoDegrau(d.nome, recorte), valor: d.valor };
+    if (i === 0) return { ...bloco, passagem: null };
+    if (d.nome === "pendentes" && aplicaram) {
+      return {
+        ...bloco,
+        passagem: passagemCalculada(d.valor, aplicaram.valor),
+        baseDaPassagem: recorte === "replay" ? "de quem aplicou" : "de quem levantou a mão",
+      };
+    }
+    return { ...bloco, passagem: passagemCalculada(d.valor, degraus[i - 1].valor) };
   });
+}
+
+// Funil sem nenhum dado (todos os degraus zero) — ex.: ciclo sem replay. O
+// bloco é renderizado com zeros + nota, nunca escondido.
+export function funilZerado(degraus: readonly Degrau[]): boolean {
+  return degraus.length === 0 || degraus.every((d) => d.valor === 0);
+}
+
+// Campanha de resgate → mesmos blocos, base própria (convidados).
+export function blocosDoResgate(r: Resgate): BlocoFunil[] {
+  return blocosDoFunil(
+    [
+      { nome: "convidados", valor: r.convidados },
+      { nome: "assistiram", valor: r.assistiram },
+      { nome: "aplicaram", valor: r.aplicaram },
+      { nome: "agendaram", valor: r.agendaram },
+      { nome: "pendentes", valor: r.pendentes },
+    ],
+    "resgate",
+  );
 }
 
 // Avisos de sanidade do backend → linguagem direta. A chave crua NUNCA vai para
 // a tela: código desconhecido cai numa frase genérica.
 const TEXTO_AVISO: Record<string, string> = {
-  assistiram_acima_de_inscritos:
-    "Há mais pessoas marcadas como \"assistiu\" do que inscritos no ciclo. A base consultada provavelmente inclui contatos de outros eventos.",
-  aplicaram_acima_da_base:
-    "O número de quem levantou a mão é maior que a base do ciclo (inscritos + convidados de resgate).",
-  sem_origem_elevado:
-    "Mais da metade dos inscritos levantou a mão sem sinal de presença (ao vivo ou replay). Confira as tags do evento na Clint.",
-  taxa_acima_de_100:
-    "Alguma taxa de passagem ficou acima de 100%. Os números deste período precisam ser verificados.",
+  assistiram_acima_da_base:
+    "Assistiram supera a base de inscritos e convidados — verificar tags.",
+  aplicaram_acima_de_assistiram:
+    "Aplicaram supera assistiram — inconsistência de cálculo, avise o time técnico.",
+  taxa_acima_de_100: "Há taxa acima de 100% — verificar base.",
 };
 const TEXTO_AVISO_GENERICO =
   "O backend sinalizou uma inconsistência na base deste período. Avise o time técnico.";
@@ -466,10 +445,11 @@ export function agruparPorDono(leads: LeadPendente[]): GrupoDono[] {
 }
 
 // ---------------------------------------------------------------------------
-// Origem (V3): ao vivo | replay | sem origem. Cores por token do tema.
+// Origem: "ao_vivo" (levantou a mão) | "replay" (aplicou só pelo replay). Não
+// existe terceiro valor. Cores por token do tema.
 // ---------------------------------------------------------------------------
 
-export type OrigemChave = "ao_vivo" | "replay" | "sem";
+export type OrigemChave = "ao_vivo" | "replay";
 
 export type OrigemConfig = {
   chave: OrigemChave;
@@ -494,80 +474,58 @@ export const ORIGENS: readonly OrigemConfig[] = [
     badge: "bg-violeta/15 text-violeta border border-violeta/30",
     chipAtivo: "bg-violeta/20 text-violeta border-violeta/60",
   },
-  {
-    chave: "sem",
-    label: "Sem origem",
-    ordem: 2,
-    badge: "border border-dashed border-borda bg-transparent text-texto-sec/80",
-    chipAtivo: "bg-painel-claro text-texto border-texto-sec/60",
-  },
 ] as const;
 
 const ORIGEM_POR_CHAVE = new Map<string, OrigemConfig>(ORIGENS.map((o) => [o.chave, o]));
 
-export function origemDoLead(lead: Pick<LeadPendente, "origem">): OrigemConfig {
-  return ORIGEM_POR_CHAVE.get(lead.origem ?? "") ?? ORIGENS[2];
+// null = backend antigo ou valor inesperado: a linha fica sem badge de origem.
+export function origemDoLead(lead: Pick<LeadPendente, "origem">): OrigemConfig | null {
+  return ORIGEM_POR_CHAVE.get(lead.origem ?? "") ?? null;
 }
 
-// Marcador "Viu o replay também": só faz sentido em lead de origem AO VIVO.
-export function viuReplayTambem(lead: Pick<LeadPendente, "origem" | "assistiu_replay">): boolean {
-  return origemDoLead(lead).chave === "ao_vivo" && lead.assistiu_replay === true;
+// Marcadores da célula de origem (tooltip). "Resgate" é independente; os outros
+// dois dizem que o lead esteve TAMBÉM no recorte que não é a origem dele.
+export type MarcadorOrigem = "resgate" | "viu_replay" | "esteve_ao_vivo";
+
+export const TEXTO_MARCADOR: Record<MarcadorOrigem, string> = {
+  resgate: "Resgate",
+  viu_replay: "Viu o replay também",
+  esteve_ao_vivo: "Esteve ao vivo também",
+};
+
+export function marcadoresDoLead(
+  lead: Pick<LeadPendente, "origem" | "convidado_resgate" | "assistiu_replay" | "assistiu_ao_vivo">,
+): MarcadorOrigem[] {
+  const origem = origemDoLead(lead)?.chave;
+  const out: MarcadorOrigem[] = [];
+  if (lead.convidado_resgate) out.push("resgate");
+  if (origem === "ao_vivo" && lead.assistiu_replay) out.push("viu_replay");
+  if (origem === "replay" && lead.assistiu_ao_vivo) out.push("esteve_ao_vivo");
+  return out;
 }
 
 export type ContagemOrigem = Record<OrigemChave, number> & { resgate: number };
 
 export function contarPorOrigem(leads: LeadPendente[]): ContagemOrigem {
-  const out: ContagemOrigem = { ao_vivo: 0, replay: 0, sem: 0, resgate: 0 };
+  const out: ContagemOrigem = { ao_vivo: 0, replay: 0, resgate: 0 };
   for (const l of leads) {
-    out[origemDoLead(l).chave] += 1;
+    const origem = origemDoLead(l);
+    if (origem) out[origem.chave] += 1;
     if (l.convidado_resgate) out.resgate += 1;
   }
   return out;
 }
 
-// Célula da matriz: null/undefined → travessão, NUNCA zero.
+// Travessão: só onde o dado NÃO SE APLICA por definição ("Acessaram" no ao vivo,
+// a % quando taxa_agendamento é null). null/undefined → travessão, nunca zero.
 export const TRAVESSAO = "—";
 export function celulaMatriz(v: number | null | undefined): string {
   return v == null ? TRAVESSAO : String(v);
 }
 
-// Taxa que vem PRONTA do backend como fração (0.393). null → travessão, nunca 0%.
+// taxa_agendamento vem PRONTA do backend como fração (0.393). null → travessão.
 export function formatarTaxa(taxa: number | null | undefined): string {
   return taxa == null ? TRAVESSAO : formatarPct(taxa * 100);
-}
-
-// Recorte sem nenhum dado (tudo 0/null) — ex.: ciclo sem replay. A linha inteira
-// vira travessões em vez de uma fileira de zeros.
-export function linhaSemDados(l: LinhaMatriz): boolean {
-  return [l.acessaram, l.assistiram, l.aplicaram, l.agendaram, l.pendentes].every(
-    (v) => v == null || v === 0,
-  );
-}
-
-// "Acessaram" só existe no recorte replay. Replay inteiramente indisponível →
-// o Total mostra travessão (null), NUNCA 0.
-export function acessaramDoTotal(m: Matriz): number | null {
-  return linhaSemDados(m.replay) ? null : (m.total.acessaram ?? null);
-}
-
-// Conferência da matriz: Total.aplicaram = Ao vivo + Replay + sem_origem.
-export function matrizFecha(m: Matriz, semOrigem: number | null | undefined): boolean {
-  return (
-    (m.total.aplicaram ?? 0) ===
-    (m.ao_vivo.aplicaram ?? 0) + (m.replay.aplicaram ?? 0) + (semOrigem ?? 0)
-  );
-}
-
-// Degraus do funil de resgate. A passagem vem PRONTA do backend (fração); o
-// último degrau (Pendentes) não tem taxa. Acima de 100% → "verificar base".
-export function degrausDoResgate(r: Resgate): BlocoFunil[] {
-  return [
-    { chave: "convidados", rotulo: "Convidados", valor: r.convidados, passagem: null },
-    { chave: "assistiram", rotulo: "Assistiram", valor: r.assistiram, passagem: passagemPronta(r.taxa_retorno) },
-    { chave: "levantaram", rotulo: "Levantaram a mão", valor: r.aplicaram, passagem: passagemPronta(r.taxa_aplicacao) },
-    { chave: "agendaram", rotulo: "Agendaram", valor: r.agendaram, passagem: passagemPronta(r.taxa_agendamento) },
-    { chave: "pendentes", rotulo: "Pendentes", valor: r.pendentes, passagem: null },
-  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -590,7 +548,7 @@ export type FiltroPendentes = {
   tiers: readonly TierChave[];
   // Chaves de dono (chaveDono). Nenhum selecionado = todos. Aplica em série com tiers.
   donos?: readonly string[];
-  // Origens (V3). Nenhuma selecionada = todas. Em série com tiers e donos.
+  // Origens. Nenhuma selecionada = todas. Em série com tiers e donos.
   origens?: readonly OrigemChave[];
   // "Convidados de resgate": filtro independente, combina com qualquer outro.
   soResgate?: boolean;
@@ -608,7 +566,10 @@ export function filtrarPendentes(leads: LeadPendente[], f: FiltroPendentes): Lea
   return leads.filter((l) => {
     if (tiers.size > 0 && !tiers.has(tierDoLead(l).chave)) return false;
     if (donos.size > 0 && !donos.has(chaveDono(l.dono))) return false;
-    if (origens.size > 0 && !origens.has(origemDoLead(l).chave)) return false;
+    if (origens.size > 0) {
+      const origem = origemDoLead(l)?.chave;
+      if (!origem || !origens.has(origem)) return false;
+    }
     if (f.soResgate && !l.convidado_resgate) return false;
     if (!termo) return true;
     if (normalizar(l.nome).includes(termo)) return true;
@@ -637,10 +598,11 @@ export function ordenarPendentes(leads: LeadPendente[], ord: Ordenacao): LeadPen
         return cmp !== 0 ? cmp * sinal : a.i - b.i;
       }
       if (ord.campo === "origem") {
-        // Ao vivo → Replay (ou o inverso); "Sem origem" SEMPRE no fim.
+        // Ao vivo → Replay (ou o inverso). Linha sem origem reconhecida (backend
+        // antigo) fica sempre no fim.
         const oa = origemDoLead(a.l);
         const ob = origemDoLead(b.l);
-        if ((oa.chave === "sem") !== (ob.chave === "sem")) return oa.chave === "sem" ? 1 : -1;
+        if (!oa || !ob) return oa === ob ? a.i - b.i : oa ? -1 : 1;
         const cmp = oa.ordem - ob.ordem;
         return cmp !== 0 ? cmp * sinal : a.i - b.i;
       }
@@ -700,7 +662,7 @@ export function linkWhatsApp(telefone: string | null | undefined): string | null
 }
 
 // CSV do recorte filtrado — separador ";" (abre certo no Excel pt-BR) e aspas
-// escapadas. Colunas fixas na ordem da spec V3 (resgate = "sim" ou vazio).
+// escapadas. Doze colunas fixas (resgate = "sim" ou vazio).
 export function csvDePendentes(leads: LeadPendente[]): string {
   const cabecalho = [
     "nome",
@@ -721,7 +683,7 @@ export function csvDePendentes(leads: LeadPendente[]): string {
     [
       l.nome,
       tierDoLead(l).label,
-      origemDoLead(l).label,
+      origemDoLead(l)?.label ?? "",
       l.convidado_resgate ? "sim" : "",
       nomeDono(l.dono),
       l.etapa ?? "",
@@ -741,5 +703,5 @@ export function csvDePendentes(leads: LeadPendente[]): string {
 // Estado "todos desqualificados": o ciclo tinha contatos, mas todos saíram da
 // base por "Desqualificado" — nenhum lead ativo para trabalhar.
 export function todosDesqualificados(t: TotaisOportunidades): boolean {
-  return t.no_evento === 0 && (t.desqualificados ?? 0) > 0;
+  return t.inscritos === 0 && (t.desqualificados ?? 0) > 0;
 }

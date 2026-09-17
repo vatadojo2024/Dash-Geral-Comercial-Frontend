@@ -1,10 +1,14 @@
 import { tagsEventoNoIntervalo } from "@/lib/sdr/ciclo";
 
 // ---------------------------------------------------------------------------
-// Mock da aba "Levantou a Mão" (LEADS_MODE=mock). Espelha o contrato REAL de
-// GET /api/eventos/oportunidades: 40 pendentes cobrindo os 7 tiers, distribuídos
-// entre os eventos (terças) do intervalo pedido — 1 ciclo = 1 evento; um
-// intervalo de várias semanas exercita a coluna "Evento". Determinístico.
+// Mock da aba "Levantou a Mão" (LEADS_MODE=mock) no contrato V4 de
+// GET /api/eventos/oportunidades. Determinístico. Três cenários principais:
+//   - padrão: 1 evento (modo ciclo), 40 pendentes, ao vivo + replay + resgate;
+//   - sem replay (`simular=sem_replay`): linha e funil do replay zerados;
+//   - dois eventos (modo intervalo): UMA LINHA POR (contato, evento) — alguns
+//     contatos aparecem em duas linhas, diferenciadas pela coluna Evento.
+// Extras para validar estados: `simular=vazio|sem_contatos|desqualificados|
+// sem_resgate|base_inflada`.
 //
 // Só para dev/demo: o route handler ignora este arquivo em LEADS_MODE=api.
 // ---------------------------------------------------------------------------
@@ -76,7 +80,7 @@ export type LeadPendenteMock = {
   email: string | null;
   tier: string | null;
   tier_rank: number;
-  evento_tag: string | null;
+  evento_tag: string;
   tags: string[];
   created_at: string | null;
   lead_id: string | null;
@@ -84,21 +88,11 @@ export type LeadPendenteMock = {
   url_clint: string | null;
   etapa: string | null;
   dono: { id: string; nome: string; email: string | null } | null;
-  origem: "ao_vivo" | "replay" | null;
-  convidado_resgate: boolean;
+  origem: "ao_vivo" | "replay";
+  assistiu_ao_vivo: boolean;
   acessou_replay: boolean;
   assistiu_replay: boolean;
-  aplicacao_por_fallback: boolean;
-};
-
-type LinhaMatrizMock = {
-  acessaram: number | null;
-  assistiram: number | null;
-  aplicaram: number;
-  agendaram: number;
-  taxa_agendamento: number | null;
-  pendentes: number;
-  alto_valor_pendente: number;
+  convidado_resgate: boolean;
 };
 
 // Donos (SDRs) do mock. null = negócio sem dono.
@@ -110,177 +104,178 @@ const DONOS: (LeadPendenteMock["dono"] | null)[] = [
 ];
 const ETAPAS_CLINT = ["Prospecção", "Qualificação", "Contato feito", "Sem resposta"];
 
+type LinhaMatrizMock = {
+  acessaram: number | null;
+  assistiram: number;
+  aplicaram: number;
+  agendaram: number;
+  taxa_agendamento: number | null;
+  pendentes: number;
+  alto_valor_pendente: number;
+};
+type DegrauMock = { nome: string; valor: number };
+
 export type OportunidadesMock = {
   de: string;
   ate: string;
   eventos: string[];
-  atribuicao_parcial: boolean;
-  sinais_indisponiveis: string[];
-  avisos: string[];
+  totais: { inscritos: number; desqualificados: number; pendentes: number };
   matriz: { ao_vivo: LinhaMatrizMock; replay: LinhaMatrizMock; total: LinhaMatrizMock };
+  funis: { ao_vivo: { degraus: DegrauMock[] }; replay: { degraus: DegrauMock[] } };
   resgate: {
     convidados: number;
     assistiram: number;
     aplicaram: number;
     agendaram: number;
     pendentes: number;
-    taxa_retorno: number | null;
-    taxa_aplicacao: number | null;
-    taxa_agendamento: number | null;
   } | null;
-  totais: {
-    inscritos: number;
-    sem_origem: number;
-    no_evento: number;
-    desqualificados: number;
-    assistiram: number;
-    levantaram_mao: number;
-    agendaram: number;
-    pendentes: number;
-  };
   por_dono: { dono_id: string | null; dono_nome: string; pendentes: number; alto_valor: number }[];
+  avisos: string[];
   leads: LeadPendenteMock[];
   gerado_em: string;
   cache: "hit" | "miss";
 };
 
-const LINHA_VAZIA: LinhaMatrizMock = {
-  acessaram: 0,
-  assistiram: 0,
-  aplicaram: 0,
-  agendaram: 0,
-  taxa_agendamento: null,
-  pendentes: 0,
-  alto_valor_pendente: 0,
-};
 const taxa = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 10000) / 10000 : null);
 
-// `simular` (só mock): "vazio" = todos agendaram; "sem_contatos" = tag sem
-// contatos na Clint; "sem_replay" = ciclo sem dados de replay; "sem_resgate" =
-// resgate null; "sem_participou" = sinal de presença ao vivo indisponível
-// (assistiram null); "base_inflada" = o bug da V3 (assistiram > inscritos, taxa
-// acima de 100% e avisos). Serve para validar os estados da tela sem o backend.
+function linhaMatriz(
+  acessaram: number | null,
+  assistiram: number,
+  pendentes: LeadPendenteMock[],
+  agendaram: number,
+): LinhaMatrizMock {
+  const aplicaram = pendentes.length + agendaram;
+  return {
+    acessaram,
+    assistiram,
+    aplicaram,
+    agendaram,
+    taxa_agendamento: taxa(agendaram, aplicaram),
+    pendentes: pendentes.length,
+    alto_valor_pendente: pendentes.filter((l) => l.tier_rank >= 4).length,
+  };
+}
+
+// Uma linha do mock para o contato `i` no evento `evento`.
+function linhaDoContato(i: number, tier: Tier, evento: string, semReplay: boolean, semResgate: boolean): LeadPendenteMock {
+  const nome = NOMES[i];
+  const ddd = DDDS[i % DDDS.length];
+  const numero = String(910000000 + ((i * 7919) % 89999999)).padStart(9, "0");
+  const extras = EXTRAS[i % EXTRAS.length];
+  // ~70% levantou a mão ao vivo; ~30% aplicou só pelo replay.
+  const origem: "ao_vivo" | "replay" = !semReplay && i % 10 >= 7 ? "replay" : "ao_vivo";
+  const assistiuReplay = !semReplay && (origem === "replay" || i % 7 === 0);
+  const criado = new Date(`${isoDaTag(evento)}T${String(9 + (i % 10)).padStart(2, "0")}:${String((i * 17) % 60).padStart(2, "0")}:00-03:00`);
+  criado.setUTCDate(criado.getUTCDate() + (i % 5));
+  const comNegocio = i % 4 !== 3;
+  return {
+    clint_contact_id: `clint-${String(i + 1).padStart(4, "0")}`,
+    nome,
+    telefone: i % 13 === 12 ? null : `+55${ddd}${numero}`,
+    email: i % 11 === 10 ? null : `${slug(nome)}@exemplo.com.br`,
+    tier: tier.tag,
+    tier_rank: tier.rank,
+    evento_tag: evento,
+    tags: [evento, "Levantou a Mão", ...(tier.tag ? [tier.tag] : []), ...extras],
+    created_at: criado.toISOString(),
+    // 1 em cada 3 tem ficha no Mapa de Calor (ids do mock data_clients.json).
+    lead_id: i % 3 === 0 ? `ld_${String((i % 40) + 1).padStart(4, "0")}` : null,
+    // 3 em 4 têm negócio na Clint (deal + url + etapa + dono).
+    clint_deal_id: comNegocio ? `deal-${1000 + i}` : null,
+    url_clint: comNegocio ? `https://app.clint.digital/deal/deal-${1000 + i}` : null,
+    etapa: comNegocio ? ETAPAS_CLINT[i % ETAPAS_CLINT.length] : null,
+    dono: comNegocio ? DONOS[i % 3] : null,
+    origem,
+    // Levantar a mão prova presença ao vivo; 1 em 10 do replay também esteve ao vivo.
+    assistiu_ao_vivo: origem === "ao_vivo" || i % 10 === 9,
+    acessou_replay: assistiuReplay || (!semReplay && i % 6 === 0),
+    assistiu_replay: assistiuReplay,
+    convidado_resgate: !semResgate && i % 4 === 2,
+  };
+}
+
 export function mockOportunidades(
   de: string,
   ate: string,
   simular?: string | null,
 ): OportunidadesMock {
   const eventos = tagsEventoNoIntervalo(de, ate);
-  const base = {
-    de,
-    ate,
-    eventos,
-    atribuicao_parcial: eventos.length > 1,
-    sinais_indisponiveis: [] as string[],
-    avisos: [] as string[],
-    gerado_em: new Date().toISOString(),
-    cache: "miss" as const,
-  };
-  const matrizVazia = {
-    ao_vivo: { ...LINHA_VAZIA, acessaram: null },
-    replay: LINHA_VAZIA,
-    total: LINHA_VAZIA,
+  const n = eventos.length;
+  const base = { de, ate, eventos, avisos: [] as string[], gerado_em: new Date().toISOString(), cache: "miss" as const };
+  const semReplay = simular === "sem_replay";
+  const semResgate = simular === "sem_resgate";
+  const inflada = simular === "base_inflada";
+
+  const degraus = (primeiro: string, l: LinhaMatrizMock, topo: number): DegrauMock[] => [
+    { nome: primeiro, valor: topo },
+    { nome: "assistiram", valor: l.assistiram },
+    { nome: "aplicaram", valor: l.aplicaram },
+    { nome: "agendaram", valor: l.agendaram },
+    { nome: "pendentes", valor: l.pendentes },
+  ];
+  const montar = (
+    leads: LeadPendenteMock[],
+    inscritos: number,
+    desqualificados: number,
+    agAoVivo: number,
+    agReplay: number,
+  ): Omit<OportunidadesMock, "de" | "ate" | "eventos" | "avisos" | "gerado_em" | "cache" | "resgate" | "por_dono"> => {
+    const pendAoVivo = leads.filter((l) => l.origem === "ao_vivo");
+    const pendReplay = leads.filter((l) => l.origem === "replay");
+    const ativo = inscritos > 0;
+    const aoVivo = linhaMatriz(null, ativo ? (inflada ? 1292 : semReplay ? 110 : 84) * n : 0, pendAoVivo, agAoVivo);
+    const replay = linhaMatriz(
+      ativo && !semReplay ? 58 * n : 0,
+      ativo && !semReplay ? 36 * n : 0,
+      pendReplay,
+      agReplay,
+    );
+    // Total = união sem contagem dupla (no mock, 10 por evento viram os dois).
+    const sobreposicao = ativo && !semReplay ? 10 * n : 0;
+    const total: LinhaMatrizMock = {
+      acessaram: replay.acessaram,
+      assistiram: aoVivo.assistiram + replay.assistiram - sobreposicao,
+      aplicaram: aoVivo.aplicaram + replay.aplicaram,
+      agendaram: agAoVivo + agReplay,
+      taxa_agendamento: taxa(agAoVivo + agReplay, aoVivo.aplicaram + replay.aplicaram),
+      pendentes: leads.length,
+      alto_valor_pendente: leads.filter((l) => l.tier_rank >= 4).length,
+    };
+    return {
+      totais: { inscritos, desqualificados, pendentes: leads.length },
+      matriz: { ao_vivo: aoVivo, replay, total },
+      funis: {
+        ao_vivo: { degraus: degraus("inscritos", aoVivo, inscritos) },
+        replay: { degraus: degraus("acessaram", replay, replay.acessaram ?? 0) },
+      },
+      leads,
+    };
   };
 
-  if (eventos.length === 0 || simular === "sem_contatos" || simular === "desqualificados") {
+  if (n === 0 || simular === "sem_contatos" || simular === "desqualificados") {
     return {
       ...base,
-      matriz: matrizVazia,
+      ...montar([], 0, simular === "desqualificados" ? 9 * Math.max(n, 1) : 0, 0, 0),
       resgate: null,
-      totais: {
-        inscritos: 0,
-        sem_origem: 0,
-        no_evento: 0,
-        desqualificados: simular === "desqualificados" ? 9 * eventos.length : 0,
-        assistiram: 0,
-        levantaram_mao: 0,
-        agendaram: 0,
-        pendentes: 0,
-      },
       por_dono: [],
-      leads: [],
     };
   }
   if (simular === "vazio") {
-    return {
-      ...base,
-      matriz: {
-        ao_vivo: { acessaram: null, assistiram: 90 * eventos.length, aplicaram: 28 * eventos.length, agendaram: 28 * eventos.length, taxa_agendamento: 1, pendentes: 0, alto_valor_pendente: 0 },
-        replay: { acessaram: 60 * eventos.length, assistiram: 30 * eventos.length, aplicaram: 10 * eventos.length, agendaram: 10 * eventos.length, taxa_agendamento: 1, pendentes: 0, alto_valor_pendente: 0 },
-        total: { acessaram: 60 * eventos.length, assistiram: 120 * eventos.length, aplicaram: 38 * eventos.length, agendaram: 38 * eventos.length, taxa_agendamento: 1, pendentes: 0, alto_valor_pendente: 0 },
-      },
-      resgate: null,
-      totais: {
-        inscritos: 214 * eventos.length,
-        sem_origem: 0,
-        no_evento: 214 * eventos.length,
-        desqualificados: 9 * eventos.length,
-        assistiram: 120 * eventos.length,
-        levantaram_mao: 38 * eventos.length,
-        agendaram: 38 * eventos.length,
-        pendentes: 0,
-      },
-      por_dono: [],
-      leads: [],
-    };
+    // Todos que aplicaram já agendaram: zero pendentes.
+    return { ...base, ...montar([], 214 * n, 9 * n, 28 * n, 10 * n), resgate: null, por_dono: [] };
   }
 
+  // Uma linha por (contato, evento). Com 1 evento: os 40 contatos. Com 2+: cada
+  // contato cai num evento e 1 em cada 8 aparece TAMBÉM no evento seguinte — o
+  // mesmo nome em duas linhas, diferenciado pela coluna Evento.
   const leads: LeadPendenteMock[] = [];
   let i = 0;
   DISTRIBUICAO.forEach((qtd, t) => {
-    const tier = TIERS[t];
     for (let k = 0; k < qtd; k++, i++) {
-      const nome = NOMES[i];
-      const evento = eventos[i % eventos.length];
-      const semTelefone = i % 13 === 12;
-      const semEmail = i % 11 === 10;
-      const ddd = DDDS[i % DDDS.length];
-      const numero = String(910000000 + ((i * 7919) % 89999999)).padStart(9, "0");
-      const extras = EXTRAS[i % EXTRAS.length];
-      const diasDepois = i % 5;
-      leads.push({
-        clint_contact_id: `clint-${String(i + 1).padStart(4, "0")}`,
-        nome,
-        telefone: semTelefone ? null : `+55${ddd}${numero}`,
-        email: semEmail ? null : `${slug(nome)}@exemplo.com.br`,
-        tier: tier.tag,
-        tier_rank: tier.rank,
-        evento_tag: evento,
-        tags: [evento, "Levantou a Mão", ...(tier.tag ? [tier.tag] : []), ...extras],
-        created_at: `${isoDaTag(evento)}T${String(9 + (i % 10)).padStart(2, "0")}:${String((i * 17) % 60).padStart(2, "0")}:00-03:00`,
-        // 1 em cada 3 tem ficha no Mapa de Calor (ids do mock data_clients.json).
-        lead_id: i % 3 === 0 ? `ld_${String((i % 40) + 1).padStart(4, "0")}` : null,
-        // 3 em 4 têm negócio na Clint (deal + url + etapa); dono só existe com negócio,
-        // e 1 em 4 negócios está sem dono.
-        // Origem: ~60% ao vivo, ~30% replay, ~10% sem sinal de presença. Com
-        // simular=sem_replay ninguém vem do replay.
-        ...(() => {
-          const r = i % 10;
-          const origem: "ao_vivo" | "replay" | null =
-            r === 9 ? null : r >= 6 && simular !== "sem_replay" ? "replay" : "ao_vivo";
-          const assistiuReplay = origem === "replay" || (origem === "ao_vivo" && i % 7 === 0 && simular !== "sem_replay");
-          return {
-            origem,
-            convidado_resgate: simular !== "sem_resgate" && i % 4 === 2,
-            acessou_replay: assistiuReplay || (simular !== "sem_replay" && i % 6 === 0),
-            assistiu_replay: assistiuReplay,
-            aplicacao_por_fallback: i % 9 === 4,
-          };
-        })(),
-        ...(i % 4 === 3
-          ? { clint_deal_id: null, url_clint: null, etapa: null, dono: null }
-          : {
-              clint_deal_id: `deal-${1000 + i}`,
-              url_clint: `https://app.clint.digital/deal/deal-${1000 + i}`,
-              etapa: ETAPAS_CLINT[i % ETAPAS_CLINT.length],
-              dono: DONOS[i % 3],
-            }),
-      });
-      if (diasDepois > 0) {
-        // Entrou alguns dias depois do evento (mantém ordem estável no mock).
-        const d = new Date(leads[leads.length - 1].created_at!);
-        d.setUTCDate(d.getUTCDate() + diasDepois);
-        leads[leads.length - 1].created_at = d.toISOString();
+      const tier = TIERS[t];
+      leads.push(linhaDoContato(i, tier, eventos[i % n], semReplay, semResgate));
+      if (n > 1 && i % 8 === 0) {
+        leads.push(linhaDoContato(i, tier, eventos[(i + 1) % n], semReplay, semResgate));
       }
     }
   });
@@ -294,15 +289,8 @@ export function mockOportunidades(
     return a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
   });
 
-  const pendentes = leads.length;
-  const agendaram = 22 * eventos.length;
-  const levantaram = pendentes + agendaram;
-  const noEvento = 214 * eventos.length; // inscritos (tag WG), já sem desqualificados
-  const assistiram = 120 * eventos.length; // Participou / Pós WG / Levantou a Mão
-  const desqualificados = 9 * eventos.length;
-
   // por_dono: pendentes desc, "Sem dono" por último (mesma regra do backend).
-  const porDono = new Map<string, { dono_id: string | null; dono_nome: string; pendentes: number; alto_valor: number }>();
+  const porDono = new Map<string, OportunidadesMock["por_dono"][number]>();
   for (const l of leads) {
     const chave = l.dono?.id ?? "sem";
     const atual = porDono.get(chave) ?? {
@@ -321,79 +309,23 @@ export function mockOportunidades(
     return b.pendentes - a.pendentes || a.dono_nome.localeCompare(b.dono_nome, "pt-BR");
   });
 
-  // Matriz coerente com os leads: pendentes por origem saem da própria lista;
-  // os agendados do mock se repartem 15 ao vivo / 6 replay / 1 sem origem por evento.
-  const semReplay = simular === "sem_replay";
-  const n = eventos.length;
-  const pend = (o: "ao_vivo" | "replay" | null) => leads.filter((l) => l.origem === o);
-  const alto = (ls: LeadPendenteMock[]) => ls.filter((l) => l.tier_rank >= 4).length;
-  const agAoVivo = (semReplay ? 21 : 15) * n;
-  const agReplay = semReplay ? 0 : 6 * n;
-  const agSem = 1 * n;
-  const linha = (
-    ls: LeadPendenteMock[],
-    ag: number,
-    assistiramL: number,
-    acessaram: number | null,
-  ): LinhaMatrizMock => ({
-    acessaram,
-    assistiram: assistiramL,
-    aplicaram: ls.length + ag,
-    agendaram: ag,
-    taxa_agendamento: taxa(ag, ls.length + ag),
-    pendentes: ls.length,
-    alto_valor_pendente: alto(ls),
-  });
-  const aoVivo = linha(pend("ao_vivo"), agAoVivo, (semReplay ? 120 : 84) * n, null);
-  const replay = semReplay ? LINHA_VAZIA : linha(pend("replay"), agReplay, 36 * n, 58 * n);
-  const semOrigem = pend(null).length + agSem;
-  const semParticipou = simular === "sem_participou";
-  const inflada = simular === "base_inflada";
-  if (semParticipou) aoVivo.assistiram = null;
-  if (inflada) aoVivo.assistiram = 1292 * n;
-  const total: LinhaMatrizMock = {
-    acessaram: replay.acessaram,
-    assistiram: semParticipou ? null : (aoVivo.assistiram ?? 0) + (replay.assistiram ?? 0),
-    aplicaram: aoVivo.aplicaram + replay.aplicaram + semOrigem,
-    agendaram: agAoVivo + agReplay + agSem,
-    taxa_agendamento: taxa(agAoVivo + agReplay + agSem, aoVivo.aplicaram + replay.aplicaram + semOrigem),
-    pendentes: leads.length,
-    alto_valor_pendente: alto(leads),
-  };
-
   const convidadosPend = leads.filter((l) => l.convidado_resgate).length;
-  const resgate =
-    simular === "sem_resgate"
-      ? null
-      : {
-          convidados: 2600 * n,
-          assistiram: 180 * n,
-          aplicaram: convidadosPend + 5 * n,
-          agendaram: 5 * n,
-          pendentes: convidadosPend,
-          taxa_retorno: taxa(180 * n, 2600 * n),
-          taxa_aplicacao: taxa(convidadosPend + 5 * n, 180 * n),
-          taxa_agendamento: taxa(5 * n, convidadosPend + 5 * n),
-        };
+  const resgate = semResgate
+    ? null
+    : {
+        convidados: 2600 * n,
+        assistiram: 180 * n,
+        aplicaram: convidadosPend + 5 * n,
+        agendaram: 5 * n,
+        pendentes: convidadosPend,
+      };
 
   return {
     ...base,
-    sinais_indisponiveis: semParticipou ? ["participou"] : [],
-    avisos: inflada ? ["assistiram_acima_de_inscritos", "taxa_acima_de_100"] : [],
-    matriz: { ao_vivo: aoVivo, replay, total },
-    resgate: inflada && resgate ? { ...resgate, taxa_aplicacao: 1.35 } : resgate,
-    totais: {
-      inscritos: noEvento,
-      sem_origem: semOrigem,
-      no_evento: noEvento,
-      desqualificados,
-      // Igual ao backend: totais.assistiram cai em 0 quando o sinal é null.
-      assistiram: total.assistiram ?? 0,
-      levantaram_mao: total.aplicaram,
-      agendaram: total.agendaram,
-      pendentes,
-    },
+    // base_inflada reproduz o bug de base da V3: "assistiram" acima dos inscritos.
+    avisos: inflada ? ["assistiram_acima_da_base", "taxa_acima_de_100"] : [],
+    ...montar(leads, 214 * n, 9 * n, (semReplay ? 21 : 15) * n, semReplay ? 0 : 6 * n),
+    resgate,
     por_dono,
-    leads,
   };
 }

@@ -8,12 +8,10 @@ import {
   ArrowUp,
   ArrowUpDown,
   Ban,
-  CalendarCheck2,
   Check,
   ChevronLeft,
   ChevronRight,
   Copy,
-  Eye,
   Database,
   Download,
   ExternalLink,
@@ -24,6 +22,7 @@ import {
   LifeBuoy,
   MessageCircle,
   MonitorPlay,
+  Radio,
   PartyPopper,
   RefreshCw,
   Search,
@@ -40,31 +39,27 @@ import {
   type Ciclo,
 } from "@/lib/sdr/ciclo";
 import {
-  acessaramDoTotal,
   agruparPorDono,
   altoValorPendente,
-  baseDeLevantaram,
-  blocosDoCiclo,
+  blocosDoFunil,
+  blocosDoResgate,
   celulaMatriz,
+  chaveDaLinha,
   contarPorOrigem,
   contarPorTier,
-  degrausDoResgate,
   formatarTaxa,
-  linhaSemDados,
+  funilZerado,
+  marcadoresDoLead,
   ORIGENS,
   origemDoLead,
-  TRAVESSAO,
-  viuReplayTambem,
+  TEXTO_MARCADOR,
   csvDePendentes,
   distribuicaoPorTier,
   filtrarPendentes,
-  formatarPct,
   linkWhatsApp,
   MAX_DIAS_INTERVALO,
   opcoesDeDono,
   ordenarPendentes,
-  pct,
-  presencaIndisponivel,
   TIERS,
   TIERS_ALTO_VALOR,
   todosDesqualificados,
@@ -75,6 +70,7 @@ import {
   type ContagemOrigem,
   type LeadPendente,
   type LinhaMatriz,
+  type MarcadorOrigem,
   type OpcaoDono,
   type OrigemChave,
   type Ordenacao,
@@ -136,7 +132,7 @@ export function LevantouMaoPanel() {
   const [busca, setBusca] = useState("");
   const [ordenacao, setOrdenacao] = useState<Ordenacao>(null);
   const [pagina, setPagina] = useState(1);
-  // Pendente aberto no painel lateral de detalhe (clique no nome).
+  // Linha aberta no painel lateral (clique no nome). Chave = (contato, evento).
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
 
   const leads = useMemo(() => data?.leads ?? [], [data]);
@@ -159,11 +155,11 @@ export function LevantouMaoPanel() {
   // "Por SDR": seções a partir do MESMO recorte filtrado, na ordem do backend
   // (tier desc) — a ordenação por coluna não se aplica nesta visão.
   const grupos = useMemo(() => agruparPorDono(recorte), [recorte]);
-  // V3 só quando o backend manda a matriz; sem ela a aba segue com os KPIs da V2.
+  // Sem `matriz` na resposta (backend antigo) a aba cai nos KPIs de contingência.
   const temOrigem = data?.matriz != null;
   const multiEvento = (data?.eventos.length ?? 0) > 1;
   const selecionado = useMemo(
-    () => leads.find((l) => l.clint_contact_id === selecionadoId) ?? null,
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
     [leads, selecionadoId],
   );
 
@@ -307,7 +303,7 @@ export function LevantouMaoPanel() {
             descricao={`${data.totais.desqualificados} ${data.totais.desqualificados === 1 ? "contato foi desqualificado" : "contatos foram desqualificados"} na Clint e ${data.totais.desqualificados === 1 ? "saiu" : "saíram"} da base. Tag consultada: ${data.eventos.join(", ")}.`}
           />
         </Card>
-      ) : data.totais.no_evento === 0 ? (
+      ) : data.totais.inscritos === 0 ? (
         <Card>
           <EmptyState
             icon={Users}
@@ -331,7 +327,7 @@ export function LevantouMaoPanel() {
           ) : (
             <Kpis data={data} />
           )}
-          <Funil data={data} />
+          {data.funis && <FunisDoCiclo funis={data.funis} />}
           {data.resgate && <FunilResgate resgate={data.resgate} />}
 
           {data.totais.pendentes === 0 || leads.length === 0 ? (
@@ -340,7 +336,11 @@ export function LevantouMaoPanel() {
                 icon={PartyPopper}
                 tom="positivo"
                 titulo="Todos que levantaram a mão já agendaram"
-                descricao={`${data.totais.levantaram_mao} levantaram a mão e ${data.totais.agendaram} agendaram neste período.`}
+                descricao={
+                  data.matriz
+                    ? `${celulaMatriz(data.matriz.total.aplicaram)} levantaram a mão e ${celulaMatriz(data.matriz.total.agendaram)} agendaram neste período.`
+                    : "Nenhum pendente neste período."
+                }
               />
             </Card>
           ) : (
@@ -570,85 +570,49 @@ function ErroOportunidades({ error, onRetry }: { error: unknown; onRetry: () => 
 
 // --- KPIs e funil ------------------------------------------------------------
 
+// Contingência: resposta SEM `matriz` (backend antigo). Só os números que o
+// contrato V4 garante em `totais`, mais o alto valor derivado dos leads.
 function Kpis({ data }: { data: OportunidadesResponse }) {
   const t = data.totais;
-  const altoValor = altoValorPendente(data.leads);
-  const temAssistiram = t.assistiram != null;
-  const temDesqualificados = t.desqualificados != null;
-  const base = baseDeLevantaram(t);
   const nEventos = `${data.eventos.length} ${data.eventos.length === 1 ? "evento" : "eventos"}`;
-  const totalCards = 5 + (temAssistiram ? 1 : 0) + (temDesqualificados ? 1 : 0);
-  const colunasXl = { 5: "xl:grid-cols-5", 6: "xl:grid-cols-6", 7: "xl:grid-cols-7" }[totalCards];
   return (
-    <div className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3", colunasXl)}>
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <KpiChip icon={Users} rotulo="Inscritos" valor={celulaMatriz(t.inscritos)} detalhe={`tag do evento · ${nEventos}`} />
       <KpiChip
-        icon={Users}
-        rotulo={temAssistiram ? "Inscritos" : "No evento"}
-        valor={String(t.no_evento)}
-        detalhe={temAssistiram ? `tag do evento · ${nEventos}` : nEventos}
+        icon={Ban}
+        tom="neutro"
+        rotulo="Desqualificados"
+        valor={celulaMatriz(t.desqualificados)}
+        detalhe="fora da base · conferência"
       />
-      {temDesqualificados && (
-        <KpiChip
-          icon={Ban}
-          tom="neutro"
-          rotulo="Desqualificados"
-          valor={String(t.desqualificados)}
-          detalhe="fora da base · conferência"
-        />
-      )}
-      {temAssistiram && (
-        <KpiChip
-          icon={Eye}
-          rotulo="Assistiram"
-          valor={String(t.assistiram)}
-          detalhe={`${formatarPct(pct(t.assistiram ?? 0, t.no_evento))} dos inscritos`}
-        />
-      )}
-      <KpiChip
-        icon={Hand}
-        rotulo="Levantaram a mão"
-        valor={String(t.levantaram_mao)}
-        detalhe={`${formatarPct(pct(t.levantaram_mao, base.valor))} ${base.rotulo}`}
-      />
-      <KpiChip
-        icon={CalendarCheck2}
-        rotulo="Agendaram"
-        valor={String(t.agendaram)}
-        detalhe={`${formatarPct(pct(t.agendaram, t.levantaram_mao))} dos que levantaram · conversão`}
-      />
-      <KpiChip
-        icon={Hourglass}
-        rotulo="Pendentes"
-        valor={String(t.pendentes)}
-        detalhe={`${formatarPct(pct(t.pendentes, t.levantaram_mao))} dos que levantaram`}
-        destaque
-      />
+      <KpiChip icon={Hourglass} rotulo="Pendentes" valor={String(t.pendentes)} destaque />
       <KpiChip
         icon={Gem}
         rotulo="Alto valor pendente"
-        valor={String(altoValor)}
+        valor={String(altoValorPendente(data.leads))}
         detalhe="UMQL+ · UMQL · HMQL"
       />
     </div>
   );
 }
 
-// Cor de cada etapa do funil (tokens do tema). "Assistiram" só aparece quando
-// o backend manda `totais.assistiram`.
+// Cor de cada degrau dos funis (tokens do tema), pela chave `nome` do backend.
 const COR_ETAPA: Record<string, string> = {
   inscritos: "bg-azul/25 text-azul-claro",
   convidados: "bg-azul/25 text-azul-claro",
+  acessaram: "bg-azul/25 text-azul-claro",
   assistiram: "bg-violeta/25 text-violeta",
-  levantaram: "bg-teal/25 text-teal",
+  aplicaram: "bg-teal/25 text-teal",
   agendaram: "bg-verde/25 text-verde",
   pendentes: "bg-laranja/20 text-laranja",
 };
+const COR_ETAPA_PADRAO = "bg-painel-claro text-texto";
 
 // Blocos proporcionais com a passagem entre eles. A ESCALA é de quem chama
-// (`base` = valor do primeiro bloco): o funil do ciclo e o do resgate usam o
-// mesmo componente, cada um com o seu denominador — nunca o mesmo eixo.
-// Passagem (V3.1): porcentagem | "sem dado" | "verificar base" (acima de 100%
-// nunca vira número — é sinal de base errada, em âmbar e discreto).
+// (base = valor do primeiro bloco): ao vivo, replay e resgate usam o MESMO
+// componente, cada um com o seu denominador — nunca o mesmo eixo.
+// Passagem: porcentagem | travessão (referência zero) | "verificar base" (degrau
+// maior que a referência nunca vira número — é sinal de base errada, em âmbar).
 function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
   const base = blocos[0]?.valor || 1;
   return (
@@ -664,21 +628,16 @@ function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
                   !p
                     ? undefined
                     : p.tipo === "pct"
-                      ? `Taxa de passagem: ${p.texto}`
-                      : p.tipo === "sem_dado"
-                        ? "Taxa de passagem: sem dado"
-                        : "Taxa de passagem acima de 100%: verificar base"
+                      ? `Taxa de passagem: ${p.texto}${e.baseDaPassagem ? ` ${e.baseDaPassagem}` : ""}`
+                      : "Taxa de passagem acima de 100%: verificar base"
                 }
               >
                 <ArrowDown className="h-3.5 w-3.5 sm:hidden" aria-hidden />
                 <ChevronRight className="hidden h-3.5 w-3.5 sm:block" aria-hidden />
                 {p?.tipo === "pct" && <span className="tabular-nums">{p.texto}</span>}
-                {p?.tipo === "sem_dado" && (
-                  <span
-                    className="whitespace-nowrap font-normal italic text-texto-sec/80"
-                    title="Um dos lados desta passagem não pode ser calculado neste período"
-                  >
-                    sem dado
+                {p?.tipo === "pct" && e.baseDaPassagem && (
+                  <span className="max-w-[72px] text-center text-[10px] font-normal leading-tight text-texto-sec/80">
+                    {e.baseDaPassagem}
                   </span>
                 )}
                 {p?.tipo === "verificar" && (
@@ -692,14 +651,11 @@ function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
               </div>
             )}
             <div
-              className={cn("min-w-0 rounded-lg px-3 py-2", COR_ETAPA[e.chave])}
-              style={{
-                flexGrow: Math.min(Math.max((e.valor ?? 0) / base, 0.18), 1),
-                flexBasis: 0,
-              }}
+              className={cn("min-w-0 rounded-lg px-3 py-2", COR_ETAPA[e.chave] ?? COR_ETAPA_PADRAO)}
+              style={{ flexGrow: Math.min(Math.max(e.valor / base, 0.18), 1), flexBasis: 0 }}
             >
               <p className="truncate text-[11px] font-medium opacity-90">{e.rotulo}</p>
-              <p className="text-xl font-bold tabular-nums">{celulaMatriz(e.valor)}</p>
+              <p className="text-xl font-bold tabular-nums">{e.valor}</p>
             </div>
           </div>
         );
@@ -708,18 +664,36 @@ function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
   );
 }
 
-// Funil do CICLO: passagens calculadas entre os degraus (inscritos → … → agendou).
-function Funil({ data }: { data: OportunidadesResponse }) {
+// Os DOIS funis do ciclo, empilhados, cada um com título e ESCALA PRÓPRIA. Os
+// degraus vêm prontos do backend; as taxas são calculadas no front. Replay sem
+// nenhum dado é renderizado com zeros + nota — não é escondido, para o time
+// ver que o dado não chegou.
+function FunisDoCiclo({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
+  const semReplay = funilZerado(funis.replay.degraus);
   return (
-    <Card>
-      <CardContent>
-        <FunilBlocos blocos={blocosDoCiclo(data.totais, data.matriz, data.sinais_indisponiveis)} />
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader title="Funil ao vivo" subtitle="Quem se inscreveu e participou ao vivo." />
+        <CardContent>
+          <FunilBlocos blocos={blocosDoFunil(funis.ao_vivo.degraus, "ao_vivo")} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader title="Funil do replay" subtitle="Quem abriu a gravação e aplicou só por ela." />
+        <CardContent className="space-y-2">
+          <FunilBlocos blocos={blocosDoFunil(funis.replay.degraus, "replay")} />
+          {semReplay && (
+            <p className="text-[11px] text-texto-sec/80" role="note">
+              Sem replay neste ciclo
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
-// Avisos de sanidade do backend (V3.1): faixa cinza ACIMA da matriz, em
+// Avisos de sanidade do backend: faixa cinza ACIMA da matriz, em
 // linguagem direta. A chave crua nunca aparece (traduzirAvisos).
 function FaixaAvisos({ avisos }: { avisos: readonly string[] | null | undefined }) {
   const textos = traduzirAvisos(avisos);
@@ -740,8 +714,8 @@ function FaixaAvisos({ avisos }: { avisos: readonly string[] | null | undefined 
   );
 }
 
-// Funil da CAMPANHA DE RESGATE: bloco separado, escala própria (base =
-// convidados) e taxas PRONTAS do backend. Não divide eixo com o funil do ciclo.
+// Funil da CAMPANHA DE RESGATE: bloco separado abaixo dos dois funis, escala
+// própria (base = convidados) e taxas calculadas no front.
 function FunilResgate({ resgate }: { resgate: NonNullable<OportunidadesResponse["resgate"]> }) {
   return (
     <Card className="border-dashed">
@@ -750,33 +724,31 @@ function FunilResgate({ resgate }: { resgate: NonNullable<OportunidadesResponse[
         subtitle="Base convidada a voltar — escala própria, denominador = convidados."
       />
       <CardContent className="space-y-3">
-        <FunilBlocos blocos={degrausDoResgate(resgate)} />
+        <FunilBlocos blocos={blocosDoResgate(resgate)} />
         <p className="text-[11px] text-texto-sec/80">
-          Convidados voltam a aparecer nas métricas do ciclo acima — são recortes distintos, não
-          parcelas de uma soma.
+          Convidados que voltaram aparecem também nas métricas do ciclo acima.
         </p>
       </CardContent>
     </Card>
   );
 }
 
-// --- Matriz ao vivo / replay / total (V3) ------------------------------------------
+// --- Matriz ao vivo / replay / total ------------------------------------------------
 
 const COLUNAS_MATRIZ = ["Acessaram", "Assistiram", "Levantaram a mão", "Agendaram", "Pendentes"] as const;
 
-// Valores de exibição de uma linha. Recorte sem nenhum dado (ex.: ciclo sem
-// replay) vira travessões — nunca uma fileira de zeros nem mensagem de erro.
-function valoresDaLinha(l: LinhaMatriz, podeEsvaziar: boolean) {
-  const vazia = podeEsvaziar && linhaSemDados(l);
-  const v = (n: number | null | undefined) => (vazia ? TRAVESSAO : celulaMatriz(n));
+// Valores de exibição de uma linha. Travessão só onde o dado NÃO SE APLICA por
+// definição: "Acessaram" no ao vivo (null) e a % quando taxa_agendamento é null.
+// Zero é zero — ciclo sem replay mostra a linha Replay com zeros.
+function valoresDaLinha(l: LinhaMatriz) {
   return {
-    acessaram: v(l.acessaram),
-    assistiram: v(l.assistiram),
-    aplicaram: v(l.aplicaram),
-    agendaram: v(l.agendaram),
-    taxa: vazia ? TRAVESSAO : formatarTaxa(l.taxa_agendamento),
-    pendentes: v(l.pendentes),
-    altoValor: vazia || l.alto_valor_pendente == null ? null : l.alto_valor_pendente,
+    acessaram: celulaMatriz(l.acessaram),
+    assistiram: celulaMatriz(l.assistiram),
+    aplicaram: celulaMatriz(l.aplicaram),
+    agendaram: celulaMatriz(l.agendaram),
+    taxa: formatarTaxa(l.taxa_agendamento),
+    pendentes: celulaMatriz(l.pendentes),
+    altoValor: l.alto_valor_pendente ?? null,
   };
 }
 
@@ -790,17 +762,11 @@ function MatrizOrigem({
   onLinha: (o: OrigemChave) => void;
 }) {
   const m = data.matriz!;
-  // Replay inteiramente indisponível → "Acessaram" do Total é travessão, nunca 0.
-  const total = { ...m.total, acessaram: acessaramDoTotal(m) };
   const linhas = [
-    { chave: "ao_vivo" as const, rotulo: "Ao vivo", valores: valoresDaLinha(m.ao_vivo, true) },
-    { chave: "replay" as const, rotulo: "Replay", valores: valoresDaLinha(m.replay, true) },
-    { chave: "total" as const, rotulo: "Total", valores: valoresDaLinha(total, false) },
+    { chave: "ao_vivo" as const, rotulo: "Ao vivo", valores: valoresDaLinha(m.ao_vivo) },
+    { chave: "replay" as const, rotulo: "Replay", valores: valoresDaLinha(m.replay) },
+    { chave: "total" as const, rotulo: "Total", valores: valoresDaLinha(m.total) },
   ];
-  const semPresenca = presencaIndisponivel(m, data.sinais_indisponiveis);
-  const dicaAssistiram = semPresenca
-    ? "Sem a tag datada de presença neste ciclo — não dá para saber quem assistiu ao vivo"
-    : undefined;
   const t = data.totais;
 
   return (
@@ -858,9 +824,7 @@ function MatrizOrigem({
                       )}
                     </th>
                     <td className="px-3 py-2 text-right">{l.valores.acessaram}</td>
-                    <td className="px-3 py-2 text-right" title={l.valores.assistiram === TRAVESSAO ? dicaAssistiram : undefined}>
-                      {l.valores.assistiram}
-                    </td>
+                    <td className="px-3 py-2 text-right">{l.valores.assistiram}</td>
                     <td className="px-3 py-2 text-right">{l.valores.aplicaram}</td>
                     <td className="px-3 py-2 text-right">
                       {l.valores.agendaram}{" "}
@@ -929,24 +893,14 @@ function MatrizOrigem({
         <dl className="flex shrink-0 gap-4 border-borda/60 text-xs text-texto-sec sm:flex-col sm:gap-1.5 sm:border-l sm:pl-4">
           <div title="Contatos com a tag do evento, já sem os desqualificados">
             <dt className="inline">Inscritos: </dt>
-            <dd className="inline font-semibold tabular-nums text-cinza">{t.no_evento}</dd>
+            <dd className="inline font-semibold tabular-nums text-cinza">{celulaMatriz(t.inscritos)}</dd>
           </div>
           <div title="Removidos da base por estarem em Desqualificado na Clint">
             <dt className="inline">Desqualificados: </dt>
             <dd className="inline font-semibold tabular-nums text-cinza">{celulaMatriz(t.desqualificados)}</dd>
           </div>
-          <div title="Levantaram a mão sem sinal de presença: entram só na linha Total (Total = Ao vivo + Replay + Sem origem)">
-            <dt className="inline">Sem origem: </dt>
-            <dd className="inline font-semibold tabular-nums text-cinza">{celulaMatriz(t.sem_origem)}</dd>
-          </div>
         </dl>
       </CardContent>
-      {data.atribuicao_parcial && (
-        <p className="border-t border-borda/40 px-4 py-2 text-[11px] text-texto-sec" role="note">
-          Períodos com mais de um evento podem subcontar aplicações antigas, pois parte das tags
-          não tem data.
-        </p>
-      )}
     </Card>
   );
 }
@@ -1092,8 +1046,8 @@ function FiltroDono({
   );
 }
 
-// Chips de origem (V3): Ao vivo | Replay | Sem origem são multi-seleção entre si;
-// "Convidados de resgate" é INDEPENDENTE e combina com qualquer um deles.
+// Chips de origem: Ao vivo | Replay são multi-seleção entre si; "Convidados de
+// resgate" é INDEPENDENTE e combina com qualquer um deles.
 function FiltroOrigem({
   contagem,
   selecionados,
@@ -1303,7 +1257,7 @@ function NomePendente({
   return (
     <button
       type="button"
-      onClick={() => onAbrir(lead.clint_contact_id)}
+      onClick={() => onAbrir(chaveDaLinha(lead))}
       title={
         lead.lead_id
           ? "Ver detalhes — tem ficha no Mapa de Calor"
@@ -1385,11 +1339,11 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
           {lead.origem !== undefined && (
             <LinhaDetalhe rotulo="Presença no ciclo">
               <span className="text-texto-sec">
-                Origem: <span className="text-texto">{origemDoLead(lead).label}</span>
+                Origem: <span className="text-texto">{origemDoLead(lead)?.label ?? "—"}</span>
+                {lead.assistiu_ao_vivo ? " · esteve ao vivo" : ""}
                 {lead.acessou_replay ? " · abriu o replay" : ""}
                 {lead.assistiu_replay ? " · assistiu 30+ min do replay" : ""}
                 {lead.convidado_resgate ? " · convidado da campanha de resgate" : ""}
-                {lead.aplicacao_por_fallback ? " · aplicação identificada por tag sem data" : ""}
               </span>
             </LinhaDetalhe>
           )}
@@ -1479,21 +1433,25 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
   );
 }
 
-// Célula "Origem": badge + marcadores pequenos com tooltip.
+// Célula "Origem": badge (Ao vivo | Replay) + marcadores pequenos com tooltip.
+const ICONE_MARCADOR: Record<MarcadorOrigem, { Icone: typeof LifeBuoy; cor: string }> = {
+  resgate: { Icone: LifeBuoy, cor: "text-azul-claro" },
+  viu_replay: { Icone: MonitorPlay, cor: "text-violeta" },
+  esteve_ao_vivo: { Icone: Radio, cor: "text-teal" },
+};
+
 function OrigemCelula({ lead }: { lead: LeadPendente }) {
   return (
     <span className="inline-flex items-center gap-1">
       <OrigemBadge lead={lead} size="sm" />
-      {lead.convidado_resgate && (
-        <span role="img" aria-label="Resgate" title="Resgate — convidado da campanha de resgate" className="inline-flex">
-          <LifeBuoy className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
-        </span>
-      )}
-      {viuReplayTambem(lead) && (
-        <span role="img" aria-label="Viu o replay também" title="Viu o replay também" className="inline-flex">
-          <MonitorPlay className="h-3.5 w-3.5 text-violeta" aria-hidden />
-        </span>
-      )}
+      {marcadoresDoLead(lead).map((m) => {
+        const { Icone, cor } = ICONE_MARCADOR[m];
+        return (
+          <span key={m} role="img" aria-label={TEXTO_MARCADOR[m]} title={TEXTO_MARCADOR[m]} className="inline-flex">
+            <Icone className={cn("h-3.5 w-3.5", cor)} aria-hidden />
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -1612,7 +1570,7 @@ function ListaPendentes({
   ordenavel?: boolean;
   paginar?: boolean;
   semColunaDono?: boolean;
-  // Coluna "Origem" (V3) — só quando o backend manda a matriz/origem.
+  // Coluna "Origem" — só quando o backend manda a matriz/origem.
   comOrigem?: boolean;
 }) {
   const paginar = permitePaginar && leads.length > TAMANHO_PAGINA;
@@ -1648,7 +1606,7 @@ function ListaPendentes({
           </thead>
           <tbody>
             {visiveis.map((l) => (
-              <tr key={l.clint_contact_id} className="border-b border-borda/40 align-top">
+              <tr key={chaveDaLinha(l)} className="border-b border-borda/40 align-top">
                 <td className="max-w-[220px] px-2 py-2">
                   <NomePendente lead={l} onAbrir={onAbrir} />
                 </td>
@@ -1711,7 +1669,7 @@ function ListaPendentes({
       {/* Cards (< md): nome + MQL + WhatsApp em destaque */}
       <ul className="space-y-2 md:hidden">
         {visiveis.map((l) => (
-          <li key={l.clint_contact_id} className="rounded-xl border border-borda bg-painel-claro/40 p-3">
+          <li key={chaveDaLinha(l)} className="rounded-xl border border-borda bg-painel-claro/40 p-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <NomePendente lead={l} onAbrir={onAbrir} />
