@@ -38,6 +38,13 @@ export const LeadPendenteSchema = z
     dono: z
       .object({ id: z.string().nullish(), nome: z.string(), email: z.string().nullish() })
       .nullish(),
+    // --- V3 (opcionais: backend V2 segue válido) ---
+    // Recorte do contato no ciclo: "ao_vivo" | "replay" | null (aplicou sem sinal
+    // de presença). String livre de propósito: valor novo não derruba a aba.
+    origem: z.string().nullish(),
+    convidado_resgate: z.boolean().nullish(),
+    acessou_replay: z.boolean().nullish(),
+    assistiu_replay: z.boolean().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
@@ -51,10 +58,45 @@ export const DonoAgregadoSchema = z.object({
 });
 export type DonoAgregado = z.infer<typeof DonoAgregadoSchema>;
 
+// Linha da matriz ao vivo / replay / total (V3). `acessaram` é null no ao vivo
+// (não é degrau desse recorte) e `taxa_agendamento` é null quando aplicaram = 0.
+export const LinhaMatrizSchema = z.object({
+  acessaram: z.number().int().nullish(),
+  assistiram: z.number().int().nullish(),
+  aplicaram: z.number().int().nullish(),
+  agendaram: z.number().int().nullish(),
+  taxa_agendamento: z.number().nullish(),
+  pendentes: z.number().int().nullish(),
+  alto_valor_pendente: z.number().int().nullish(),
+});
+export type LinhaMatriz = z.infer<typeof LinhaMatrizSchema>;
+
+export const MatrizSchema = z.object({
+  ao_vivo: LinhaMatrizSchema,
+  replay: LinhaMatrizSchema,
+  total: LinhaMatrizSchema,
+});
+export type Matriz = z.infer<typeof MatrizSchema>;
+
+// Funil da campanha de resgate (denominador próprio). Taxas vêm PRONTAS.
+export const ResgateSchema = z.object({
+  convidados: z.number().int(),
+  assistiram: z.number().int(),
+  aplicaram: z.number().int(),
+  agendaram: z.number().int(),
+  pendentes: z.number().int(),
+  taxa_retorno: z.number().nullish(),
+  taxa_aplicacao: z.number().nullish(),
+  taxa_agendamento: z.number().nullish(),
+});
+export type Resgate = z.infer<typeof ResgateSchema>;
+
 export const OportunidadesResponseSchema = z.object({
   de: z.string(),
   ate: z.string(),
   eventos: z.array(z.string()),
+  // V3: intervalo com 2+ eventos — tags sem data foram ignoradas (subcontagem).
+  atribuicao_parcial: z.boolean().nullish(),
   totais: z.object({
     // Inscritos no evento (contatos com a tag WG).
     no_evento: z.number().int(),
@@ -64,10 +106,14 @@ export const OportunidadesResponseSchema = z.object({
     // V2: contatos removidos da base por estarem em "Desqualificado" (conferência).
     // no_evento já vem SEM eles.
     desqualificados: z.number().int().nullish(),
+    // V3: aplicaram sem nenhum sinal de presença (só entram na linha Total).
+    sem_origem: z.number().int().nullish(),
     levantaram_mao: z.number().int(),
     agendaram: z.number().int(),
     pendentes: z.number().int(),
   }),
+  matriz: MatrizSchema.nullish(),
+  resgate: ResgateSchema.nullish(),
   por_dono: z.array(DonoAgregadoSchema).nullish(),
   leads: z.array(LeadPendenteSchema),
   gerado_em: z.string(),
@@ -316,6 +362,112 @@ export function agruparPorDono(leads: LeadPendente[]): GrupoDono[] {
 }
 
 // ---------------------------------------------------------------------------
+// Origem (V3): ao vivo | replay | sem origem. Cores por token do tema.
+// ---------------------------------------------------------------------------
+
+export type OrigemChave = "ao_vivo" | "replay" | "sem";
+
+export type OrigemConfig = {
+  chave: OrigemChave;
+  label: string;
+  ordem: number;
+  badge: string;
+  chipAtivo: string;
+};
+
+export const ORIGENS: readonly OrigemConfig[] = [
+  {
+    chave: "ao_vivo",
+    label: "Ao vivo",
+    ordem: 0,
+    badge: "bg-teal/15 text-teal border border-teal/30",
+    chipAtivo: "bg-teal/20 text-teal border-teal/60",
+  },
+  {
+    chave: "replay",
+    label: "Replay",
+    ordem: 1,
+    badge: "bg-violeta/15 text-violeta border border-violeta/30",
+    chipAtivo: "bg-violeta/20 text-violeta border-violeta/60",
+  },
+  {
+    chave: "sem",
+    label: "Sem origem",
+    ordem: 2,
+    badge: "border border-dashed border-borda bg-transparent text-texto-sec/80",
+    chipAtivo: "bg-painel-claro text-texto border-texto-sec/60",
+  },
+] as const;
+
+const ORIGEM_POR_CHAVE = new Map<string, OrigemConfig>(ORIGENS.map((o) => [o.chave, o]));
+
+export function origemDoLead(lead: Pick<LeadPendente, "origem">): OrigemConfig {
+  return ORIGEM_POR_CHAVE.get(lead.origem ?? "") ?? ORIGENS[2];
+}
+
+// Marcador "Viu o replay também": só faz sentido em lead de origem AO VIVO.
+export function viuReplayTambem(lead: Pick<LeadPendente, "origem" | "assistiu_replay">): boolean {
+  return origemDoLead(lead).chave === "ao_vivo" && lead.assistiu_replay === true;
+}
+
+export type ContagemOrigem = Record<OrigemChave, number> & { resgate: number };
+
+export function contarPorOrigem(leads: LeadPendente[]): ContagemOrigem {
+  const out: ContagemOrigem = { ao_vivo: 0, replay: 0, sem: 0, resgate: 0 };
+  for (const l of leads) {
+    out[origemDoLead(l).chave] += 1;
+    if (l.convidado_resgate) out.resgate += 1;
+  }
+  return out;
+}
+
+// Célula da matriz: null/undefined → travessão, NUNCA zero.
+export const TRAVESSAO = "—";
+export function celulaMatriz(v: number | null | undefined): string {
+  return v == null ? TRAVESSAO : String(v);
+}
+
+// Taxa que vem PRONTA do backend como fração (0.393). null → travessão, nunca 0%.
+export function formatarTaxa(taxa: number | null | undefined): string {
+  return taxa == null ? TRAVESSAO : formatarPct(taxa * 100);
+}
+
+// Recorte sem nenhum dado (tudo 0/null) — ex.: ciclo sem replay. A linha inteira
+// vira travessões em vez de uma fileira de zeros.
+export function linhaSemDados(l: LinhaMatriz): boolean {
+  return [l.acessaram, l.assistiram, l.aplicaram, l.agendaram, l.pendentes].every(
+    (v) => v == null || v === 0,
+  );
+}
+
+// Conferência da matriz: Total.aplicaram = Ao vivo + Replay + sem_origem.
+export function matrizFecha(m: Matriz, semOrigem: number | null | undefined): boolean {
+  return (
+    (m.total.aplicaram ?? 0) ===
+    (m.ao_vivo.aplicaram ?? 0) + (m.replay.aplicaram ?? 0) + (semOrigem ?? 0)
+  );
+}
+
+// Degraus do funil de resgate. `taxa` é a passagem a partir do degrau anterior,
+// exatamente como o backend mandou; o último degrau (Pendentes) não tem taxa.
+export type DegrauResgate = {
+  chave: "convidados" | "assistiram" | "levantaram" | "agendaram" | "pendentes";
+  rotulo: string;
+  valor: number;
+  taxa: string | null;
+};
+
+export function degrausDoResgate(r: Resgate): DegrauResgate[] {
+  return [
+    { chave: "convidados", rotulo: "Convidados", valor: r.convidados, taxa: null },
+    { chave: "assistiram", rotulo: "Assistiram", valor: r.assistiram, taxa: formatarTaxa(r.taxa_retorno) },
+    { chave: "levantaram", rotulo: "Levantaram a mão", valor: r.aplicaram, taxa: formatarTaxa(r.taxa_aplicacao) },
+    { chave: "agendaram", rotulo: "Agendaram", valor: r.agendaram, taxa: formatarTaxa(r.taxa_agendamento) },
+    { chave: "pendentes", rotulo: "Pendentes", valor: r.pendentes, taxa: null },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Filtros e ordenação (client-side).
 // ---------------------------------------------------------------------------
 
@@ -335,6 +487,10 @@ export type FiltroPendentes = {
   tiers: readonly TierChave[];
   // Chaves de dono (chaveDono). Nenhum selecionado = todos. Aplica em série com tiers.
   donos?: readonly string[];
+  // Origens (V3). Nenhuma selecionada = todas. Em série com tiers e donos.
+  origens?: readonly OrigemChave[];
+  // "Convidados de resgate": filtro independente, combina com qualquer outro.
+  soResgate?: boolean;
   busca: string;
 };
 
@@ -343,11 +499,14 @@ export type FiltroPendentes = {
 export function filtrarPendentes(leads: LeadPendente[], f: FiltroPendentes): LeadPendente[] {
   const tiers = new Set(f.tiers);
   const donos = new Set(f.donos ?? []);
+  const origens = new Set(f.origens ?? []);
   const termo = normalizar(f.busca.trim());
   const termoDigitos = soDigitos(termo);
   return leads.filter((l) => {
     if (tiers.size > 0 && !tiers.has(tierDoLead(l).chave)) return false;
     if (donos.size > 0 && !donos.has(chaveDono(l.dono))) return false;
+    if (origens.size > 0 && !origens.has(origemDoLead(l).chave)) return false;
+    if (f.soResgate && !l.convidado_resgate) return false;
     if (!termo) return true;
     if (normalizar(l.nome).includes(termo)) return true;
     if (normalizar(l.email).includes(termo)) return true;
@@ -356,7 +515,7 @@ export function filtrarPendentes(leads: LeadPendente[], f: FiltroPendentes): Lea
   });
 }
 
-export type CampoOrdenacao = "nome" | "tier" | "dono";
+export type CampoOrdenacao = "nome" | "tier" | "dono" | "origem";
 export type Ordenacao = { campo: CampoOrdenacao; direcao: "asc" | "desc" } | null;
 
 // null = ordem do backend (já correta). Ordenação estável: empate mantém a
@@ -372,6 +531,14 @@ export function ordenarPendentes(leads: LeadPendente[], ord: Ordenacao): LeadPen
         const semB = !b.l.dono;
         if (semA !== semB) return semA ? 1 : -1;
         const cmp = nomeDono(a.l.dono).localeCompare(nomeDono(b.l.dono), "pt-BR", { sensitivity: "base" });
+        return cmp !== 0 ? cmp * sinal : a.i - b.i;
+      }
+      if (ord.campo === "origem") {
+        // Ao vivo → Replay (ou o inverso); "Sem origem" SEMPRE no fim.
+        const oa = origemDoLead(a.l);
+        const ob = origemDoLead(b.l);
+        if ((oa.chave === "sem") !== (ob.chave === "sem")) return oa.chave === "sem" ? 1 : -1;
+        const cmp = oa.ordem - ob.ordem;
         return cmp !== 0 ? cmp * sinal : a.i - b.i;
       }
       const cmp =
@@ -430,11 +597,13 @@ export function linkWhatsApp(telefone: string | null | undefined): string | null
 }
 
 // CSV do recorte filtrado — separador ";" (abre certo no Excel pt-BR) e aspas
-// escapadas. Colunas fixas na ordem da spec V2.
+// escapadas. Colunas fixas na ordem da spec V3 (resgate = "sim" ou vazio).
 export function csvDePendentes(leads: LeadPendente[]): string {
   const cabecalho = [
     "nome",
     "mql",
+    "origem",
+    "resgate",
     "dono",
     "etapa",
     "telefone",
@@ -449,6 +618,8 @@ export function csvDePendentes(leads: LeadPendente[]): string {
     [
       l.nome,
       tierDoLead(l).label,
+      origemDoLead(l).label,
+      l.convidado_resgate ? "sim" : "",
       nomeDono(l.dono),
       l.etapa ?? "",
       l.telefone ?? "",

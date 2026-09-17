@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  celulaMatriz,
+  contarPorOrigem,
+  degrausDoResgate,
+  formatarTaxa,
+  linhaSemDados,
+  matrizFecha,
+  origemDoLead,
+  viuReplayTambem,
   agruparPorDono,
   altoValorPendente,
   chaveDono,
@@ -180,12 +188,12 @@ describe("percentuais, WhatsApp e CSV", () => {
     ]);
     const [cabecalho, l1, l2] = csv.split("\r\n");
     expect(cabecalho).toBe(
-      '"nome";"mql";"dono";"etapa";"telefone";"email";"evento";"entrou_em";"url_clint";"tags"',
+      '"nome";"mql";"origem";"resgate";"dono";"etapa";"telefone";"email";"evento";"entrou_em";"url_clint";"tags"',
     );
     expect(l1).toBe(
-      '"Ana ""Nina""";"MQL";"Benhur Ramos";"Prospecção";"+5511999990001";"ana@ex.com";"WG - 08.09.26";"2026-09-08T12:00:00Z";"https://app.clint.digital/deal/abc";"Levantou a Mão, MQL"',
+      '"Ana ""Nina""";"MQL";"Sem origem";"";"Benhur Ramos";"Prospecção";"+5511999990001";"ana@ex.com";"WG - 08.09.26";"2026-09-08T12:00:00Z";"https://app.clint.digital/deal/abc";"Levantou a Mão, MQL"',
     );
-    expect(l2).toContain('"Zé";"MQL";"Sem dono";"";');
+    expect(l2).toContain('"Zé";"MQL";"Sem origem";"";"Sem dono";"";');
     expect(l2).toContain(';"";"Levantou a Mão, MQL"'); // url_clint vazia
   });
 });
@@ -295,5 +303,90 @@ describe("dono (V2)", () => {
     expect(todosDesqualificados({ ...base, no_evento: 0, desqualificados: 0 })).toBe(false);
     expect(todosDesqualificados({ ...base, no_evento: 0 })).toBe(false);
     expect(todosDesqualificados({ ...base, no_evento: 3, desqualificados: 7 })).toBe(false);
+  });
+});
+
+describe("origem, matriz e resgate (V3)", () => {
+  const leads = [
+    lead({ clint_contact_id: "1", nome: "Ana", origem: "replay", convidado_resgate: true }),
+    lead({ clint_contact_id: "2", nome: "Bia", origem: null }),
+    lead({ clint_contact_id: "3", nome: "Caio", origem: "ao_vivo", assistiu_replay: true, tier: "HMQL", tier_rank: 4 }),
+    lead({ clint_contact_id: "4", nome: "Dudu", origem: "ao_vivo", convidado_resgate: true }),
+    lead({ clint_contact_id: "5", nome: "Eva" }), // backend V2: sem o campo
+  ];
+
+  it("origemDoLead: ao_vivo / replay / null, ausente ou valor desconhecido → 'sem'", () => {
+    expect(origemDoLead({ origem: "ao_vivo" }).label).toBe("Ao vivo");
+    expect(origemDoLead({ origem: "replay" }).label).toBe("Replay");
+    expect(origemDoLead({ origem: null }).chave).toBe("sem");
+    expect(origemDoLead({}).chave).toBe("sem");
+    expect(origemDoLead({ origem: "outro" }).chave).toBe("sem");
+  });
+
+  it("'viu o replay também' só em lead de origem ao vivo", () => {
+    expect(viuReplayTambem({ origem: "ao_vivo", assistiu_replay: true })).toBe(true);
+    expect(viuReplayTambem({ origem: "replay", assistiu_replay: true })).toBe(false);
+    expect(viuReplayTambem({ origem: "ao_vivo", assistiu_replay: false })).toBe(false);
+  });
+
+  it("contagens por origem e de convidados de resgate", () => {
+    expect(contarPorOrigem(leads)).toEqual({ ao_vivo: 2, replay: 1, sem: 2, resgate: 2 });
+  });
+
+  it("filtro de origem é multi e aplica em série com MQL; resgate é independente", () => {
+    const f = (x: Parameters<typeof filtrarPendentes>[1]) => filtrarPendentes(leads, x).map((l) => l.nome);
+    expect(f({ tiers: [], origens: ["ao_vivo"], busca: "" })).toEqual(["Caio", "Dudu"]);
+    expect(f({ tiers: [], origens: ["ao_vivo", "sem"], busca: "" })).toEqual(["Bia", "Caio", "Dudu", "Eva"]);
+    expect(f({ tiers: ["HMQL"], origens: ["ao_vivo"], busca: "" })).toEqual(["Caio"]);
+    expect(f({ tiers: [], soResgate: true, busca: "" })).toEqual(["Ana", "Dudu"]);
+    expect(f({ tiers: [], origens: ["ao_vivo"], soResgate: true, busca: "" })).toEqual(["Dudu"]);
+    expect(f({ tiers: [], origens: [], soResgate: false, busca: "" })).toHaveLength(5);
+  });
+
+  it("ordenação por origem: 'Sem origem' no fim nas DUAS direções", () => {
+    expect(ordenarPendentes(leads, { campo: "origem", direcao: "asc" }).map((l) => l.nome)).toEqual(["Caio", "Dudu", "Ana", "Bia", "Eva"]);
+    expect(ordenarPendentes(leads, { campo: "origem", direcao: "desc" }).map((l) => l.nome)).toEqual(["Ana", "Caio", "Dudu", "Bia", "Eva"]);
+  });
+
+  it("célula e taxa: null vira travessão, nunca zero / 0%", () => {
+    expect(celulaMatriz(null)).toBe("—");
+    expect(celulaMatriz(undefined)).toBe("—");
+    expect(celulaMatriz(0)).toBe("0");
+    expect(formatarTaxa(null)).toBe("—");
+    expect(formatarTaxa(0.393)).toBe("39%");
+    expect(formatarTaxa(0.069)).toBe("6,9%");
+    expect(formatarTaxa(0)).toBe("0,0%");
+  });
+
+  it("linha sem dados (ciclo sem replay) e conferência do Total", () => {
+    const vazia = { acessaram: 0, assistiram: 0, aplicaram: 0, agendaram: 0, taxa_agendamento: null, pendentes: 0, alto_valor_pendente: 0 };
+    const aoVivo = { acessaram: null, assistiram: 138, aplicaram: 61, agendaram: 24, taxa_agendamento: 0.393, pendentes: 37, alto_valor_pendente: 12 };
+    const replay = { acessaram: 96, assistiram: 54, aplicaram: 16, agendaram: 5, taxa_agendamento: 0.3125, pendentes: 11, alto_valor_pendente: 3 };
+    const total = { acessaram: 96, assistiram: 192, aplicaram: 81, agendaram: 29, taxa_agendamento: 0.358, pendentes: 52, alto_valor_pendente: 15 };
+    expect(linhaSemDados(vazia)).toBe(true);
+    expect(linhaSemDados(aoVivo)).toBe(false);
+    expect(matrizFecha({ ao_vivo: aoVivo, replay, total }, 4)).toBe(true); // 61 + 16 + 4 = 81
+    expect(matrizFecha({ ao_vivo: aoVivo, replay, total }, 0)).toBe(false);
+  });
+
+  it("degraus do resgate usam as taxas PRONTAS do backend; Pendentes sem taxa", () => {
+    const d = degrausDoResgate({
+      convidados: 2600, assistiram: 180, aplicaram: 42, agendaram: 15, pendentes: 27,
+      taxa_retorno: 0.069, taxa_aplicacao: 0.233, taxa_agendamento: null,
+    });
+    expect(d.map((x) => [x.rotulo, x.valor, x.taxa])).toEqual([
+      ["Convidados", 2600, null],
+      ["Assistiram", 180, "6,9%"],
+      ["Levantaram a mão", 42, "23%"],
+      ["Agendaram", 15, "—"],
+      ["Pendentes", 27, null],
+    ]);
+  });
+
+  it("contrato V3 completo e V2 (sem matriz/resgate) são aceitos", () => {
+    const base = { de: "x", ate: "x", eventos: [], leads: [], gerado_em: "x", cache: "miss",
+      totais: { no_evento: 1, levantaram_mao: 0, agendaram: 0, pendentes: 0 } };
+    expect(OportunidadesResponseSchema.safeParse(base).success).toBe(true);
+    expect(OportunidadesResponseSchema.safeParse({ ...base, resgate: null, atribuicao_parcial: true }).success).toBe(true);
   });
 });

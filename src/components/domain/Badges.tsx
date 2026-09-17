@@ -2,8 +2,31 @@ import { AlertTriangle, Bot, Lock, Star } from "lucide-react";
 import type { Etapa, Temperatura } from "@/lib/api/contracts";
 import { etapaLabel, TEMPERATURA_CONFIG } from "@/lib/formatters/score";
 import { labelTrava } from "@/lib/formatters/labels";
-import { nomeDono, tierDoLead, type LeadPendente } from "@/lib/sdr/oportunidades";
+import { nomeDono, origemDoLead, tierDoLead, type LeadPendente } from "@/lib/sdr/oportunidades";
 import { cn } from "@/lib/utils/cn";
+
+// Origem do lead no ciclo (ao vivo | replay | sem origem). Cor por token
+// (config em lib/sdr/oportunidades); "Sem origem" é neutro e tracejado.
+export function OrigemBadge({
+  lead,
+  size = "md",
+}: {
+  lead: Pick<LeadPendente, "origem">;
+  size?: "sm" | "md";
+}) {
+  const cfg = origemDoLead(lead);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center whitespace-nowrap rounded-full font-medium",
+        cfg.badge,
+        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+      )}
+    >
+      {cfg.label}
+    </span>
+  );
+}
 
 // Dono do negócio na Clint (SDR responsável). null → "Sem dono", neutro e
 // tracejado, no mesmo estilo da etapa nula (EtapaBadge).

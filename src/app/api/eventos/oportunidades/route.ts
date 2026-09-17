@@ -9,7 +9,7 @@ import { mockOportunidades } from "@/lib/mock/eventos_oportunidades";
 //     422 { erro: "intervalo_muito_grande" }, 502 { erro: "clint_auth" | ... })
 //     passam INTACTOS — a UI decide a mensagem por status + código.
 //   - "mock" (default): fixture determinístico (src/lib/mock/eventos_oportunidades)
-//     com ~40 pendentes; aceita `simular=vazio|sem_contatos|desqualificados|clint_auth|
+//     com ~40 pendentes; aceita `simular=vazio|sem_contatos|desqualificados|sem_replay|sem_resgate|clint_auth|
 //     clint_indisponivel|intervalo_muito_grande` para exercitar os estados.
 // ---------------------------------------------------------------------------
 
