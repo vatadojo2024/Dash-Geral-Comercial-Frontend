@@ -347,11 +347,11 @@ export function LevantouMaoPanel() {
             <>
               <Card>
                 <CardHeader
-                  title="Pendentes por classificação"
+                  title="Pendentes por classificação (MQL)"
                   subtitle="Clique numa barra ou num chip para filtrar a lista. Nenhum selecionado = todos."
                 />
                 <CardContent className="space-y-4">
-                  <FiltroClassificacao
+                  <FiltroMql
                     contagem={contagem}
                     selecionados={tiersSel}
                     soAltoValor={soAltoValor}
@@ -428,7 +428,7 @@ export function LevantouMaoPanel() {
                   {filtrados.length === 0 ? (
                     <EmptyState
                       titulo="Nenhum pendente neste recorte"
-                      descricao="Ajuste os chips de classificação, de dono, de origem ou a busca."
+                      descricao="Ajuste os chips de MQL, de dono, de origem ou a busca."
                     />
                   ) : visao === "lista" ? (
                     <ListaPendentes
@@ -576,7 +576,7 @@ function Kpis({ data }: { data: OportunidadesResponse }) {
   const t = data.totais;
   const nEventos = `${data.eventos.length} ${data.eventos.length === 1 ? "evento" : "eventos"}`;
   return (
-    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
       <KpiChip icon={Users} rotulo="Inscritos" valor={celulaMatriz(t.inscritos)} detalhe={`tag do evento · ${nEventos}`} />
       <KpiChip
         icon={Ban}
@@ -584,6 +584,13 @@ function Kpis({ data }: { data: OportunidadesResponse }) {
         rotulo="Desqualificados"
         valor={celulaMatriz(t.desqualificados)}
         detalhe="fora da base · conferência"
+      />
+      <KpiChip
+        icon={Ban}
+        tom="neutro"
+        rotulo="QC (fora do recorte)"
+        valor={celulaMatriz(t.qc)}
+        detalhe="outra trilha · conferência"
       />
       <KpiChip icon={Hourglass} rotulo="Pendentes" valor={String(t.pendentes)} destaque />
       <KpiChip
@@ -899,6 +906,10 @@ function MatrizOrigem({
             <dt className="inline">Desqualificados: </dt>
             <dd className="inline font-semibold tabular-nums text-cinza">{celulaMatriz(t.desqualificados)}</dd>
           </div>
+          <div title="Contatos da trilha QC (outro produto e outro público): saem da base antes de qualquer conta, como os desqualificados">
+            <dt className="inline">QC (fora do recorte): </dt>
+            <dd className="inline font-semibold tabular-nums text-cinza">{celulaMatriz(t.qc)}</dd>
+          </div>
         </dl>
       </CardContent>
     </Card>
@@ -952,8 +963,7 @@ function Chips({
   );
 }
 
-// Chips de classificação: a escala MQL, QC (outra trilha) e "Sem classificação".
-function FiltroClassificacao({
+function FiltroMql({
   contagem,
   selecionados,
   soAltoValor,
@@ -970,7 +980,7 @@ function FiltroClassificacao({
 }) {
   return (
     <Chips
-      rotulo="Filtrar por classificação"
+      rotulo="Filtrar por MQL"
       opcoes={TIERS.map((t) => ({
         chave: t.chave,
         label: t.label,
@@ -1160,7 +1170,7 @@ function BarrasPorTier({
   const dist = distribuicaoPorTier(leads);
   const max = dist[0]?.total ?? 1;
   return (
-    <ul className="space-y-1.5" aria-label="Pendentes por classificação">
+    <ul className="space-y-1.5" aria-label="Pendentes por tier">
       {dist.map(({ tier, total }) => {
         const ativo = selecionados.includes(tier.chave);
         return (

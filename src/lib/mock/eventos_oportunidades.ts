@@ -15,8 +15,8 @@ import { tagsEventoNoIntervalo } from "@/lib/sdr/ciclo";
 
 type Tier = { tag: string | null; rank: number };
 
-// QC é outra trilha (tag "Qualificado QC" na Clint): vem com tier "QC" e rank 0,
-// nunca como degrau abaixo de MQL.
+// A trilha QC não entra na lista: o backend exclui esses contatos e só informa
+// `totais.qc`. Aqui os 40 pendentes são todos da escala MQL ou sem classificação.
 const TIERS: Tier[] = [
   { tag: "UMQL+", rank: 6 },
   { tag: "UMQL", rank: 5 },
@@ -24,13 +24,11 @@ const TIERS: Tier[] = [
   { tag: "SMQL", rank: 3 },
   { tag: "MQL+", rank: 2 },
   { tag: "MQL", rank: 1 },
-  { tag: "QC", rank: 0 },
   { tag: null, rank: 0 },
 ];
 
-// Distribuição dos 40 pendentes: 3 UMQL+, 5 UMQL, 8 HMQL, 6 SMQL, 5 MQL+, 6 MQL,
-// 4 QC, 3 sem classificação. Alto valor (UMQL+/UMQL/HMQL) segue 16.
-const DISTRIBUICAO = [3, 5, 8, 6, 5, 6, 4, 3];
+// Distribuição dos 40 pendentes: 3 UMQL+, 5 UMQL, 8 HMQL, 7 SMQL, 6 MQL+, 7 MQL, 4 sem.
+const DISTRIBUICAO = [3, 5, 8, 7, 6, 7, 4];
 
 const NOMES = [
   "Ana Paula Ribeiro", "Bruno Carvalho", "Camila Ferreira", "Daniel Moreira", "Eduarda Santos",
@@ -123,7 +121,7 @@ export type OportunidadesMock = {
   de: string;
   ate: string;
   eventos: string[];
-  totais: { inscritos: number; desqualificados: number; pendentes: number };
+  totais: { inscritos: number; desqualificados: number; qc: number; pendentes: number };
   matriz: { ao_vivo: LinhaMatrizMock; replay: LinhaMatrizMock; total: LinhaMatrizMock };
   funis: { ao_vivo: { degraus: DegrauMock[] }; replay: { degraus: DegrauMock[] } };
   resgate: {
@@ -180,13 +178,7 @@ function linhaDoContato(i: number, tier: Tier, evento: string, semReplay: boolea
     tier: tier.tag,
     tier_rank: tier.rank,
     evento_tag: evento,
-    // Na Clint a tag do QC é "Qualificado QC"; o tier normalizado é só "QC".
-    tags: [
-      evento,
-      "Levantou a Mão",
-      ...(tier.tag === "QC" ? ["Qualificado QC"] : tier.tag ? [tier.tag] : []),
-      ...extras,
-    ],
+    tags: [evento, "Levantou a Mão", ...(tier.tag ? [tier.tag] : []), ...extras],
     created_at: criado.toISOString(),
     // 1 em cada 3 tem ficha no Mapa de Calor (ids do mock data_clients.json).
     lead_id: i % 3 === 0 ? `ld_${String((i % 40) + 1).padStart(4, "0")}` : null,
@@ -227,6 +219,7 @@ export function mockOportunidades(
     leads: LeadPendenteMock[],
     inscritos: number,
     desqualificados: number,
+    qc: number,
     agAoVivo: number,
     agReplay: number,
   ): Omit<OportunidadesMock, "de" | "ate" | "eventos" | "avisos" | "gerado_em" | "cache" | "resgate" | "por_dono"> => {
@@ -252,7 +245,7 @@ export function mockOportunidades(
       alto_valor_pendente: leads.filter((l) => l.tier_rank >= 4).length,
     };
     return {
-      totais: { inscritos, desqualificados, pendentes: leads.length },
+      totais: { inscritos, desqualificados, qc, pendentes: leads.length },
       matriz: { ao_vivo: aoVivo, replay, total },
       funis: {
         ao_vivo: { degraus: degraus("inscritos", aoVivo, inscritos) },
@@ -265,14 +258,14 @@ export function mockOportunidades(
   if (n === 0 || simular === "sem_contatos" || simular === "desqualificados") {
     return {
       ...base,
-      ...montar([], 0, simular === "desqualificados" ? 9 * Math.max(n, 1) : 0, 0, 0),
+      ...montar([], 0, simular === "desqualificados" ? 9 * Math.max(n, 1) : 0, 0, 0, 0),
       resgate: null,
       por_dono: [],
     };
   }
   if (simular === "vazio") {
     // Todos que aplicaram já agendaram: zero pendentes.
-    return { ...base, ...montar([], 214 * n, 9 * n, 28 * n, 10 * n), resgate: null, por_dono: [] };
+    return { ...base, ...montar([], 214 * n, 9 * n, 5 * n, 28 * n, 10 * n), resgate: null, por_dono: [] };
   }
 
   // Uma linha por (contato, evento). Com 1 evento: os 40 contatos. Com 2+: cada
@@ -334,7 +327,8 @@ export function mockOportunidades(
     ...base,
     // base_inflada reproduz o bug de base da V3: "assistiram" acima dos inscritos.
     avisos: inflada ? ["assistiram_acima_da_base", "taxa_acima_de_100"] : [],
-    ...montar(leads, 214 * n, 9 * n, (semReplay ? 21 : 15) * n, semReplay ? 0 : 6 * n),
+    // 5 contatos por evento saem por serem da trilha QC (só conferência).
+    ...montar(leads, 214 * n, 9 * n, 5 * n, (semReplay ? 21 : 15) * n, semReplay ? 0 : 6 * n),
     resgate,
     por_dono,
   };
