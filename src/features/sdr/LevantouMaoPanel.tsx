@@ -78,7 +78,7 @@ import {
   type TierChave,
 } from "@/lib/sdr/oportunidades";
 import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
-import { DonoBadge, MqlBadge, OrigemBadge } from "@/components/domain/Badges";
+import { DonoBadge, MqlBadge, OrigemBadge, SeloNinja } from "@/components/domain/Badges";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -347,11 +347,11 @@ export function LevantouMaoPanel() {
             <>
               <Card>
                 <CardHeader
-                  title="Pendentes por classificação (MQL)"
+                  title="Pendentes por classificação"
                   subtitle="Clique numa barra ou num chip para filtrar a lista. Nenhum selecionado = todos."
                 />
                 <CardContent className="space-y-4">
-                  <FiltroMql
+                  <FiltroClassificacao
                     contagem={contagem}
                     selecionados={tiersSel}
                     soAltoValor={soAltoValor}
@@ -428,7 +428,7 @@ export function LevantouMaoPanel() {
                   {filtrados.length === 0 ? (
                     <EmptyState
                       titulo="Nenhum pendente neste recorte"
-                      descricao="Ajuste os chips de MQL, de dono, de origem ou a busca."
+                      descricao="Ajuste os chips de classificação, de dono, de origem ou a busca."
                     />
                   ) : visao === "lista" ? (
                     <ListaPendentes
@@ -963,7 +963,8 @@ function Chips({
   );
 }
 
-function FiltroMql({
+// Chips de classificação: a escala MQL, Ninja (outra trilha) e "Sem classificação".
+function FiltroClassificacao({
   contagem,
   selecionados,
   soAltoValor,
@@ -980,7 +981,7 @@ function FiltroMql({
 }) {
   return (
     <Chips
-      rotulo="Filtrar por MQL"
+      rotulo="Filtrar por classificação"
       opcoes={TIERS.map((t) => ({
         chave: t.chave,
         label: t.label,
@@ -1170,7 +1171,7 @@ function BarrasPorTier({
   const dist = distribuicaoPorTier(leads);
   const max = dist[0]?.total ?? 1;
   return (
-    <ul className="space-y-1.5" aria-label="Pendentes por tier">
+    <ul className="space-y-1.5" aria-label="Pendentes por classificação">
       {dist.map(({ tier, total }) => {
         const ativo = selecionados.includes(tier.chave);
         return (
@@ -1317,6 +1318,7 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
             <p className="truncate text-base font-semibold text-texto">{lead.nome}</p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <MqlBadge lead={lead} size="sm" />
+              <SeloNinja lead={lead} />
               {lead.origem !== undefined && <OrigemCelula lead={lead} />}
               <DonoBadge dono={lead.dono} size="sm" />
               {lead.evento_tag && <span className="text-xs text-texto-sec">{lead.evento_tag}</span>}
@@ -1622,7 +1624,10 @@ function ListaPendentes({
                   <NomePendente lead={l} onAbrir={onAbrir} />
                 </td>
                 <td className="px-2 py-2">
-                  <MqlBadge lead={l} size="sm" />
+                  <span className="inline-flex items-center gap-1">
+                    <MqlBadge lead={l} size="sm" />
+                    <SeloNinja lead={l} />
+                  </span>
                 </td>
                 {comOrigem && (
                   <td className="whitespace-nowrap px-2 py-2">
@@ -1686,6 +1691,7 @@ function ListaPendentes({
                 <NomePendente lead={l} onAbrir={onAbrir} />
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <MqlBadge lead={l} size="sm" />
+                  <SeloNinja lead={l} />
                   {comOrigem && <OrigemCelula lead={l} />}
                   {!semColunaDono && <DonoBadge dono={l.dono} size="sm" />}
                   {multiEvento && l.evento_tag && (

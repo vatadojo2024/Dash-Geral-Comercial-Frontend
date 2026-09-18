@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   agruparPorDono,
   altoValorPendente,
+  ehAltoValor,
+  mostraSeloNinja,
+  TIERS,
+  TIERS_ALTO_VALOR,
   blocosDoFunil,
   blocosDoResgate,
   celulaMatriz,
@@ -59,6 +63,75 @@ describe("tierDoLead", () => {
   });
 });
 
+describe("Ninja: trilha separada da escala MQL", () => {
+  const ninja = { tier: "Ninja", tier_rank: 0 };
+
+  it("é reconhecido pelo nome (qualquer caixa) e o rótulo exibido é exatamente 'Ninja'", () => {
+    expect(tierDoLead(ninja).chave).toBe("Ninja");
+    expect(tierDoLead(ninja).label).toBe("Ninja");
+    expect(tierDoLead({ tier: "NINJA", tier_rank: 0 }).chave).toBe("Ninja");
+    expect(tierDoLead({ tier: "Possível Ninja", tier_rank: 0 }).chave).toBe("sem"); // backend manda "Ninja"
+  });
+
+  it("rank 0 NÃO o joga em 'Sem classificação', e lead sem tag continua 'sem'", () => {
+    expect(tierDoLead(ninja).chave).not.toBe("sem");
+    expect(tierDoLead({ tier: null, tier_rank: 0 }).chave).toBe("sem");
+  });
+
+  it("não é alto valor e não altera a escala MQL", () => {
+    expect(ehAltoValor(ninja)).toBe(false);
+    expect(TIERS.filter((t) => t.mql).map((t) => [t.chave, t.rank])).toEqual([
+      ["UMQL+", 6],
+      ["UMQL", 5],
+      ["HMQL", 4],
+      ["SMQL", 3],
+      ["MQL+", 2],
+      ["MQL", 1],
+    ]);
+    expect(TIERS_ALTO_VALOR).not.toContain("Ninja");
+  });
+
+  it("aparece entre MQL e 'Sem classificação' nos chips e nas barras", () => {
+    expect(TIERS.map((t) => t.chave)).toEqual(["UMQL+", "UMQL", "HMQL", "SMQL", "MQL+", "MQL", "Ninja", "sem"]);
+    const leads = [
+      lead({ clint_contact_id: "1", tier: "MQL", tier_rank: 1 }),
+      lead({ clint_contact_id: "2", tier: "Ninja", tier_rank: 0 }),
+      lead({ clint_contact_id: "3", tier: null, tier_rank: 0 }),
+    ];
+    expect(distribuicaoPorTier(leads).map((d) => d.tier.chave)).toEqual(["MQL", "Ninja", "sem"]);
+  });
+
+  it("conta e filtra como as demais classificações, sem contaminar alto valor", () => {
+    const leads = [
+      lead({ clint_contact_id: "1", nome: "Ana", tier: "HMQL", tier_rank: 4 }),
+      lead({ clint_contact_id: "2", nome: "Bia", tier: "Ninja", tier_rank: 0 }),
+      lead({ clint_contact_id: "3", nome: "Caio", tier: "Ninja", tier_rank: 0 }),
+      lead({ clint_contact_id: "4", nome: "Dudu", tier: null, tier_rank: 0 }),
+    ];
+    expect(contarPorTier(leads)).toMatchObject({ HMQL: 1, Ninja: 2, sem: 1 });
+    expect(altoValorPendente(leads)).toBe(1);
+    expect(filtrarPendentes(leads, { tiers: ["Ninja"], busca: "" }).map((l) => l.nome)).toEqual(["Bia", "Caio"]);
+    expect(filtrarPendentes(leads, { tiers: ["sem"], busca: "" }).map((l) => l.nome)).toEqual(["Dudu"]);
+  });
+
+  it("selo Ninja: só quando possivel_ninja é true E o tier é da escala MQL (ou nulo)", () => {
+    expect(mostraSeloNinja({ tier: "SMQL", tier_rank: 3, possivel_ninja: true })).toBe(true);
+    expect(mostraSeloNinja({ tier: "MQL", tier_rank: 1, possivel_ninja: true })).toBe(true);
+    expect(mostraSeloNinja({ tier: "Ninja", tier_rank: 0, possivel_ninja: true })).toBe(false); // badge já diz Ninja
+    expect(mostraSeloNinja({ tier: "SMQL", tier_rank: 3, possivel_ninja: false })).toBe(false);
+    expect(mostraSeloNinja({ tier: "SMQL", tier_rank: 3 })).toBe(false); // backend antigo
+  });
+
+  it("no CSV sai 'Ninja' na coluna mql; o selo não altera a coluna", () => {
+    const linhas = csvDePendentes([
+      lead({ nome: "Bia", tier: "Ninja", tier_rank: 0 }),
+      lead({ nome: "Dani", tier: "SMQL", tier_rank: 3, possivel_ninja: true }),
+    ]).split("\r\n");
+    expect(linhas[1]).toContain('"Bia";"Ninja";');
+    expect(linhas[2]).toContain('"Dani";"SMQL";');
+  });
+});
+
 describe("contagens", () => {
   const leads = [
     lead({ clint_contact_id: "1", tier: "UMQL+", tier_rank: 6 }),
@@ -75,6 +148,7 @@ describe("contagens", () => {
       SMQL: 0,
       "MQL+": 0,
       MQL: 1,
+      Ninja: 0,
       sem: 1,
     });
   });
@@ -231,6 +305,10 @@ describe("contrato", () => {
     expect(sem.success && sem.data.totais.qc).toBeUndefined();
     // Lead que ainda viesse como "QC" (backend antigo) não ganha chip próprio: cai em "sem".
     expect(tierDoLead({ tier: "QC", tier_rank: 0 }).chave).toBe("sem");
+  });
+  it("possivel_ninja é opcional", () => {
+    const r = OportunidadesResponseSchema.safeParse({ ...resp, leads: [lead({ possivel_ninja: true }), lead({})] });
+    expect(r.success && r.data.leads.map((l) => l.possivel_ninja)).toEqual([true, undefined]);
   });
   it("chave da linha é (contato, evento): o mesmo contato em dois eventos não colide", () => {
     const a = lead({ clint_contact_id: "c1", evento_tag: "WG - 08.09.26" });

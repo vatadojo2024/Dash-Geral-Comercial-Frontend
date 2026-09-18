@@ -15,8 +15,10 @@ import { tagsEventoNoIntervalo } from "@/lib/sdr/ciclo";
 
 type Tier = { tag: string | null; rank: number };
 
-// A trilha QC não entra na lista: o backend exclui esses contatos e só informa
-// `totais.qc`. Aqui os 40 pendentes são todos da escala MQL ou sem classificação.
+// A trilha QC não entra na lista (o backend a exclui e só informa `totais.qc`).
+// Ninja é outra trilha (tag "Possível Ninja"): vem com tier "Ninja" e rank 0,
+// nunca como degrau abaixo de MQL. Quem tem Ninja E uma tag MQL fica com a MQL
+// no tier e `possivel_ninja: true`.
 const TIERS: Tier[] = [
   { tag: "UMQL+", rank: 6 },
   { tag: "UMQL", rank: 5 },
@@ -24,11 +26,13 @@ const TIERS: Tier[] = [
   { tag: "SMQL", rank: 3 },
   { tag: "MQL+", rank: 2 },
   { tag: "MQL", rank: 1 },
+  { tag: "Ninja", rank: 0 },
   { tag: null, rank: 0 },
 ];
 
-// Distribuição dos 40 pendentes: 3 UMQL+, 5 UMQL, 8 HMQL, 7 SMQL, 6 MQL+, 7 MQL, 4 sem.
-const DISTRIBUICAO = [3, 5, 8, 7, 6, 7, 4];
+// Distribuição dos 40 pendentes: 3 UMQL+, 5 UMQL, 8 HMQL, 6 SMQL, 5 MQL+, 6 MQL,
+// 4 Ninja, 3 sem classificação. Alto valor (UMQL+/UMQL/HMQL) segue 16.
+const DISTRIBUICAO = [3, 5, 8, 6, 5, 6, 4, 3];
 
 const NOMES = [
   "Ana Paula Ribeiro", "Bruno Carvalho", "Camila Ferreira", "Daniel Moreira", "Eduarda Santos",
@@ -95,6 +99,7 @@ export type LeadPendenteMock = {
   acessou_replay: boolean;
   assistiu_replay: boolean;
   convidado_resgate: boolean;
+  possivel_ninja: boolean;
 };
 
 // Donos (SDRs) do mock. null = negócio sem dono.
@@ -170,6 +175,9 @@ function linhaDoContato(i: number, tier: Tier, evento: string, semReplay: boolea
   const criado = new Date(`${isoDaTag(evento)}T${String(9 + (i % 10)).padStart(2, "0")}:${String((i * 17) % 60).padStart(2, "0")}:00-03:00`);
   criado.setUTCDate(criado.getUTCDate() + (i % 5));
   const comNegocio = i % 4 !== 3;
+  // Marcação "Possível Ninja": todo tier Ninja, mais 1 em 6 dos leads da escala MQL
+  // (que ficam com a MQL no tier, por precedência, e ganham o selo).
+  const possivelNinja = tier.tag === "Ninja" || (tier.tag !== null && i % 6 === 4);
   return {
     clint_contact_id: `clint-${String(i + 1).padStart(4, "0")}`,
     nome,
@@ -178,7 +186,14 @@ function linhaDoContato(i: number, tier: Tier, evento: string, semReplay: boolea
     tier: tier.tag,
     tier_rank: tier.rank,
     evento_tag: evento,
-    tags: [evento, "Levantou a Mão", ...(tier.tag ? [tier.tag] : []), ...extras],
+    // Na Clint a tag da trilha é "Possível Ninja"; o tier normalizado é só "Ninja".
+    tags: [
+      evento,
+      "Levantou a Mão",
+      ...(tier.tag && tier.tag !== "Ninja" ? [tier.tag] : []),
+      ...(possivelNinja ? ["Possível Ninja"] : []),
+      ...extras,
+    ],
     created_at: criado.toISOString(),
     // 1 em cada 3 tem ficha no Mapa de Calor (ids do mock data_clients.json).
     lead_id: i % 3 === 0 ? `ld_${String((i % 40) + 1).padStart(4, "0")}` : null,
@@ -193,6 +208,7 @@ function linhaDoContato(i: number, tier: Tier, evento: string, semReplay: boolea
     acessou_replay: assistiuReplay || (!semReplay && i % 6 === 0),
     assistiu_replay: assistiuReplay,
     convidado_resgate: !semResgate && i % 4 === 2,
+    possivel_ninja: possivelNinja,
   };
 }
 

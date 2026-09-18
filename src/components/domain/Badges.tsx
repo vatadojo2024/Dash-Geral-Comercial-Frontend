@@ -2,7 +2,13 @@ import { AlertTriangle, Bot, Lock, Star } from "lucide-react";
 import type { Etapa, Temperatura } from "@/lib/api/contracts";
 import { etapaLabel, TEMPERATURA_CONFIG } from "@/lib/formatters/score";
 import { labelTrava } from "@/lib/formatters/labels";
-import { nomeDono, origemDoLead, tierDoLead, type LeadPendente } from "@/lib/sdr/oportunidades";
+import {
+  mostraSeloNinja,
+  nomeDono,
+  origemDoLead,
+  tierDoLead,
+  type LeadPendente,
+} from "@/lib/sdr/oportunidades";
 import { cn } from "@/lib/utils/cn";
 
 // Origem do lead no ciclo: "Ao vivo" ou "Replay" (não existe terceiro valor).
@@ -55,7 +61,21 @@ export function DonoBadge({
   );
 }
 
-// Classificação MQL (tags da Clint: UMQL+ … MQL, ou sem classificação). Cor
+// Selo discreto "Ninja": o lead tem a marcação "Possível Ninja" mas o tier é da
+// escala MQL (precedência). Não renderiza quando o próprio tier já é Ninja.
+export function SeloNinja({ lead }: { lead: Pick<LeadPendente, "tier" | "tier_rank" | "possivel_ninja"> }) {
+  if (!mostraSeloNinja(lead)) return null;
+  return (
+    <span
+      title="Também tem a marcação Possível Ninja na Clint — classificado pela escala MQL, que tem precedência"
+      className="inline-flex items-center whitespace-nowrap rounded-full border border-verde/40 px-1.5 py-px text-[10px] font-medium text-verde"
+    >
+      Ninja
+    </span>
+  );
+}
+
+// Classificação (escala MQL, Ninja ou sem classificação). Cor
 // pela escala de temperatura do tema (config em lib/sdr/oportunidades) — o
 // texto do tier sempre acompanha a cor.
 export function MqlBadge({

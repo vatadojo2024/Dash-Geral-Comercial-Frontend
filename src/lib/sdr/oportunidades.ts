@@ -45,6 +45,9 @@ export const LeadPendenteSchema = z
     acessou_replay: z.boolean().nullish(),
     assistiu_replay: z.boolean().nullish(),
     convidado_resgate: z.boolean().nullish(),
+    // Marcação "Possível Ninja" na Clint. Vem true MESMO quando o tier mostra uma
+    // tag da escala MQL (que tem precedência na classificação) — daí o selo.
+    possivel_ninja: z.boolean().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
@@ -245,20 +248,29 @@ export type CodigoErroOportunidades =
   | "desconhecido";
 
 // ---------------------------------------------------------------------------
-// Tiers (escala MQL). Ordem hierárquica fixa: UMQL+ (6) > UMQL (5) > HMQL (4) >
-// SMQL (3) > MQL+ (2) > MQL (1). A chave "sem" é o lead sem nenhuma tag de
-// classificação (tier null / tier_rank 0). A trilha QC NÃO chega a esta lista:
-// o backend exclui esses contatos antes de qualquer conta e só informa a
-// quantidade em `totais.qc` (número de conferência, como os desqualificados).
-// Cores por token do tema (globals.css) — NENHUMA cor solta aqui.
+// Classificação do lead na Clint. Duas trilhas DISTINTAS:
+//   - escala MQL, hierárquica: UMQL+ (6) > UMQL (5) > HMQL (4) > SMQL (3) >
+//     MQL+ (2) > MQL (1);
+//   - Ninja ("Possível Ninja"), que NÃO é degrau dessa escala — é outra trilha
+//     e por isso vem com rank 0, não abaixo de MQL. Quem tem Ninja E uma tag MQL
+//     é classificado pela MQL (precedência) e ganha o selo `possivel_ninja`.
+// A chave "sem" é o lead sem NENHUMA tag de classificação (tier null).
+// A trilha QC não chega a esta lista: o backend a exclui e só informa `totais.qc`.
+// Cores por token do tema (globals.css) — NENHUMA cor solta aqui. A escala MQL
+// usa a rampa de temperatura; Ninja usa `verde`, fora da rampa, porque não tem
+// posição nela.
 // ---------------------------------------------------------------------------
 
-export type TierChave = "UMQL+" | "UMQL" | "HMQL" | "SMQL" | "MQL+" | "MQL" | "sem";
+export type TierChave = "UMQL+" | "UMQL" | "HMQL" | "SMQL" | "MQL+" | "MQL" | "Ninja" | "sem";
 
 export type TierConfig = {
   chave: TierChave;
   label: string;
+  // Posição na escala MQL: 6..1. Ninja e "sem" têm 0 — Ninja de propósito.
   rank: number;
+  // Pertence à escala MQL? Só esses resolvem um lead PELO RANK quando o nome do
+  // tier não casa; Ninja e "sem" ficam de fora para não capturar o rank 0.
+  mql: boolean;
   // Classes Tailwind (tokens da paleta): badge/chip, texto e barra.
   badge: string;
   chipAtivo: string;
@@ -271,6 +283,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "UMQL+",
     label: "UMQL+",
     rank: 6,
+    mql: true,
     badge: "bg-muito-quente/15 text-muito-quente border border-muito-quente/30",
     chipAtivo: "bg-muito-quente/20 text-muito-quente border-muito-quente/60",
     text: "text-muito-quente",
@@ -280,6 +293,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "UMQL",
     label: "UMQL",
     rank: 5,
+    mql: true,
     badge: "bg-quente/15 text-quente border border-quente/30",
     chipAtivo: "bg-quente/20 text-quente border-quente/60",
     text: "text-quente",
@@ -289,6 +303,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "HMQL",
     label: "HMQL",
     rank: 4,
+    mql: true,
     badge: "bg-morno-alto/15 text-morno-alto border border-morno-alto/30",
     chipAtivo: "bg-morno-alto/20 text-morno-alto border-morno-alto/60",
     text: "text-morno-alto",
@@ -298,6 +313,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "SMQL",
     label: "SMQL",
     rank: 3,
+    mql: true,
     badge: "bg-morno-baixo/15 text-morno-baixo border border-morno-baixo/30",
     chipAtivo: "bg-morno-baixo/20 text-morno-baixo border-morno-baixo/60",
     text: "text-morno-baixo",
@@ -307,6 +323,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "MQL+",
     label: "MQL+",
     rank: 2,
+    mql: true,
     badge: "bg-frio/15 text-frio border border-frio/30",
     chipAtivo: "bg-frio/20 text-frio border-frio/60",
     text: "text-frio",
@@ -316,15 +333,28 @@ export const TIERS: readonly TierConfig[] = [
     chave: "MQL",
     label: "MQL",
     rank: 1,
+    mql: true,
     badge: "bg-congelado/15 text-congelado border border-congelado/30",
     chipAtivo: "bg-congelado/20 text-congelado border-congelado/60",
     text: "text-congelado",
     barra: "bg-congelado",
   },
   {
+    // Outra trilha (tag "Possível Ninja" na Clint). Rótulo exibido: só "Ninja".
+    chave: "Ninja",
+    label: "Ninja",
+    rank: 0,
+    mql: false,
+    badge: "bg-verde/15 text-verde border border-verde/30",
+    chipAtivo: "bg-verde/20 text-verde border-verde/60",
+    text: "text-verde",
+    barra: "bg-verde",
+  },
+  {
     chave: "sem",
     label: "Sem classificação",
     rank: 0,
+    mql: false,
     badge: "border border-dashed border-borda bg-transparent text-texto-sec/80",
     chipAtivo: "bg-painel-claro text-texto border-texto-sec/60",
     text: "text-texto-sec",
@@ -332,23 +362,38 @@ export const TIERS: readonly TierConfig[] = [
   },
 ] as const;
 
-// Atalho "Só alto valor" = UMQL+, UMQL e HMQL.
+// Atalho "Só alto valor" = UMQL+, UMQL e HMQL. Ninja NÃO entra: é outra trilha.
 export const TIERS_ALTO_VALOR: readonly TierChave[] = ["UMQL+", "UMQL", "HMQL"];
 export const RANK_ALTO_VALOR_MIN = 4;
 
-const TIER_POR_CHAVE = new Map<string, TierConfig>(TIERS.map((t) => [t.chave, t]));
-const TIER_POR_RANK = new Map<number, TierConfig>(TIERS.map((t) => [t.rank, t]));
+const TIER_POR_CHAVE = new Map<string, TierConfig>(
+  TIERS.map((t) => [t.chave.toUpperCase(), t]),
+);
+// Só a escala MQL: assim o rank 0 de um lead sem classificação nunca cai em Ninja.
+const TIER_POR_RANK = new Map<number, TierConfig>(
+  TIERS.filter((t) => t.mql).map((t) => [t.rank, t]),
+);
 const TIER_SEM = TIERS[TIERS.length - 1];
 
-// Tier do lead: pelo nome canônico; se não casar, pelo rank; senão "sem".
+// Classificação do lead: pelo nome canônico (inclui "Ninja"); se não casar, pelo
+// rank DA ESCALA MQL (backend que só manda rank); senão, sem classificação.
 export function tierDoLead(lead: Pick<LeadPendente, "tier" | "tier_rank">): TierConfig {
   const porNome = lead.tier ? TIER_POR_CHAVE.get(lead.tier.trim().toUpperCase()) : undefined;
   if (porNome) return porNome;
   return TIER_POR_RANK.get(lead.tier_rank ?? 0) ?? TIER_SEM;
 }
 
+// Alto valor = UMQL+, UMQL, HMQL. Ninja tem rank 0, então nunca entra aqui.
 export function ehAltoValor(lead: Pick<LeadPendente, "tier" | "tier_rank">): boolean {
   return tierDoLead(lead).rank >= RANK_ALTO_VALOR_MIN;
+}
+
+// Selo "Ninja" ao lado do tier: quem tem a marcação mas foi classificado pela
+// escala MQL (precedência). Se o próprio tier já é Ninja, o badge basta.
+export function mostraSeloNinja(
+  lead: Pick<LeadPendente, "tier" | "tier_rank" | "possivel_ninja">,
+): boolean {
+  return lead.possivel_ninja === true && tierDoLead(lead).chave !== "Ninja";
 }
 
 // Contagem por classificação (todas as chaves presentes, zero incluso).
@@ -359,7 +404,8 @@ export function contarPorTier(leads: LeadPendente[]): Record<TierChave, number> 
 }
 
 // Distribuição para o gráfico de barras: só tiers com pendentes, maior → menor.
-// Empate desempata pela ordem de TIERS (a hierarquia).
+// Empate desempata pela ordem de TIERS (a hierarquia, com Ninja e "sem" no fim)
+// — rank não serve de desempate porque Ninja e "sem" compartilham o 0.
 export function distribuicaoPorTier(
   leads: LeadPendente[],
 ): { tier: TierConfig; total: number }[] {
