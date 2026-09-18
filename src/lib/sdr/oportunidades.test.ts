@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   agruparPorDono,
   altoValorPendente,
+  ehAltoValor,
+  TIERS,
+  TIERS_ALTO_VALOR,
   blocosDoFunil,
   blocosDoResgate,
   celulaMatriz,
@@ -52,10 +55,76 @@ describe("tierDoLead", () => {
     expect(tierDoLead({ tier: "umql", tier_rank: 5 }).chave).toBe("UMQL");
     expect(tierDoLead({ tier: "MQL", tier_rank: 1 }).chave).toBe("MQL");
   });
-  it("cai no rank quando o nome não casa, e em 'sem' quando não há nada", () => {
+  it("cai no rank da escala MQL quando o nome não casa, e em 'sem' quando não há nada", () => {
     expect(tierDoLead({ tier: "XYZ", tier_rank: 4 }).chave).toBe("HMQL");
     expect(tierDoLead({ tier: null, tier_rank: 0 }).chave).toBe("sem");
     expect(tierDoLead({ tier: null, tier_rank: null }).chave).toBe("sem");
+  });
+});
+
+describe("QC: trilha separada da escala MQL", () => {
+  const qc = { tier: "QC", tier_rank: 0 };
+
+  it("é reconhecido pelo nome e o rótulo exibido é exatamente 'QC'", () => {
+    expect(tierDoLead(qc).chave).toBe("QC");
+    expect(tierDoLead(qc).label).toBe("QC");
+    expect(tierDoLead({ tier: "qc", tier_rank: 0 }).chave).toBe("QC");
+  });
+
+  it("rank 0 NÃO o joga em 'Sem classificação', e lead sem tag continua 'sem'", () => {
+    expect(tierDoLead(qc).chave).not.toBe("sem");
+    expect(tierDoLead({ tier: null, tier_rank: 0 }).chave).toBe("sem");
+  });
+
+  it("não é alto valor, e não altera a escala MQL", () => {
+    expect(ehAltoValor(qc)).toBe(false);
+    expect(TIERS.filter((t) => t.mql).map((t) => [t.chave, t.rank])).toEqual([
+      ["UMQL+", 6],
+      ["UMQL", 5],
+      ["HMQL", 4],
+      ["SMQL", 3],
+      ["MQL+", 2],
+      ["MQL", 1],
+    ]);
+    expect(TIERS_ALTO_VALOR).not.toContain("QC");
+  });
+
+  it("aparece entre MQL e 'Sem classificação' nos chips e nas barras", () => {
+    expect(TIERS.map((t) => t.chave)).toEqual([
+      "UMQL+",
+      "UMQL",
+      "HMQL",
+      "SMQL",
+      "MQL+",
+      "MQL",
+      "QC",
+      "sem",
+    ]);
+    const leads = [
+      lead({ clint_contact_id: "1", tier: "MQL", tier_rank: 1 }),
+      lead({ clint_contact_id: "2", tier: "QC", tier_rank: 0 }),
+      lead({ clint_contact_id: "3", tier: null, tier_rank: 0 }),
+    ];
+    // Empate em 1: a ordem é a da hierarquia, não a do rank (QC e "sem" = 0).
+    expect(distribuicaoPorTier(leads).map((d) => d.tier.chave)).toEqual(["MQL", "QC", "sem"]);
+  });
+
+  it("conta e filtra como as demais classificações, sem contaminar alto valor", () => {
+    const leads = [
+      lead({ clint_contact_id: "1", nome: "Ana", tier: "HMQL", tier_rank: 4 }),
+      lead({ clint_contact_id: "2", nome: "Bia", tier: "QC", tier_rank: 0 }),
+      lead({ clint_contact_id: "3", nome: "Caio", tier: "QC", tier_rank: 0 }),
+      lead({ clint_contact_id: "4", nome: "Dudu", tier: null, tier_rank: 0 }),
+    ];
+    expect(contarPorTier(leads)).toMatchObject({ HMQL: 1, QC: 2, sem: 1 });
+    expect(altoValorPendente(leads)).toBe(1);
+    expect(filtrarPendentes(leads, { tiers: ["QC"], busca: "" }).map((l) => l.nome)).toEqual(["Bia", "Caio"]);
+    expect(filtrarPendentes(leads, { tiers: ["sem"], busca: "" }).map((l) => l.nome)).toEqual(["Dudu"]);
+  });
+
+  it("no CSV sai 'QC' na coluna mql", () => {
+    const linha = csvDePendentes([lead({ nome: "Bia", tier: "QC", tier_rank: 0 })]).split("\r\n")[1];
+    expect(linha).toContain('"Bia";"QC";');
   });
 });
 
@@ -75,6 +144,7 @@ describe("contagens", () => {
       SMQL: 0,
       "MQL+": 0,
       MQL: 1,
+      QC: 0,
       sem: 1,
     });
   });

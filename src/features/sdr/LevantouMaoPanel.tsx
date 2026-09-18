@@ -347,11 +347,11 @@ export function LevantouMaoPanel() {
             <>
               <Card>
                 <CardHeader
-                  title="Pendentes por classificação (MQL)"
+                  title="Pendentes por classificação"
                   subtitle="Clique numa barra ou num chip para filtrar a lista. Nenhum selecionado = todos."
                 />
                 <CardContent className="space-y-4">
-                  <FiltroMql
+                  <FiltroClassificacao
                     contagem={contagem}
                     selecionados={tiersSel}
                     soAltoValor={soAltoValor}
@@ -428,7 +428,7 @@ export function LevantouMaoPanel() {
                   {filtrados.length === 0 ? (
                     <EmptyState
                       titulo="Nenhum pendente neste recorte"
-                      descricao="Ajuste os chips de MQL, de dono, de origem ou a busca."
+                      descricao="Ajuste os chips de classificação, de dono, de origem ou a busca."
                     />
                   ) : visao === "lista" ? (
                     <ListaPendentes
@@ -952,7 +952,8 @@ function Chips({
   );
 }
 
-function FiltroMql({
+// Chips de classificação: a escala MQL, QC (outra trilha) e "Sem classificação".
+function FiltroClassificacao({
   contagem,
   selecionados,
   soAltoValor,
@@ -969,7 +970,7 @@ function FiltroMql({
 }) {
   return (
     <Chips
-      rotulo="Filtrar por MQL"
+      rotulo="Filtrar por classificação"
       opcoes={TIERS.map((t) => ({
         chave: t.chave,
         label: t.label,
@@ -1159,7 +1160,7 @@ function BarrasPorTier({
   const dist = distribuicaoPorTier(leads);
   const max = dist[0]?.total ?? 1;
   return (
-    <ul className="space-y-1.5" aria-label="Pendentes por tier">
+    <ul className="space-y-1.5" aria-label="Pendentes por classificação">
       {dist.map(({ tier, total }) => {
         const ativo = selecionados.includes(tier.chave);
         return (

@@ -242,17 +242,27 @@ export type CodigoErroOportunidades =
   | "desconhecido";
 
 // ---------------------------------------------------------------------------
-// Tiers (MQL). Ordem hierárquica fixa da spec; a chave "sem" representa o lead
-// sem classificação (tier null / tier_rank 0). As cores seguem a escala de
-// temperatura do tema (tokens em globals.css) — NENHUMA cor solta aqui.
+// Classificação do lead na Clint. Duas trilhas DISTINTAS:
+//   - escala MQL, hierárquica: UMQL+ (6) > UMQL (5) > HMQL (4) > SMQL (3) >
+//     MQL+ (2) > MQL (1);
+//   - QC ("Qualificado QC"), que NÃO é degrau dessa escala — é outra trilha de
+//     qualificação e por isso vem com rank 0, não abaixo de MQL.
+// A chave "sem" é o lead sem NENHUMA tag de classificação (tier null).
+// Cores por token do tema (globals.css) — NENHUMA cor solta aqui. A escala MQL
+// usa a rampa de temperatura; QC usa `verde`, fora da rampa, porque não tem
+// posição nela.
 // ---------------------------------------------------------------------------
 
-export type TierChave = "UMQL+" | "UMQL" | "HMQL" | "SMQL" | "MQL+" | "MQL" | "sem";
+export type TierChave = "UMQL+" | "UMQL" | "HMQL" | "SMQL" | "MQL+" | "MQL" | "QC" | "sem";
 
 export type TierConfig = {
   chave: TierChave;
   label: string;
+  // Posição na escala MQL: 6..1. QC e "sem" têm 0 — QC de propósito (ver acima).
   rank: number;
+  // Pertence à escala MQL? Só esses resolvem um lead PELO RANK quando o nome do
+  // tier não casa; QC e "sem" ficam de fora para não capturar o rank 0.
+  mql: boolean;
   // Classes Tailwind (tokens da paleta): badge/chip, texto e barra.
   badge: string;
   chipAtivo: string;
@@ -265,6 +275,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "UMQL+",
     label: "UMQL+",
     rank: 6,
+    mql: true,
     badge: "bg-muito-quente/15 text-muito-quente border border-muito-quente/30",
     chipAtivo: "bg-muito-quente/20 text-muito-quente border-muito-quente/60",
     text: "text-muito-quente",
@@ -274,6 +285,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "UMQL",
     label: "UMQL",
     rank: 5,
+    mql: true,
     badge: "bg-quente/15 text-quente border border-quente/30",
     chipAtivo: "bg-quente/20 text-quente border-quente/60",
     text: "text-quente",
@@ -283,6 +295,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "HMQL",
     label: "HMQL",
     rank: 4,
+    mql: true,
     badge: "bg-morno-alto/15 text-morno-alto border border-morno-alto/30",
     chipAtivo: "bg-morno-alto/20 text-morno-alto border-morno-alto/60",
     text: "text-morno-alto",
@@ -292,6 +305,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "SMQL",
     label: "SMQL",
     rank: 3,
+    mql: true,
     badge: "bg-morno-baixo/15 text-morno-baixo border border-morno-baixo/30",
     chipAtivo: "bg-morno-baixo/20 text-morno-baixo border-morno-baixo/60",
     text: "text-morno-baixo",
@@ -301,6 +315,7 @@ export const TIERS: readonly TierConfig[] = [
     chave: "MQL+",
     label: "MQL+",
     rank: 2,
+    mql: true,
     badge: "bg-frio/15 text-frio border border-frio/30",
     chipAtivo: "bg-frio/20 text-frio border-frio/60",
     text: "text-frio",
@@ -310,15 +325,28 @@ export const TIERS: readonly TierConfig[] = [
     chave: "MQL",
     label: "MQL",
     rank: 1,
+    mql: true,
     badge: "bg-congelado/15 text-congelado border border-congelado/30",
     chipAtivo: "bg-congelado/20 text-congelado border-congelado/60",
     text: "text-congelado",
     barra: "bg-congelado",
   },
   {
+    // Outra trilha (tag "Qualificado QC" na Clint). Rótulo exibido: só "QC".
+    chave: "QC",
+    label: "QC",
+    rank: 0,
+    mql: false,
+    badge: "bg-verde/15 text-verde border border-verde/30",
+    chipAtivo: "bg-verde/20 text-verde border-verde/60",
+    text: "text-verde",
+    barra: "bg-verde",
+  },
+  {
     chave: "sem",
     label: "Sem classificação",
     rank: 0,
+    mql: false,
     badge: "border border-dashed border-borda bg-transparent text-texto-sec/80",
     chipAtivo: "bg-painel-claro text-texto border-texto-sec/60",
     text: "text-texto-sec",
@@ -326,40 +354,48 @@ export const TIERS: readonly TierConfig[] = [
   },
 ] as const;
 
-// Atalho "Só alto valor" = UMQL+, UMQL e HMQL.
+// Atalho "Só alto valor" = UMQL+, UMQL e HMQL. QC NÃO entra: é outra trilha.
 export const TIERS_ALTO_VALOR: readonly TierChave[] = ["UMQL+", "UMQL", "HMQL"];
 export const RANK_ALTO_VALOR_MIN = 4;
 
 const TIER_POR_CHAVE = new Map<string, TierConfig>(TIERS.map((t) => [t.chave, t]));
-const TIER_POR_RANK = new Map<number, TierConfig>(TIERS.map((t) => [t.rank, t]));
+// Só a escala MQL: assim o rank 0 de um lead sem classificação nunca cai em QC.
+const TIER_POR_RANK = new Map<number, TierConfig>(
+  TIERS.filter((t) => t.mql).map((t) => [t.rank, t]),
+);
 const TIER_SEM = TIERS[TIERS.length - 1];
 
-// Tier do lead: pelo nome canônico; se não casar, pelo rank; senão "sem".
+// Classificação do lead: pelo nome canônico (inclui "QC"); se não casar, pelo
+// rank DA ESCALA MQL (backend que só manda rank); senão, sem classificação.
 export function tierDoLead(lead: Pick<LeadPendente, "tier" | "tier_rank">): TierConfig {
   const porNome = lead.tier ? TIER_POR_CHAVE.get(lead.tier.trim().toUpperCase()) : undefined;
   if (porNome) return porNome;
   return TIER_POR_RANK.get(lead.tier_rank ?? 0) ?? TIER_SEM;
 }
 
+// Alto valor = UMQL+, UMQL, HMQL. QC tem rank 0, então nunca entra aqui.
 export function ehAltoValor(lead: Pick<LeadPendente, "tier" | "tier_rank">): boolean {
   return tierDoLead(lead).rank >= RANK_ALTO_VALOR_MIN;
 }
 
-// Contagem de pendentes por tier (todas as 7 chaves presentes, zero incluso).
+// Contagem por classificação (todas as chaves presentes, zero incluso).
 export function contarPorTier(leads: LeadPendente[]): Record<TierChave, number> {
   const out = Object.fromEntries(TIERS.map((t) => [t.chave, 0])) as Record<TierChave, number>;
   for (const l of leads) out[tierDoLead(l).chave] += 1;
   return out;
 }
 
-// Distribuição para o gráfico de barras: só tiers com pendentes, maior → menor.
+// Distribuição para o gráfico de barras: só classificações com pendentes, maior
+// → menor. Empate desempata pela ordem de TIERS (a hierarquia, com QC e "sem"
+// no fim) — rank não serve de desempate porque QC e "sem" compartilham o 0.
 export function distribuicaoPorTier(
   leads: LeadPendente[],
 ): { tier: TierConfig; total: number }[] {
   const contagem = contarPorTier(leads);
-  return TIERS.map((tier) => ({ tier, total: contagem[tier.chave] }))
+  return TIERS.map((tier, ordem) => ({ tier, total: contagem[tier.chave], ordem }))
     .filter((d) => d.total > 0)
-    .sort((a, b) => b.total - a.total || b.tier.rank - a.tier.rank);
+    .sort((a, b) => b.total - a.total || a.ordem - b.ordem)
+    .map(({ tier, total }) => ({ tier, total }));
 }
 
 export function altoValorPendente(leads: LeadPendente[]): number {

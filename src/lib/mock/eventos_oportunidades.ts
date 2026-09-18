@@ -15,6 +15,8 @@ import { tagsEventoNoIntervalo } from "@/lib/sdr/ciclo";
 
 type Tier = { tag: string | null; rank: number };
 
+// QC é outra trilha (tag "Qualificado QC" na Clint): vem com tier "QC" e rank 0,
+// nunca como degrau abaixo de MQL.
 const TIERS: Tier[] = [
   { tag: "UMQL+", rank: 6 },
   { tag: "UMQL", rank: 5 },
@@ -22,11 +24,13 @@ const TIERS: Tier[] = [
   { tag: "SMQL", rank: 3 },
   { tag: "MQL+", rank: 2 },
   { tag: "MQL", rank: 1 },
+  { tag: "QC", rank: 0 },
   { tag: null, rank: 0 },
 ];
 
-// Distribuição dos 40 pendentes: 3 UMQL+, 5 UMQL, 8 HMQL, 7 SMQL, 6 MQL+, 7 MQL, 4 sem.
-const DISTRIBUICAO = [3, 5, 8, 7, 6, 7, 4];
+// Distribuição dos 40 pendentes: 3 UMQL+, 5 UMQL, 8 HMQL, 6 SMQL, 5 MQL+, 6 MQL,
+// 4 QC, 3 sem classificação. Alto valor (UMQL+/UMQL/HMQL) segue 16.
+const DISTRIBUICAO = [3, 5, 8, 6, 5, 6, 4, 3];
 
 const NOMES = [
   "Ana Paula Ribeiro", "Bruno Carvalho", "Camila Ferreira", "Daniel Moreira", "Eduarda Santos",
@@ -176,7 +180,13 @@ function linhaDoContato(i: number, tier: Tier, evento: string, semReplay: boolea
     tier: tier.tag,
     tier_rank: tier.rank,
     evento_tag: evento,
-    tags: [evento, "Levantou a Mão", ...(tier.tag ? [tier.tag] : []), ...extras],
+    // Na Clint a tag do QC é "Qualificado QC"; o tier normalizado é só "QC".
+    tags: [
+      evento,
+      "Levantou a Mão",
+      ...(tier.tag === "QC" ? ["Qualificado QC"] : tier.tag ? [tier.tag] : []),
+      ...extras,
+    ],
     created_at: criado.toISOString(),
     // 1 em cada 3 tem ficha no Mapa de Calor (ids do mock data_clients.json).
     lead_id: i % 3 === 0 ? `ld_${String((i % 40) + 1).padStart(4, "0")}` : null,
