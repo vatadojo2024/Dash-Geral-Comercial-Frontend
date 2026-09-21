@@ -98,7 +98,10 @@ describe("Ninja: trilha separada da escala MQL", () => {
       lead({ clint_contact_id: "2", tier: "Ninja", tier_rank: 0 }),
       lead({ clint_contact_id: "3", tier: null, tier_rank: 0 }),
     ];
-    expect(distribuicaoPorTier(leads).map((d) => d.tier.chave)).toEqual(["MQL", "Ninja", "sem"]);
+    // Posição fixa: Ninja fica sempre entre MQL e "sem", com ou sem pendentes.
+    const chaves = distribuicaoPorTier(leads).map((d) => d.tier.chave);
+    expect(chaves.indexOf("Ninja")).toBe(chaves.indexOf("MQL") + 1);
+    expect(chaves.indexOf("sem")).toBe(chaves.indexOf("Ninja") + 1);
   });
 
   it("conta e filtra como as demais classificações, sem contaminar alto valor", () => {
@@ -155,13 +158,21 @@ describe("contagens", () => {
   it("alto valor = UMQL+/UMQL/HMQL", () => {
     expect(altoValorPendente(leads)).toBe(3);
   });
-  it("distribuição só com tiers presentes, maior → menor (empate pelo rank)", () => {
+  it("distribuição em posição FIXA (ordem da hierarquia), incluindo zerados", () => {
     expect(distribuicaoPorTier(leads).map((d) => [d.tier.chave, d.total])).toEqual([
-      ["HMQL", 2],
       ["UMQL+", 1],
+      ["UMQL", 0],
+      ["HMQL", 2],
+      ["SMQL", 0],
+      ["MQL+", 0],
       ["MQL", 1],
+      ["Ninja", 0],
       ["sem", 1],
     ]);
+    // Ordem não muda com a quantidade: HMQL (2) segue abaixo de UMQL+ (1).
+    expect(distribuicaoPorTier([]).map((d) => d.tier.chave)).toEqual(
+      distribuicaoPorTier(leads).map((d) => d.tier.chave),
+    );
   });
 });
 

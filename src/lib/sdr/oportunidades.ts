@@ -403,17 +403,14 @@ export function contarPorTier(leads: LeadPendente[]): Record<TierChave, number> 
   return out;
 }
 
-// Distribuição para o gráfico de barras: só tiers com pendentes, maior → menor.
-// Empate desempata pela ordem de TIERS (a hierarquia, com Ninja e "sem" no fim)
-// — rank não serve de desempate porque Ninja e "sem" compartilham o 0.
+// Distribuição para o gráfico de barras: TODAS as classificações, em POSIÇÃO
+// FIXA (a ordem de TIERS: UMQL+ … MQL, Ninja, Sem classificação), inclusive as
+// zeradas. Não ordena por quantidade — a posição de cada barra nunca muda.
 export function distribuicaoPorTier(
   leads: LeadPendente[],
 ): { tier: TierConfig; total: number }[] {
   const contagem = contarPorTier(leads);
-  return TIERS.map((tier, ordem) => ({ tier, total: contagem[tier.chave], ordem }))
-    .filter((d) => d.total > 0)
-    .sort((a, b) => b.total - a.total || a.ordem - b.ordem)
-    .map(({ tier, total }) => ({ tier, total }));
+  return TIERS.map((tier) => ({ tier, total: contagem[tier.chave] }));
 }
 
 export function altoValorPendente(leads: LeadPendente[]): number {

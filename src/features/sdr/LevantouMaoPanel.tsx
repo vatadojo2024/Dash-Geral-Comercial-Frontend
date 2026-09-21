@@ -1168,8 +1168,9 @@ function BarrasPorTier({
   selecionados: TierChave[];
   onAlternar: (t: TierChave) => void;
 }) {
+  // Posição fixa (ordem da hierarquia), inclusive barras zeradas.
   const dist = distribuicaoPorTier(leads);
-  const max = dist[0]?.total ?? 1;
+  const max = Math.max(1, ...dist.map((d) => d.total));
   return (
     <ul className="space-y-1.5" aria-label="Pendentes por classificação">
       {dist.map(({ tier, total }) => {
@@ -1185,7 +1186,12 @@ function BarrasPorTier({
                 ativo && "bg-painel-claro ring-1 ring-borda",
               )}
             >
-              <span className={cn("w-32 shrink-0 truncate text-xs font-medium", tier.text)}>
+              <span
+                className={cn(
+                  "w-32 shrink-0 truncate text-xs font-medium",
+                  total === 0 ? "text-texto-sec/50" : tier.text,
+                )}
+              >
                 {tier.label}
               </span>
               <span className="h-3 flex-1 overflow-hidden rounded-full bg-borda/30">
@@ -1194,7 +1200,12 @@ function BarrasPorTier({
                   style={{ width: `${Math.max((total / max) * 100, 3)}%` }}
                 />
               </span>
-              <span className="w-8 shrink-0 text-right text-xs font-semibold tabular-nums text-texto">
+              <span
+                className={cn(
+                  "w-8 shrink-0 text-right text-xs font-semibold tabular-nums",
+                  total === 0 ? "text-texto-sec/50" : "text-texto",
+                )}
+              >
                 {total}
               </span>
             </button>
