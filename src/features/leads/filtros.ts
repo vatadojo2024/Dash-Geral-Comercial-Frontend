@@ -36,7 +36,6 @@ export function filtrarLeads(
   const produtos = csv(sp.get("produto"));
   const closer = sp.get("closer");
   const sdr = sp.get("sdr");
-  const pool = sp.get("pool") === "1";
   const trava = sp.get("trava") === "1";
   const de = sp.get("de"); // YYYY-MM-DD (data_inicio)
   const ate = sp.get("ate"); // YYYY-MM-DD (data_fim)
@@ -63,8 +62,7 @@ export function filtrarLeads(
       if (!chave || !produtos.includes(chave)) return false;
     }
     if (closer && l.closer_id !== closer) return false;
-    if (!leadDoSdr(l, sdr)) return false; // inclui a sentinela "sem SDR" (Hana)
-    if (pool && !l.sdr_pool) return false;
+    if (!leadDoSdr(l, sdr)) return false; // inclui a sentinela "sem SDR"
     if (trava && !l.trava_aplicada) return false;
     return true;
   });
@@ -78,7 +76,6 @@ export function contarFiltrosAtivos(sp: URLSearchParams): number {
     "produto",
     "closer",
     "sdr",
-    "pool",
     "trava",
     "de",
     "ate",

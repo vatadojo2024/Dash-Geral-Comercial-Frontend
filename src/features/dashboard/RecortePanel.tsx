@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/ui/States";
 import {
   AlertaBadge,
   EstrelaDestaque,
-  HanaBadge,
   ScoreBadge,
   TemperatureBadge,
   TravaBadge,
@@ -37,7 +36,7 @@ export function RecortePanel({
         <button
           onClick={onClose}
           aria-label="Fechar listagem do recorte"
-          className="rounded-md p-1.5 text-texto-sec hover:bg-painel-claro hover:text-texto"
+          className="icon-button"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>
@@ -55,7 +54,7 @@ export function RecortePanel({
             <Link
               key={l.lead_id}
               href={`/leads/${l.lead_id}`}
-              className="block rounded-lg border border-borda/60 bg-noite/40 px-3 py-2.5 transition-colors hover:border-azul/60"
+              className="card-interactive block rounded-xl px-4 py-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -72,7 +71,6 @@ export function RecortePanel({
               </div>
               <div className="mt-1.5 flex flex-wrap gap-1">
                 <TemperatureBadge temperatura={l.temperatura} size="sm" />
-                {l.sdr_pool && <HanaBadge size="sm" />}
                 {l.trava_aplicada && <TravaBadge trava={l.trava_aplicada} size="sm" />}
                 {l.alertas.map((a) => (
                   <AlertaBadge key={a} alerta={a} size="sm" />

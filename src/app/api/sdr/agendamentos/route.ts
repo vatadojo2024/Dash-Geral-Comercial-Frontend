@@ -20,12 +20,11 @@ function mockAgendamentos(inicio: string, fim: string) {
     { sdr: "Guilherme Delrue", closer: "Gilberto", produto: "QC", variante: null },
     { sdr: "Guilherme Delrue", closer: "Aurelio Mesquita", produto: "Black", variante: "Semestral" },
     { sdr: "Glaucio Portela", closer: "Aurelio Mesquita", produto: "Ninja", variante: "Anual" },
-    { sdr: "Hana", closer: "Gilberto", produto: null, variante: null },
   ];
   const agendamentos = base.map((b, i) => ({
     lead_id: `mock-${i}`,
     nome_exibicao: `Lead Mock ${i + 1}`,
-    sdr_id: b.sdr === "Hana" ? null : `sdr-${i}`,
+    sdr_id: `sdr-${i}`,
     sdr_nome: b.sdr,
     closer_id: `clo-${i}`,
     closer_nome: b.closer,

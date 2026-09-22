@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
-  Bot,
   Check,
   ChevronDown,
   Copy,
@@ -33,7 +32,6 @@ import {
   AlertaBadge,
   EstrelaDestaque,
   EtapaBadge,
-  HanaBadge,
   ScoreBadge,
   TemperatureBadge,
   TravaBadge,
@@ -273,7 +271,6 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
                   <TemperatureBadge temperatura={lead.temperatura} />
                   <EtapaBadge etapa={lead.etapa_atual} />
-                  {lead.sdr_pool && <HanaBadge />}
                   {lead.trava_aplicada && <TravaBadge trava={lead.trava_aplicada} />}
                 </div>
                 <p className="mt-2 text-xs text-texto-sec">
@@ -286,11 +283,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
                   {" · "}
                   SDR:{" "}
                   <span className="font-medium text-texto">
-                    {lead.sdr_pool
-                      ? "Hana (IA)"
-                      : lead.sdr_id
-                        ? nomeDoSdr(lead, usuarios)
-                        : "Sem SDR atribuído"}
+                    {lead.sdr_id ? nomeDoSdr(lead, usuarios) : "Sem SDR atribuído"}
                   </span>
                 </p>
               </ErrorBoundary>
@@ -415,12 +408,6 @@ function AbaGeral({ lead }: { lead: LeadDetail }) {
                 ))}
               </div>
             </div>
-          )}
-          {lead.sdr_pool && (
-            <p className="flex items-center gap-2 rounded-lg border border-violeta/30 bg-violeta/10 px-3 py-2 text-xs text-violeta">
-              <Bot className="h-4 w-4 shrink-0" aria-hidden />
-              Lead originado pela Hana (IA agendadora) — disponível no pool de todos os SDRs.
-            </p>
           )}
         </CardContent>
       </Card>

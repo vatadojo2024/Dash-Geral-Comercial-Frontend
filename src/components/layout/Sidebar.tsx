@@ -38,12 +38,12 @@ function NavContent({ role, onNavigate }: { role: Role; onNavigate?: () => void 
   return (
     <>
       <div className="flex items-center gap-3 px-4 py-5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rosa/90">
-          <Flame className="h-5 w-5 text-noite" aria-hidden />
+        <span className="icon-circle shadow-lg">
+          <Flame className="h-5 w-5 text-violeta" aria-hidden />
         </span>
         <div>
-          <p className="text-sm font-semibold text-texto">Mapa de Calor</p>
-          <p className="text-xs text-texto-sec">Mesa de decisão comercial</p>
+          <p className="font-jakarta text-base font-semibold leading-tight text-texto">Mapa de Calor</p>
+          <p className="text-xs opacity-70">Mesa de decisão comercial</p>
         </div>
       </div>
 
@@ -58,10 +58,10 @@ function NavContent({ role, onNavigate }: { role: Role; onNavigate?: () => void 
               onClick={onNavigate}
               aria-current={ativo ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "nav-link flex items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-all",
                 ativo
-                  ? "bg-azul/20 text-azul-claro"
-                  : "text-texto-sec hover:bg-painel-claro hover:text-texto",
+                  ? "border-azul/50 bg-azul/15 text-texto"
+                  : "border-transparent text-texto hover:bg-white/[0.08]",
               )}
             >
               <Icon className="h-4 w-4" aria-hidden />
@@ -85,18 +85,18 @@ export function Sidebar({
 }) {
   return (
     <>
-      <aside className="hidden w-60 flex-col border-r border-borda/60 bg-painel md:flex">
+      <aside className="ds-nav hidden w-60 flex-col border-r border-white/10 md:flex">
         <NavContent role={role} />
       </aside>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-borda bg-painel">
+          <aside className="ds-nav absolute inset-y-0 left-0 flex w-64 flex-col border-r border-white/10">
             <button
               onClick={onClose}
               aria-label="Fechar menu"
-              className="absolute right-3 top-3 rounded-md p-1 text-texto-sec hover:text-texto"
+              className="icon-button absolute right-3 top-3"
             >
               <X className="h-5 w-5" aria-hidden />
             </button>

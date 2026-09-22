@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
   Ban,
+  CalendarCheck2,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -16,9 +18,11 @@ import {
   Download,
   ExternalLink,
   FileText,
+  Eye,
   Gem,
   Hand,
   Hourglass,
+  Inbox,
   LifeBuoy,
   MessageCircle,
   MonitorPlay,
@@ -26,11 +30,12 @@ import {
   PartyPopper,
   RefreshCw,
   Search,
+  Timer,
   UserRound,
   Users,
   X,
 } from "lucide-react";
-import { fetchOportunidades, OportunidadesError } from "@/lib/data/dataClient";
+import { fetchNaoAbordados, fetchOportunidades, OportunidadesError } from "@/lib/data/dataClient";
 import {
   rotuloCiclo,
   rotuloCicloEvento,
@@ -43,11 +48,14 @@ import {
   altoValorPendente,
   blocosDoFunil,
   blocosDoResgate,
+  leadsDoRecorte,
   celulaMatriz,
   chaveDaLinha,
   contarPorOrigem,
   contarPorTier,
+  formatarPct,
   formatarTaxa,
+  pct,
   funilZerado,
   marcadoresDoLead,
   ORIGENS,
@@ -73,10 +81,22 @@ import {
   type MarcadorOrigem,
   type OpcaoDono,
   type OrigemChave,
+  type RecorteLevantou,
   type Ordenacao,
   type OportunidadesResponse,
+  type RecorteOportunidades,
   type TierChave,
 } from "@/lib/sdr/oportunidades";
+import {
+  blocosNaoAbordados,
+  contarParados,
+  csvDeNaoAbordados,
+  DIAS_PARADO_ALERTA,
+  diasParado,
+  filtrarNaoAbordados,
+  paradoHaMais,
+  type NaoAbordadosResponse,
+} from "@/lib/sdr/naoAbordados";
 import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
 import { DonoBadge, MqlBadge, OrigemBadge, SeloNinja } from "@/components/domain/Badges";
 import { Button } from "@/components/ui/Button";
@@ -84,131 +104,78 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
+import { hrefDoRecorte, RECORTES_LEVANTOU } from "./abas";
 import { CicloSelect } from "./CicloSelect";
 import { KpiChip } from "./KpiChip";
 
 // ---------------------------------------------------------------------------
-// Aba "Levantou a Mão": quem aplicou no webinar e NÃO agendou call, com contato
+// Aba "Oportunidades do Evento": quem aplicou no webinar e NÃO agendou call, com contato
 // para o SDR agir sem sair da tela. Período (ciclo | intervalo) vai ao backend;
 // MQL, busca, ordenação, paginação e CSV são client-side (lib/sdr/oportunidades).
+//
+// LAYOUT: período e, logo abaixo, a barra de RECORTES (Visão geral | Ao vivo |
+// Replay | Campanha de resgate | Não abordados) ACIMA de tudo. O que vem depois
+// depende do recorte: na Visão geral, a matriz completa e os três funis; nos
+// demais, CARDS com os números daquele recorte, SÓ o funil dele e só os leads
+// dele (filtros e tabela). Os quatro recortes de quem levantou a mão partem da
+// MESMA resposta (/oportunidades); "Não abordados" é OUTRA população (inscritos
+// em "Sem atendimento") com endpoint próprio e conteúdo próprio
+// (ConteudoNaoAbordados). O período é compartilhado (LevantouMaoPanel) e os
+// filtros são por recorte (remontados por `key` e restaurados da memória).
 // ---------------------------------------------------------------------------
 
 type ModoPeriodo = "ciclo" | "intervalo";
+// Período escolhido, vivo enquanto a página estiver aberta (some no reload).
+const memoriaPeriodo: {
+  periodo: { modo: ModoPeriodo; inicioSel: string; de: string; ate: string } | null;
+} = { periodo: null };
 type Visao = "lista" | "por_sdr";
 const TAMANHO_PAGINA = 50;
-const CLASSE_INPUT = "h-9 rounded-lg border bg-painel-claro px-2 text-sm text-texto";
+const CLASSE_INPUT = "h-9 rounded-xl border bg-white/5 px-2 text-sm text-texto";
 
-export function LevantouMaoPanel() {
+export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const hojeISO = new Date().toISOString().slice(0, 10);
   const ciclos = useMemo(() => ultimosCiclos(hojeISO, 12), [hojeISO]);
   const cicloAtual = ciclos[0];
 
   // --- Período -------------------------------------------------------------
-  const [modo, setModo] = useState<ModoPeriodo>("ciclo");
-  const [inicioSel, setInicioSel] = useState(cicloAtual.inicio);
+  // O período é compartilhado entre os recortes e SOBREVIVE à troca de aba (que
+  // remonta a página): começa do que ficou em memoriaPeriodo.
+  const periodoSalvo = memoriaPeriodo.periodo;
+  const [modo, setModo] = useState<ModoPeriodo>(periodoSalvo?.modo ?? "ciclo");
+  const [inicioSel, setInicioSel] = useState(
+    periodoSalvo && ciclos.some((c) => c.inicio === periodoSalvo.inicioSel)
+      ? periodoSalvo.inicioSel
+      : cicloAtual.inicio,
+  );
   const cicloSel: Ciclo = ciclos.find((c) => c.inicio === inicioSel) ?? cicloAtual;
   // Intervalo padrão: os 4 últimos ciclos (consolidar semanas é o uso do modo).
-  const [de, setDe] = useState(ciclos[3]?.inicio ?? cicloAtual.inicio);
-  const [ate, setAte] = useState(cicloAtual.fim);
+  const [de, setDe] = useState(periodoSalvo?.de ?? ciclos[3]?.inicio ?? cicloAtual.inicio);
+  const [ate, setAte] = useState(periodoSalvo?.ate ?? cicloAtual.fim);
+  useEffect(() => {
+    memoriaPeriodo.periodo = { modo, inicioSel, de, ate };
+  }, [modo, inicioSel, de, ate]);
 
   const erroIntervalo = modo === "intervalo" ? validarIntervalo(de, ate) : null;
   const periodo =
     modo === "ciclo" ? { de: cicloSel.inicio, ate: cicloSel.fim } : { de, ate };
 
-  const { data, error, isLoading, isFetching, isError, refetch } = useQuery({
+  // Duas fontes, uma por vez: só a consulta do recorte aberto roda.
+  const ehNaoAbordados = recorte === "nao_abordados";
+  const oportunidades = useQuery({
     queryKey: ["oportunidades", periodo.de, periodo.ate],
     queryFn: () => fetchOportunidades(periodo.de, periodo.ate),
-    enabled: !erroIntervalo,
+    enabled: !erroIntervalo && !ehNaoAbordados,
     retry: false,
   });
-
-  // --- Filtros client-side --------------------------------------------------
-  const [tiersSel, setTiersSel] = useState<TierChave[]>([]);
-  const [donosSel, setDonosSel] = useState<string[]>([]);
-  // Origem: a linha clicada na matriz e os chips compartilham ESTE estado.
-  const [origensSel, setOrigensSel] = useState<OrigemChave[]>([]);
-  const [soResgate, setSoResgate] = useState(false);
-  const [visao, setVisao] = useState<Visao>("lista");
-  const [busca, setBusca] = useState("");
-  const [ordenacao, setOrdenacao] = useState<Ordenacao>(null);
-  const [pagina, setPagina] = useState(1);
-  // Linha aberta no painel lateral (clique no nome). Chave = (contato, evento).
-  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
-
-  const leads = useMemo(() => data?.leads ?? [], [data]);
-  const contagem = useMemo(() => contarPorTier(leads), [leads]);
-  const opcoesDono = useMemo(() => opcoesDeDono(leads, data?.por_dono), [leads, data]);
-  const contagemOrigem = useMemo(() => contarPorOrigem(leads), [leads]);
-  // MQL → dono → origem → resgate → busca, em série.
-  const recorte = useMemo(
-    () =>
-      filtrarPendentes(leads, {
-        tiers: tiersSel,
-        donos: donosSel,
-        origens: origensSel,
-        soResgate,
-        busca,
-      }),
-    [leads, tiersSel, donosSel, origensSel, soResgate, busca],
-  );
-  const filtrados = useMemo(() => ordenarPendentes(recorte, ordenacao), [recorte, ordenacao]);
-  // "Por SDR": seções a partir do MESMO recorte filtrado, na ordem do backend
-  // (tier desc) — a ordenação por coluna não se aplica nesta visão.
-  const grupos = useMemo(() => agruparPorDono(recorte), [recorte]);
-  // Sem `matriz` na resposta (backend antigo) a aba cai nos KPIs de contingência.
-  const temOrigem = data?.matriz != null;
-  const multiEvento = (data?.eventos.length ?? 0) > 1;
-  const selecionado = useMemo(
-    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
-    [leads, selecionadoId],
-  );
-
-  useEffect(() => setPagina(1), [tiersSel, donosSel, origensSel, soResgate, busca, ordenacao, data]);
-
-  function alternarTier(chave: TierChave) {
-    setTiersSel((atual) =>
-      atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave],
-    );
-  }
-  function alternarDono(chave: string) {
-    setDonosSel((atual) =>
-      atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave],
-    );
-  }
-  function alternarOrigem(chave: OrigemChave) {
-    setOrigensSel((atual) =>
-      atual.includes(chave) ? atual.filter((o) => o !== chave) : [...atual, chave],
-    );
-  }
-  // Clique na linha da matriz: filtra SÓ por aquela origem; de novo, limpa.
-  const linhaAtiva: OrigemChave | null = origensSel.length === 1 ? origensSel[0] : null;
-  function alternarLinhaMatriz(chave: OrigemChave) {
-    setOrigensSel(linhaAtiva === chave ? [] : [chave]);
-  }
-  const soAltoValor =
-    tiersSel.length === TIERS_ALTO_VALOR.length && TIERS_ALTO_VALOR.every((t) => tiersSel.includes(t));
-
-  function alternarOrdenacao(campo: CampoOrdenacao) {
-    // Nome e dono começam em asc; tier começa em desc (melhor primeiro).
-    const inicial = campo === "tier" ? "desc" : "asc";
-    const oposta = inicial === "asc" ? "desc" : "asc";
-    setOrdenacao((atual) => {
-      if (!atual || atual.campo !== campo) return { campo, direcao: inicial };
-      if (atual.direcao === inicial) return { campo, direcao: oposta };
-      return null; // terceiro clique volta à ordem do backend
-    });
-  }
-
-  function exportarCsv() {
-    const csv = "﻿" + csvDePendentes(filtrados);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `levantou-a-mao_${periodo.de}_${periodo.ate}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
+  const naoAbordados = useQuery({
+    queryKey: ["nao-abordados", periodo.de, periodo.ate],
+    queryFn: () => fetchNaoAbordados(periodo.de, periodo.ate),
+    enabled: !erroIntervalo && ehNaoAbordados,
+    retry: false,
+  });
+  const { error, isLoading, isFetching, isError, refetch } = ehNaoAbordados ? naoAbordados : oportunidades;
+  const data = oportunidades.data;
 
   // Erro 400 do backend: destaca os campos de data (ambos — o backend não diz qual).
   const erro400 = error instanceof OportunidadesError && error.status === 400;
@@ -221,7 +188,7 @@ export function LevantouMaoPanel() {
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold text-texto">
             <Hand className="h-4 w-4 text-azul-claro" aria-hidden />
-            Levantou a mão e não agendou
+            Oportunidades do evento
           </h2>
           <p className="mt-0.5 text-xs text-texto-sec">
             Contatos com a tag do evento (WG) que marcaram &ldquo;Levantou a Mão&rdquo; na Clint e
@@ -263,8 +230,8 @@ export function LevantouMaoPanel() {
                   className={cn(
                     CLASSE_INPUT,
                     campoInvalido === "de" || campoInvalido === "ambos"
-                      ? "border-rosa ring-1 ring-rosa/40"
-                      : "border-borda",
+                      ? "border-erro ring-1 ring-erro/40"
+                      : "border-white/20",
                   )}
                 />
                 <span className="text-xs text-texto-sec">até</span>
@@ -278,8 +245,8 @@ export function LevantouMaoPanel() {
                   className={cn(
                     CLASSE_INPUT,
                     campoInvalido === "ate" || campoInvalido === "ambos"
-                      ? "border-rosa ring-1 ring-rosa/40"
-                      : "border-borda",
+                      ? "border-erro ring-1 ring-erro/40"
+                      : "border-white/20",
                   )}
                 />
               </div>
@@ -293,7 +260,18 @@ export function LevantouMaoPanel() {
 
       {erroIntervalo ? null : isLoading ? (
         <Carregando />
-      ) : isError || !data ? (
+      ) : isError ? (
+        <ErroOportunidades error={error} onRetry={() => refetch()} />
+      ) : recorte === "nao_abordados" ? (
+        naoAbordados.data && (
+          <ConteudoNaoAbordados
+            data={naoAbordados.data}
+            periodo={periodo}
+            atualizando={isFetching}
+            onAtualizar={() => refetch()}
+          />
+        )
+      ) : !data ? (
         <ErroOportunidades error={error} onRetry={() => refetch()} />
       ) : todosDesqualificados(data.totais) ? (
         <Card>
@@ -316,19 +294,234 @@ export function LevantouMaoPanel() {
           />
         </Card>
       ) : (
-        <>
+        <ConteudoRecorte
+          key={recorte}
+          recorte={recorte}
+          data={data}
+          periodo={periodo}
+          atualizando={isFetching}
+          onAtualizar={() => refetch()}
+        />
+      )}
+
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Conteúdo de UM recorte: matriz, sub-abas, funil, filtros e tabela. Remontado
+// (key) a cada troca de recorte; os filtros voltam do que ficou em memória.
+// ---------------------------------------------------------------------------
+
+type FiltrosSalvos = {
+  tiers: TierChave[];
+  donos: string[];
+  origens: OrigemChave[];
+  soResgate: boolean;
+  marcadores: MarcadorOrigem[];
+  visao: Visao;
+  busca: string;
+  ordenacao: Ordenacao;
+};
+// Memória por recorte, viva enquanto a página estiver aberta (sobrevive à troca
+// de aba, que remonta o componente; não sobrevive a um reload — de propósito).
+const memoriaFiltros = new Map<RecorteOportunidades, FiltrosSalvos>();
+
+const TITULO_TABELA: Record<RecorteOportunidades, string> = {
+  geral: "Pendentes",
+  ao_vivo: "Pendentes do ao vivo",
+  replay: "Pendentes do replay",
+  resgate: "Pendentes da campanha de resgate",
+};
+
+const VAZIO_RECORTE: Record<RecorteOportunidades, { titulo: string; descricao: string }> = {
+  geral: { titulo: "Nenhum pendente neste período", descricao: "" },
+  ao_vivo: {
+    titulo: "Nenhum pendente do ao vivo",
+    descricao: "Todos que levantaram a mão ao vivo já agendaram neste período.",
+  },
+  replay: {
+    titulo: "Nenhum pendente do replay",
+    descricao: "Ninguém aplicou só pelo replay sem agendar neste período.",
+  },
+  resgate: {
+    titulo: "Nenhum pendente da campanha de resgate",
+    descricao: "Nenhum convidado de resgate está aguardando agendamento neste período.",
+  },
+};
+
+function ConteudoRecorte({
+  recorte,
+  data,
+  periodo,
+  atualizando,
+  onAtualizar,
+}: {
+  recorte: RecorteOportunidades;
+  data: OportunidadesResponse;
+  periodo: { de: string; ate: string };
+  atualizando: boolean;
+  onAtualizar: () => void;
+}) {
+  const router = useRouter();
+  // --- Filtros client-side --------------------------------------------------
+  // Estado POR RECORTE: começa do que ficou salvo da última visita a esta aba.
+  const salvo = memoriaFiltros.get(recorte);
+  const [tiersSel, setTiersSel] = useState<TierChave[]>(salvo?.tiers ?? []);
+  const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
+  // Origem: a linha clicada na matriz e os chips compartilham ESTE estado.
+  const [origensSel, setOrigensSel] = useState<OrigemChave[]>(salvo?.origens ?? []);
+  const [soResgate, setSoResgate] = useState(salvo?.soResgate ?? false);
+  const [marcadoresSel, setMarcadoresSel] = useState<MarcadorOrigem[]>(salvo?.marcadores ?? []);
+  const [visao, setVisao] = useState<Visao>(salvo?.visao ?? "lista");
+  const [busca, setBusca] = useState(salvo?.busca ?? "");
+  const [ordenacao, setOrdenacao] = useState<Ordenacao>(salvo?.ordenacao ?? null);
+  const [pagina, setPagina] = useState(1);
+  // Linha aberta no painel lateral (clique no nome). Chave = (contato, evento).
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    memoriaFiltros.set(recorte, {
+      tiers: tiersSel,
+      donos: donosSel,
+      origens: origensSel,
+      soResgate,
+      marcadores: marcadoresSel,
+      visao,
+      busca,
+      ordenacao,
+    });
+  }, [recorte, tiersSel, donosSel, origensSel, soResgate, marcadoresSel, visao, busca, ordenacao]);
+
+  const leads = data.leads;
+  // Base do recorte: os chips aplicam em série sobre ELA, não sobre a resposta toda.
+  const base = useMemo(() => leadsDoRecorte(leads, recorte), [leads, recorte]);
+  const contagem = useMemo(() => contarPorTier(base), [base]);
+  // por_dono do backend só vale para a resposta inteira; nos recortes deriva da base.
+  const opcoesDono = useMemo(
+    () => opcoesDeDono(base, recorte === "geral" ? data.por_dono : null),
+    [base, recorte, data.por_dono],
+  );
+  const contagemOrigem = useMemo(() => contarPorOrigem(base), [base]);
+  // MQL → dono → origem → resgate → marcadores → busca, em série.
+  const recortado = useMemo(
+    () =>
+      filtrarPendentes(base, {
+        tiers: tiersSel,
+        donos: donosSel,
+        origens: origensSel,
+        soResgate,
+        marcadores: marcadoresSel,
+        busca,
+      }),
+    [base, tiersSel, donosSel, origensSel, soResgate, marcadoresSel, busca],
+  );
+  const filtrados = useMemo(() => ordenarPendentes(recortado, ordenacao), [recortado, ordenacao]);
+  // "Por SDR": seções a partir do MESMO recorte filtrado, na ordem do backend
+  // (tier desc) — a ordenação por coluna não se aplica nesta visão.
+  const grupos = useMemo(() => agruparPorDono(recortado), [recortado]);
+  // Sem `matriz` na resposta (backend antigo) a aba cai nos KPIs de contingência.
+  const temOrigem = data.matriz != null;
+  const multiEvento = data.eventos.length > 1;
+  // Nos recortes Ao vivo/Replay a origem é constante: a coluna vira "Sinais" e
+  // mostra só os marcadores (resgate, viu o replay / esteve ao vivo).
+  const origemConstante = recorte === "ao_vivo" || recorte === "replay";
+  const selecionado = useMemo(
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
+
+  useEffect(
+    () => setPagina(1),
+    [tiersSel, donosSel, origensSel, soResgate, marcadoresSel, busca, ordenacao, data],
+  );
+
+  function alternarTier(chave: TierChave) {
+    setTiersSel((atual) =>
+      atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave],
+    );
+  }
+  function alternarDono(chave: string) {
+    setDonosSel((atual) =>
+      atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave],
+    );
+  }
+  function alternarOrigem(chave: OrigemChave) {
+    setOrigensSel((atual) =>
+      atual.includes(chave) ? atual.filter((o) => o !== chave) : [...atual, chave],
+    );
+  }
+  function alternarMarcador(m: MarcadorOrigem) {
+    setMarcadoresSel((atual) => (atual.includes(m) ? atual.filter((x) => x !== m) : [...atual, m]));
+  }
+  // Clique na linha da matriz. Na visão geral filtra SÓ por aquela origem (de
+  // novo, limpa). Nos outros recortes leva para a aba daquela origem.
+  const linhaAtiva: OrigemChave | null =
+    recorte === "ao_vivo" || recorte === "replay"
+      ? recorte
+      : recorte === "geral" && origensSel.length === 1
+        ? origensSel[0]
+        : null;
+  function alternarLinhaMatriz(chave: OrigemChave) {
+    if (recorte === "geral") setOrigensSel(linhaAtiva === chave ? [] : [chave]);
+    else router.push(hrefDoRecorte(chave));
+  }
+  const soAltoValor =
+    tiersSel.length === TIERS_ALTO_VALOR.length && TIERS_ALTO_VALOR.every((t) => tiersSel.includes(t));
+
+  function alternarOrdenacao(campo: CampoOrdenacao) {
+    // Nome e dono começam em asc; tier começa em desc (melhor primeiro).
+    const inicial = campo === "tier" ? "desc" : "asc";
+    const oposta = inicial === "asc" ? "desc" : "asc";
+    setOrdenacao((atual) => {
+      if (!atual || atual.campo !== campo) return { campo, direcao: inicial };
+      if (atual.direcao === inicial) return { campo, direcao: oposta };
+      return null; // terceiro clique volta à ordem do backend
+    });
+  }
+
+  function exportarCsv() {
+    const csv = "﻿" + csvDePendentes(filtrados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const sufixo = recorte === "geral" ? "" : `_${recorte.replace("_", "-")}`;
+    a.download = `oportunidades${sufixo}_${periodo.de}_${periodo.ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const contagemMarcadores = useMemo(
+    () => ({
+      viu_replay: base.filter((l) => marcadoresDoLead(l).includes("viu_replay")).length,
+      esteve_ao_vivo: base.filter((l) => marcadoresDoLead(l).includes("esteve_ao_vivo")).length,
+    }),
+    [base],
+  );
+
+  return (
+    <>
+          {/* Barra de recortes ACIMA de tudo: antes da matriz, dos funis e da tabela. */}
+          <BarraRecortes recorte={recorte} />
           <FaixaAvisos avisos={data.avisos} />
-          {data.matriz ? (
-            <MatrizOrigem
-              data={data}
-              linhaAtiva={linhaAtiva}
-              onLinha={alternarLinhaMatriz}
-            />
+          {recorte === "geral" ? (
+            <>
+              {data.matriz ? (
+                <MatrizOrigem data={data} linhaAtiva={linhaAtiva} onLinha={alternarLinhaMatriz} />
+              ) : (
+                <Kpis data={data} />
+              )}
+              {data.funis && <FunisDoCiclo funis={data.funis} />}
+              {data.resgate && <FunilResgate resgate={data.resgate} />}
+            </>
           ) : (
-            <Kpis data={data} />
+            <>
+              <CardsDoRecorte recorte={recorte} data={data} base={base} />
+              <FunilDoRecorte recorte={recorte} data={data} />
+            </>
           )}
-          {data.funis && <FunisDoCiclo funis={data.funis} />}
-          {data.resgate && <FunilResgate resgate={data.resgate} />}
+
 
           {data.totais.pendentes === 0 || leads.length === 0 ? (
             <Card>
@@ -341,6 +534,14 @@ export function LevantouMaoPanel() {
                     ? `${celulaMatriz(data.matriz.total.aplicaram)} levantaram a mão e ${celulaMatriz(data.matriz.total.agendaram)} agendaram neste período.`
                     : "Nenhum pendente neste período."
                 }
+              />
+            </Card>
+          ) : base.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon={Inbox}
+                titulo={VAZIO_RECORTE[recorte].titulo}
+                descricao={VAZIO_RECORTE[recorte].descricao}
               />
             </Card>
           ) : (
@@ -367,25 +568,30 @@ export function LevantouMaoPanel() {
                   />
                   {temOrigem && (
                     <FiltroOrigem
+                      recorte={recorte}
                       contagem={contagemOrigem}
+                      contagemMarcadores={contagemMarcadores}
                       selecionados={origensSel}
+                      marcadoresSel={marcadoresSel}
                       soResgate={soResgate}
                       onAlternar={alternarOrigem}
+                      onMarcador={alternarMarcador}
                       onResgate={() => setSoResgate((v) => !v)}
                       onLimpar={() => {
                         setOrigensSel([]);
                         setSoResgate(false);
+                        setMarcadoresSel([]);
                       }}
                     />
                   )}
-                  <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
+                  <BarrasPorTier leads={base} selecionados={tiersSel} onAlternar={alternarTier} />
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader
-                  title={`Pendentes${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
-                  subtitle={`${filtrados.length} de ${leads.length} ${leads.length === 1 ? "pendente" : "pendentes"} no recorte`}
+                  title={`${TITULO_TABELA[recorte]}${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
+                  subtitle={`${filtrados.length} de ${base.length} ${base.length === 1 ? "pendente" : "pendentes"} no recorte`}
                   action={
                     <Button
                       variant="outline"
@@ -411,7 +617,7 @@ export function LevantouMaoPanel() {
                         onChange={(e) => setBusca(e.target.value)}
                         placeholder="Buscar por nome, e-mail ou telefone"
                         aria-label="Buscar pendente"
-                        className="h-9 w-full rounded-lg border border-borda bg-noite pl-9 pr-3 text-sm text-texto placeholder:text-texto-sec/70"
+                        className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
                       />
                     </div>
                     <Alternador<Visao>
@@ -440,6 +646,7 @@ export function LevantouMaoPanel() {
                       onOrdenar={alternarOrdenacao}
                       onAbrir={setSelecionadoId}
                       comOrigem={temOrigem}
+                      semBadgeOrigem={origemConstante}
                     />
                   ) : (
                     <div className="space-y-5">
@@ -470,6 +677,7 @@ export function LevantouMaoPanel() {
                             paginar={false}
                             semColunaDono
                             comOrigem={temOrigem}
+                            semBadgeOrigem={origemConstante}
                           />
                         </section>
                       ))}
@@ -480,13 +688,458 @@ export function LevantouMaoPanel() {
             </>
           )}
 
-          <Rodape data={data} atualizando={isFetching} onAtualizar={() => refetch()} />
-        </>
-      )}
-
+          <Rodape data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
       {selecionado && (
         <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />
       )}
+    </>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Recorte "Não abordados": inscritos no evento cujo negócio mais recente está
+// em "Sem atendimento" — fonte própria (/api/eventos/nao-abordados). Não é
+// subconjunto dos pendentes: é quem ninguém atendeu. A ordem do backend é
+// mantida (tier desc, evento desc, nome asc); o que prioriza é o tempo parado.
+// ---------------------------------------------------------------------------
+
+type FiltrosNaoAbordadosSalvos = {
+  tiers: TierChave[];
+  donos: string[];
+  soParados: boolean;
+  visao: Visao;
+  busca: string;
+};
+const memoriaFiltrosNaoAbordados: { salvo: FiltrosNaoAbordadosSalvos | null } = { salvo: null };
+
+function ConteudoNaoAbordados({
+  data,
+  periodo,
+  atualizando,
+  onAtualizar,
+}: {
+  data: NaoAbordadosResponse;
+  periodo: { de: string; ate: string };
+  atualizando: boolean;
+  onAtualizar: () => void;
+}) {
+  const salvo = memoriaFiltrosNaoAbordados.salvo;
+  const [tiersSel, setTiersSel] = useState<TierChave[]>(salvo?.tiers ?? []);
+  const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
+  const [soParados, setSoParados] = useState(salvo?.soParados ?? false);
+  const [visao, setVisao] = useState<Visao>(salvo?.visao ?? "lista");
+  const [busca, setBusca] = useState(salvo?.busca ?? "");
+  const [pagina, setPagina] = useState(1);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    memoriaFiltrosNaoAbordados.salvo = { tiers: tiersSel, donos: donosSel, soParados, visao, busca };
+  }, [tiersSel, donosSel, soParados, visao, busca]);
+
+  const leads = data.leads;
+  const contagem = useMemo(() => contarPorTier(leads), [leads]);
+  // por_dono vale para a resposta inteira (a mesma população da lista).
+  const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
+  const parados = useMemo(() => contarParados(leads), [leads]);
+  const altoValor = altoValorPendente(leads);
+  const filtrados = useMemo(
+    () => filtrarNaoAbordados(leads, { tiers: tiersSel, donos: donosSel, soParados, busca }),
+    [leads, tiersSel, donosSel, soParados, busca],
+  );
+  const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
+  const multiEvento = data.eventos.length > 1;
+  const selecionado = useMemo(
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
+  useEffect(() => setPagina(1), [tiersSel, donosSel, soParados, busca, data]);
+
+  function alternarTier(chave: TierChave) {
+    setTiersSel((atual) => (atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave]));
+  }
+  function alternarDono(chave: string) {
+    setDonosSel((atual) => (atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave]));
+  }
+  const soAltoValor =
+    tiersSel.length === TIERS_ALTO_VALOR.length && TIERS_ALTO_VALOR.every((t) => tiersSel.includes(t));
+
+  function exportarCsv() {
+    const csv = "\uFEFF" + csvDeNaoAbordados(filtrados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `oportunidades_nao-abordados_${periodo.de}_${periodo.ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const inscritos = data.totais.inscritos ?? 0;
+  const total = data.totais.nao_abordados;
+
+  return (
+    <>
+      <BarraRecortes recorte="nao_abordados" />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <KpiChip icon={Users} rotulo="Inscritos" valor={celulaMatriz(data.totais.inscritos)} detalhe="com a tag do evento" />
+        <KpiChip
+          icon={Hourglass}
+          rotulo="Não abordados"
+          valor={String(total)}
+          detalhe={inscritos > 0 ? `${formatarPct(pct(total, inscritos))} dos inscritos` : "em “Sem atendimento”"}
+          destaque
+        />
+        <KpiChip
+          icon={Timer}
+          rotulo={`Parados há ${DIAS_PARADO_ALERTA}+ dias`}
+          valor={String(parados)}
+          detalhe={total > 0 ? `${formatarPct(pct(parados, total))} dos não abordados` : undefined}
+        />
+        <KpiChip icon={Gem} rotulo="Alto valor" valor={String(altoValor)} detalhe="UMQL+ · UMQL · HMQL" />
+        <KpiChip icon={Ban} rotulo="QC (fora do recorte)" valor={celulaMatriz(data.totais.qc)} detalhe="outra trilha" tom="neutro" />
+      </div>
+
+      <Card>
+        <CardHeader
+          title="Do evento aos não abordados"
+          subtitle="Inscritos no evento e, entre eles, quem ainda está em “Sem atendimento” na Clint."
+        />
+        <CardContent>
+          <FunilBlocos blocos={blocosNaoAbordados(data.totais)} />
+        </CardContent>
+      </Card>
+
+      {inscritos === 0 && total === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Users}
+            titulo="Nenhum contato com a tag deste ciclo"
+            descricao={
+              data.eventos.length > 0
+                ? `Tag consultada: ${data.eventos.join(", ")}. Confira se ela existe na Clint.`
+                : `Nenhuma terça entre ${rotuloCiclo({ inicio: data.de, fim: data.ate })} — nenhuma tag WG para consultar.`
+            }
+          />
+        </Card>
+      ) : total === 0 || leads.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={PartyPopper}
+            tom="positivo"
+            titulo="Todos os inscritos já foram atendidos"
+            descricao={`Nenhum dos ${inscritos} inscritos está em “Sem atendimento” neste período.`}
+          />
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader
+              title="Não abordados por classificação"
+              subtitle="A maioria chega sem classificação: o que prioriza aqui é o tempo parado. Clique numa barra ou num chip para filtrar."
+            />
+            <CardContent className="space-y-4">
+              <FiltroClassificacao
+                contagem={contagem}
+                selecionados={tiersSel}
+                soAltoValor={soAltoValor}
+                onAlternar={alternarTier}
+                onAltoValor={() => setTiersSel(soAltoValor ? [] : [...TIERS_ALTO_VALOR])}
+                onLimpar={() => setTiersSel([])}
+              />
+              <FiltroDono
+                opcoes={opcoesDono}
+                selecionados={donosSel}
+                onAlternar={alternarDono}
+                onLimpar={() => setDonosSel([])}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <Timer className="h-3.5 w-3.5" aria-hidden />
+                  Tempo parado:
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={soParados}
+                  onClick={() => setSoParados((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
+                    soParados
+                      ? "border-laranja/60 bg-laranja/15 text-laranja"
+                      : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
+                    parados === 0 && !soParados && "opacity-50",
+                  )}
+                >
+                  Parados há {DIAS_PARADO_ALERTA}+ dias <span className="tabular-nums">({parados})</span>
+                </button>
+                {soParados && (
+                  <button
+                    type="button"
+                    onClick={() => setSoParados(false)}
+                    className="text-xs text-texto-sec underline-offset-2 hover:text-texto hover:underline"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={`Não abordados${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
+              subtitle={`${filtrados.length} de ${leads.length} ${leads.length === 1 ? "contato" : "contatos"} em “Sem atendimento” · ordem do backend`}
+              action={
+                <Button variant="outline" size="sm" onClick={exportarCsv} disabled={filtrados.length === 0}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Exportar CSV
+                </Button>
+              }
+            />
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="relative w-full max-w-sm">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
+                    aria-hidden
+                  />
+                  <input
+                    type="search"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Buscar por nome, e-mail ou telefone"
+                    aria-label="Buscar não abordado"
+                    className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
+                  />
+                </div>
+                <Alternador<Visao>
+                  rotulo="Visão da lista"
+                  valor={visao}
+                  onChange={setVisao}
+                  opcoes={[
+                    { valor: "lista", label: "Lista" },
+                    { valor: "por_sdr", label: "Por SDR" },
+                  ]}
+                />
+              </div>
+
+              {filtrados.length === 0 ? (
+                <EmptyState
+                  titulo="Nenhum contato neste recorte"
+                  descricao="Ajuste os chips de classificação, de dono, o tempo parado ou a busca."
+                />
+              ) : visao === "lista" ? (
+                <ListaPendentes
+                  leads={filtrados}
+                  pagina={pagina}
+                  onPagina={setPagina}
+                  multiEvento={multiEvento}
+                  ordenacao={null}
+                  onOrdenar={() => {}}
+                  onAbrir={setSelecionadoId}
+                  ordenavel={false}
+                  comParadoDesde
+                />
+              ) : (
+                <div className="space-y-5">
+                  {grupos.map((g) => (
+                    <section key={g.chave} aria-label={`Não abordados de ${g.nome}`}>
+                      <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borda/60 pb-1.5">
+                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                          <UserRound className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
+                          {g.nome}
+                        </h3>
+                        <span className="text-xs text-texto-sec">
+                          <span className="font-semibold tabular-nums text-texto">{g.leads.length}</span>{" "}
+                          {g.leads.length === 1 ? "contato" : "contatos"}
+                          {" · "}
+                          <span className="font-semibold tabular-nums text-texto">{contarParados(g.leads)}</span>{" "}
+                          parados há {DIAS_PARADO_ALERTA}+ dias
+                        </span>
+                      </header>
+                      <ListaPendentes
+                        leads={g.leads}
+                        pagina={1}
+                        onPagina={() => {}}
+                        multiEvento={multiEvento}
+                        ordenacao={null}
+                        onOrdenar={() => {}}
+                        onAbrir={setSelecionadoId}
+                        ordenavel={false}
+                        paginar={false}
+                        semColunaDono
+                        comParadoDesde
+                      />
+                    </section>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <Rodape data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
+      {selecionado && <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />}
+    </>
+  );
+}
+
+// Há quanto tempo o negócio está parado na etapa. A partir de
+// DIAS_PARADO_ALERTA dias fica em laranja (é o critério de prioridade do recorte).
+function ParadoDesde({ iso, completo = false }: { iso: string | null | undefined; completo?: boolean }) {
+  if (!iso) return <span className="text-texto-sec/50">—</span>;
+  const dias = diasParado({ stage_desde: iso });
+  const alerta = paradoHaMais({ stage_desde: iso });
+  const texto = dias === 0 ? "hoje" : dias === 1 ? "1 dia" : `${dias} dias`;
+  return (
+    <span
+      className={cn("inline-flex items-center gap-1 whitespace-nowrap tabular-nums", alerta ? "font-medium text-laranja" : "text-texto-sec")}
+      title={`Desde ${dataHora(iso)} (${tempoRelativo(iso)})`}
+    >
+      <Timer className="h-3 w-3" aria-hidden />
+      {texto}
+      {completo && <span className="font-normal text-texto-sec"> · desde {dataHora(iso)}</span>}
+    </span>
+  );
+}
+
+// Cards com os números do recorte selecionado (no lugar da matriz completa).
+// Fonte: a linha da matriz do recorte ou o bloco `resgate`. A "% agendaram" é a
+// taxa de agendamento do backend.
+function CardsDoRecorte({
+  recorte,
+  data,
+  base,
+}: {
+  recorte: RecorteOportunidades;
+  data: OportunidadesResponse;
+  base: LeadPendente[];
+}) {
+  const altoValor = altoValorPendente(base);
+  const grade = "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5";
+
+  if (recorte === "ao_vivo" || recorte === "replay") {
+    const l = recorte === "ao_vivo" ? data.matriz?.ao_vivo : data.matriz?.replay;
+    if (!l) return null;
+    const rotuloAplicaram = recorte === "ao_vivo" ? "Levantaram a mão" : "Aplicaram";
+    return (
+      <div className={cn(grade, recorte === "replay" && "xl:grid-cols-6")}>
+        {recorte === "replay" && (
+          <KpiChip icon={MonitorPlay} rotulo="Acessaram" valor={celulaMatriz(l.acessaram)} detalhe="abriram a gravação" />
+        )}
+        <KpiChip
+          icon={Eye}
+          rotulo="Assistiram"
+          valor={celulaMatriz(l.assistiram)}
+          detalhe={recorte === "ao_vivo" ? "participaram ao vivo" : "30+ min da gravação"}
+        />
+        <KpiChip
+          icon={Hand}
+          rotulo={rotuloAplicaram}
+          valor={celulaMatriz(l.aplicaram)}
+          detalhe={l.assistiram ? `${formatarPct(pct(l.aplicaram ?? 0, l.assistiram))} dos que assistiram` : undefined}
+        />
+        <KpiChip
+          icon={CalendarCheck2}
+          rotulo="Agendaram"
+          valor={celulaMatriz(l.agendaram)}
+          detalhe={`${formatarTaxa(l.taxa_agendamento)} de conversão`}
+        />
+        <KpiChip icon={Hourglass} rotulo="Pendentes" valor={celulaMatriz(l.pendentes)} destaque />
+        <KpiChip
+          icon={Gem}
+          rotulo="Alto valor pendente"
+          valor={celulaMatriz(l.alto_valor_pendente ?? altoValor)}
+          detalhe="UMQL+ · UMQL · HMQL"
+        />
+      </div>
+    );
+  }
+
+  if (recorte === "geral") return null;
+  {
+    const r = data.resgate;
+    if (!r) return null;
+    return (
+      <div className={cn(grade, "xl:grid-cols-6")}>
+        <KpiChip icon={LifeBuoy} rotulo="Convidados" valor={String(r.convidados)} detalhe="receberam o convite" />
+        <KpiChip
+          icon={Eye}
+          rotulo="Assistiram"
+          valor={String(r.assistiram)}
+          detalhe={`${formatarPct(pct(r.assistiram, r.convidados))} dos convidados`}
+        />
+        <KpiChip
+          icon={Hand}
+          rotulo="Levantaram a mão"
+          valor={String(r.aplicaram)}
+          detalhe={`${formatarPct(pct(r.aplicaram, r.assistiram))} dos que assistiram`}
+        />
+        <KpiChip
+          icon={CalendarCheck2}
+          rotulo="Agendaram"
+          valor={String(r.agendaram)}
+          detalhe={`${formatarPct(pct(r.agendaram, r.aplicaram))} de conversão`}
+        />
+        <KpiChip icon={Hourglass} rotulo="Pendentes" valor={String(r.pendentes)} destaque />
+        <KpiChip icon={Gem} rotulo="Alto valor pendente" valor={String(altoValor)} detalhe="UMQL+ · UMQL · HMQL" />
+      </div>
+    );
+  }
+}
+
+// Funil do recorte selecionado (a Visão geral mostra os três).
+function FunilDoRecorte({ recorte, data }: { recorte: RecorteOportunidades; data: OportunidadesResponse }) {
+  switch (recorte) {
+    case "ao_vivo":
+      return data.funis ? <FunilAoVivo funis={data.funis} /> : null;
+    case "replay":
+      return data.funis ? <FunilReplay funis={data.funis} /> : null;
+    case "resgate":
+      return data.resgate ? (
+        <FunilResgate resgate={data.resgate} />
+      ) : (
+        <Card>
+          <EmptyState
+            icon={LifeBuoy}
+            titulo="Sem campanha de resgate neste período"
+            descricao="Nenhum contato recebeu a tag de convite de resgate do ciclo."
+          />
+        </Card>
+      );
+    default:
+      return null;
+  }
+}
+
+// Sub-abas (recortes). Sem contagem ao lado do rótulo (decisão Vata 22/09).
+function BarraRecortes({ recorte }: { recorte: RecorteLevantou }) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Recortes das oportunidades"
+      className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/5 p-1"
+    >
+      {RECORTES_LEVANTOU.map((r) => {
+        const ativo = r.recorte === recorte;
+        return (
+          <Link
+            key={r.recorte}
+            role="tab"
+            href={hrefDoRecorte(r.recorte)}
+            aria-selected={ativo}
+            className={cn(
+              "nav-link inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-medium transition-all",
+              ativo ? "border-azul/50 bg-azul/15 text-texto" : "border-transparent text-texto",
+            )}
+          >
+            {r.label}
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -531,6 +1184,18 @@ function ErroOportunidades({ error, onRetry }: { error: unknown; onRetry: () => 
         <ErrorState
           titulo="Base de agendamentos indisponível"
           descricao="Sem o conjunto de quem agendou, a lista de pendentes não pode ser calculada."
+          onRetry={onRetry}
+          retryLabel="Tentar de novo"
+        />
+      </Card>
+    );
+  }
+  if (codigo === "leads_indisponivel") {
+    return (
+      <Card>
+        <ErrorState
+          titulo="Base de leads indisponível"
+          descricao="O cruzamento com os leads do Mapa de Calor falhou no backend. Tente de novo em instantes."
           onRetry={onRetry}
           retryLabel="Tentar de novo"
         />
@@ -612,6 +1277,7 @@ const COR_ETAPA: Record<string, string> = {
   aplicaram: "bg-teal/25 text-teal",
   agendaram: "bg-verde/25 text-verde",
   pendentes: "bg-laranja/20 text-laranja",
+  nao_abordados: "bg-rosa/20 text-rosa",
 };
 const COR_ETAPA_PADRAO = "bg-painel-claro text-texto";
 
@@ -675,27 +1341,39 @@ function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
 // degraus vêm prontos do backend; as taxas são calculadas no front. Replay sem
 // nenhum dado é renderizado com zeros + nota — não é escondido, para o time
 // ver que o dado não chegou.
-function FunisDoCiclo({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
+function FunilAoVivo({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
+  return (
+    <Card>
+      <CardHeader title="Funil ao vivo" subtitle="Quem se inscreveu e participou ao vivo." />
+      <CardContent>
+        <FunilBlocos blocos={blocosDoFunil(funis.ao_vivo.degraus, "ao_vivo")} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function FunilReplay({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
   const semReplay = funilZerado(funis.replay.degraus);
   return (
+    <Card>
+      <CardHeader title="Funil do replay" subtitle="Quem abriu a gravação e aplicou só por ela." />
+      <CardContent className="space-y-2">
+        <FunilBlocos blocos={blocosDoFunil(funis.replay.degraus, "replay")} />
+        {semReplay && (
+          <p className="text-[11px] text-texto-sec/80" role="note">
+            Sem replay neste ciclo
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FunisDoCiclo({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
+  return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader title="Funil ao vivo" subtitle="Quem se inscreveu e participou ao vivo." />
-        <CardContent>
-          <FunilBlocos blocos={blocosDoFunil(funis.ao_vivo.degraus, "ao_vivo")} />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader title="Funil do replay" subtitle="Quem abriu a gravação e aplicou só por ela." />
-        <CardContent className="space-y-2">
-          <FunilBlocos blocos={blocosDoFunil(funis.replay.degraus, "replay")} />
-          {semReplay && (
-            <p className="text-[11px] text-texto-sec/80" role="note">
-              Sem replay neste ciclo
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      <FunilAoVivo funis={funis} />
+      <FunilReplay funis={funis} />
     </div>
   );
 }
@@ -709,7 +1387,7 @@ function FaixaAvisos({ avisos }: { avisos: readonly string[] | null | undefined 
     <div
       role="note"
       aria-label="Avisos sobre os números deste período"
-      className="rounded-xl border border-borda bg-painel-claro/60 px-4 py-2.5 text-xs text-texto-sec"
+      className="ds-card px-6 py-4 text-xs opacity-80"
     >
       <p className="font-medium text-texto">Atenção aos números deste período</p>
       <ul className="mt-1 list-disc space-y-0.5 pl-4">
@@ -807,9 +1485,9 @@ function MatrizOrigem({
                     className={cn(
                       "tabular-nums transition-colors",
                       total
-                        ? "border-t border-borda bg-painel-claro/50 font-semibold text-texto"
-                        : "cursor-pointer border-t border-borda/40 text-texto hover:bg-painel-claro/60",
-                      ativa && "bg-azul/15 ring-1 ring-inset ring-azul/40 hover:bg-azul/15",
+                        ? "border-t border-white/20 bg-white/[0.08] font-semibold text-texto"
+                        : "cursor-pointer border-t border-white/10 text-texto hover:bg-white/[0.08]",
+                      ativa && "bg-azul/15 ring-1 ring-inset ring-azul/50 hover:bg-azul/15",
                     )}
                   >
                     <th scope="row" className="px-3 py-2 text-left font-medium">
@@ -947,10 +1625,10 @@ function Chips({
             aria-pressed={ativo}
             onClick={() => onAlternar(o.chave)}
             className={cn(
-              "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+              "rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
               ativo
-                ? (o.classeAtivo ?? "border-azul/60 bg-azul/15 text-azul-claro")
-                : "border-borda text-texto-sec hover:text-texto",
+                ? (o.classeAtivo ?? "border-azul/50 bg-azul/15 text-azul-claro")
+                : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
               o.contagem === 0 && !ativo && "opacity-50",
             )}
           >
@@ -997,10 +1675,10 @@ function FiltroClassificacao({
         aria-pressed={soAltoValor}
         onClick={onAltoValor}
         className={cn(
-          "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+          "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
           soAltoValor
             ? "border-laranja/60 bg-laranja/15 text-laranja"
-            : "border-borda text-texto-sec hover:text-texto",
+            : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
         )}
       >
         <Gem className="h-3 w-3" aria-hidden />
@@ -1058,23 +1736,44 @@ function FiltroDono({
   );
 }
 
-// Chips de origem: Ao vivo | Replay são multi-seleção entre si; "Convidados de
-// resgate" é INDEPENDENTE e combina com qualquer um deles.
+// Chips de origem, por recorte. Na visão geral e no resgate: Ao vivo | Replay,
+// multi-seleção. Em Ao vivo/Replay a origem é constante, então entra no lugar o
+// marcador cruzado ("Viu o replay também" / "Esteve ao vivo também").
+// "Convidados de resgate" é independente e combina com qualquer um — some no
+// recorte que já é ele.
 function FiltroOrigem({
+  recorte,
   contagem,
+  contagemMarcadores,
   selecionados,
+  marcadoresSel,
   soResgate,
   onAlternar,
+  onMarcador,
   onResgate,
   onLimpar,
 }: {
+  recorte: RecorteOportunidades;
   contagem: ContagemOrigem;
+  contagemMarcadores: { viu_replay: number; esteve_ao_vivo: number };
   selecionados: OrigemChave[];
+  marcadoresSel: MarcadorOrigem[];
   soResgate: boolean;
   onAlternar: (o: OrigemChave) => void;
+  onMarcador: (m: MarcadorOrigem) => void;
   onResgate: () => void;
   onLimpar: () => void;
 }) {
+  const mostraOrigens = recorte !== "ao_vivo" && recorte !== "replay";
+  const marcadorCruzado: MarcadorOrigem | null =
+    recorte === "ao_vivo" ? "viu_replay" : recorte === "replay" ? "esteve_ao_vivo" : null;
+  const mostraResgate = recorte !== "resgate";
+  const algumAtivo = selecionados.length > 0 || marcadoresSel.length > 0 || soResgate;
+
+  const opcoes = mostraOrigens
+    ? ORIGENS.map((o) => ({ chave: o.chave, label: o.label, contagem: contagem[o.chave], classeAtivo: o.chipAtivo }))
+    : [];
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
@@ -1083,32 +1782,55 @@ function FiltroOrigem({
       </span>
       <Chips
         rotulo="Filtrar por origem"
-        opcoes={ORIGENS.map((o) => ({
-          chave: o.chave,
-          label: o.label,
-          contagem: contagem[o.chave],
-          classeAtivo: o.chipAtivo,
-        }))}
+        opcoes={opcoes}
         selecionados={selecionados}
         onAlternar={(chave) => onAlternar(chave as OrigemChave)}
       >
-        <span className="mx-1 h-4 w-px bg-borda" aria-hidden />
-        <button
-          type="button"
-          aria-pressed={soResgate}
-          onClick={onResgate}
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-            soResgate
-              ? "border-azul/60 bg-azul/15 text-azul-claro"
-              : "border-borda text-texto-sec hover:text-texto",
-            contagem.resgate === 0 && !soResgate && "opacity-50",
-          )}
-        >
-          <LifeBuoy className="h-3 w-3" aria-hidden />
-          Convidados de resgate <span className="tabular-nums">({contagem.resgate})</span>
-        </button>
-        {(selecionados.length > 0 || soResgate) && (
+        {marcadorCruzado && (
+          <button
+            type="button"
+            aria-pressed={marcadoresSel.includes(marcadorCruzado)}
+            onClick={() => onMarcador(marcadorCruzado)}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
+              marcadoresSel.includes(marcadorCruzado)
+                ? marcadorCruzado === "viu_replay"
+                  ? "border-violeta/60 bg-violeta/15 text-violeta"
+                  : "border-teal/60 bg-teal/15 text-teal"
+                : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
+              contagemMarcadores[marcadorCruzado] === 0 && !marcadoresSel.includes(marcadorCruzado) && "opacity-50",
+            )}
+          >
+            {marcadorCruzado === "viu_replay" ? (
+              <MonitorPlay className="h-3 w-3" aria-hidden />
+            ) : (
+              <Radio className="h-3 w-3" aria-hidden />
+            )}
+            {TEXTO_MARCADOR[marcadorCruzado]}{" "}
+            <span className="tabular-nums">({contagemMarcadores[marcadorCruzado]})</span>
+          </button>
+        )}
+        {(mostraOrigens || marcadorCruzado) && mostraResgate && (
+          <span className="mx-1 h-4 w-px bg-borda" aria-hidden />
+        )}
+        {mostraResgate && (
+          <button
+            type="button"
+            aria-pressed={soResgate}
+            onClick={onResgate}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
+              soResgate
+                ? "border-azul/60 bg-azul/15 text-azul-claro"
+                : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
+              contagem.resgate === 0 && !soResgate && "opacity-50",
+            )}
+          >
+            <LifeBuoy className="h-3 w-3" aria-hidden />
+            Convidados de resgate <span className="tabular-nums">({contagem.resgate})</span>
+          </button>
+        )}
+        {algumAtivo && (
           <button
             type="button"
             onClick={onLimpar}
@@ -1138,7 +1860,7 @@ function Alternador<T extends string>({
     <div
       role="radiogroup"
       aria-label={rotulo}
-      className="flex gap-1 rounded-lg border border-borda bg-painel p-0.5"
+      className="flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1"
     >
       {opcoes.map((o) => (
         <button
@@ -1148,8 +1870,8 @@ function Alternador<T extends string>({
           aria-checked={valor === o.valor}
           onClick={() => onChange(o.valor)}
           className={cn(
-            "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-            valor === o.valor ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+            "nav-link rounded-lg border px-3 py-1 text-xs font-medium transition-all",
+            valor === o.valor ? "border-azul/50 bg-azul/15 text-texto" : "border-transparent text-texto",
           )}
         >
           {o.label}
@@ -1182,8 +1904,8 @@ function BarrasPorTier({
               aria-pressed={ativo}
               onClick={() => onAlternar(tier.chave)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-md px-2 py-1 text-left text-sm transition-colors hover:bg-painel-claro",
-                ativo && "bg-painel-claro ring-1 ring-borda",
+                "flex w-full items-center gap-3 rounded-lg px-2 py-1 text-left text-sm transition-colors hover:bg-white/[0.08]",
+                ativo && "bg-azul/15 ring-1 ring-azul/50",
               )}
             >
               <span
@@ -1233,7 +1955,7 @@ function BotaoCopiar({ valor, rotulo }: { valor: string; rotulo: string }) {
       }}
       aria-label={copiado ? `${rotulo} copiado` : `Copiar ${rotulo}`}
       title={copiado ? "Copiado!" : `Copiar ${rotulo}`}
-      className="rounded-md p-1 text-texto-sec hover:bg-painel-claro hover:text-texto"
+      className="icon-button h-7 w-7"
     >
       {copiado ? (
         <Check className="h-3.5 w-3.5 text-verde" aria-hidden />
@@ -1301,9 +2023,9 @@ function NomePendente({
 
 function LinhaDetalhe({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
-    <div className="border-b border-borda/40 py-2.5 last:border-0">
-      <p className="text-[11px] uppercase tracking-wide text-texto-sec">{rotulo}</p>
-      <div className="mt-0.5 text-sm text-texto">{children}</div>
+    <div className="border-b border-white/10 py-3 last:border-0">
+      <p className="text-[10px] uppercase tracking-wide opacity-60">{rotulo}</p>
+      <div className="mt-1 text-sm text-texto">{children}</div>
     </div>
   );
 }
@@ -1323,29 +2045,29 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
   return (
     <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={`Detalhes de ${lead.nome}`}>
       <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-borda bg-painel shadow-lg">
-        <div className="flex items-start justify-between gap-3 border-b border-borda/60 px-4 py-3">
-          <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-texto">{lead.nome}</p>
+      <aside className="modal-surface modal-border absolute inset-y-0 right-0 flex w-full max-w-md flex-col rounded-l-modal shadow-layered">
+        <div className="flex items-start justify-between gap-4 pb-0 pl-6 pr-6 pt-6">
+          <div className="flex min-w-0 items-start gap-4">
+            <span className="icon-circle shadow-layered">
+              <Hand className="h-5 w-5 text-violeta" aria-hidden />
+            </span>
+            <div className="min-w-0">
+            <h2 className="truncate font-jakarta text-xl font-semibold tracking-tight text-texto">{lead.nome}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <MqlBadge lead={lead} size="sm" />
               <SeloNinja lead={lead} />
               {lead.origem !== undefined && <OrigemCelula lead={lead} />}
               <DonoBadge dono={lead.dono} size="sm" />
-              {lead.evento_tag && <span className="text-xs text-texto-sec">{lead.evento_tag}</span>}
+              {lead.evento_tag && <span className="text-xs opacity-70">{lead.evento_tag}</span>}
+            </div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="rounded-md p-1 text-texto-sec hover:bg-painel-claro hover:text-texto"
-          >
+          <button type="button" onClick={onClose} aria-label="Fechar" className="icon-button">
             <X className="h-4 w-4" aria-hidden />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-2">
+        <div className="flex-1 overflow-y-auto p-6">
           <LinhaDetalhe rotulo="Negócio na Clint">
             {lead.url_clint ? (
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1369,6 +2091,12 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
                 {lead.assistiu_replay ? " · assistiu 30+ min do replay" : ""}
                 {lead.convidado_resgate ? " · convidado da campanha de resgate" : ""}
               </span>
+            </LinhaDetalhe>
+          )}
+
+          {lead.stage_desde && (
+            <LinhaDetalhe rotulo={`Parado em "${lead.etapa ?? "Sem atendimento"}"`}>
+              <ParadoDesde iso={lead.stage_desde} completo />
             </LinhaDetalhe>
           )}
 
@@ -1464,11 +2192,13 @@ const ICONE_MARCADOR: Record<MarcadorOrigem, { Icone: typeof LifeBuoy; cor: stri
   esteve_ao_vivo: { Icone: Radio, cor: "text-teal" },
 };
 
-function OrigemCelula({ lead }: { lead: LeadPendente }) {
+function OrigemCelula({ lead, semBadge = false }: { lead: LeadPendente; semBadge?: boolean }) {
+  const marcadores = marcadoresDoLead(lead);
+  if (semBadge && marcadores.length === 0) return <span className="text-texto-sec/40">—</span>;
   return (
     <span className="inline-flex items-center gap-1">
-      <OrigemBadge lead={lead} size="sm" />
-      {marcadoresDoLead(lead).map((m) => {
+      {!semBadge && <OrigemBadge lead={lead} size="sm" />}
+      {marcadores.map((m) => {
         const { Icone, cor } = ICONE_MARCADOR[m];
         return (
           <span key={m} role="img" aria-label={TEXTO_MARCADOR[m]} title={TEXTO_MARCADOR[m]} className="inline-flex">
@@ -1582,6 +2312,8 @@ function ListaPendentes({
   paginar: permitePaginar = true,
   semColunaDono = false,
   comOrigem = false,
+  semBadgeOrigem = false,
+  comParadoDesde = false,
 }: {
   leads: LeadPendente[];
   pagina: number;
@@ -1596,6 +2328,10 @@ function ListaPendentes({
   semColunaDono?: boolean;
   // Coluna "Origem" — só quando o backend manda a matriz/origem.
   comOrigem?: boolean;
+  // Origem constante no recorte: cabeçalho "Sinais" e só os marcadores na célula.
+  semBadgeOrigem?: boolean;
+  // Recorte "Não abordados": coluna com há quanto tempo o negócio está parado.
+  comParadoDesde?: boolean;
 }) {
   const paginar = permitePaginar && leads.length > TAMANHO_PAGINA;
   const th = (rotulo: string, campo: CampoOrdenacao) =>
@@ -1619,8 +2355,13 @@ function ListaPendentes({
             <tr className="border-b border-borda text-xs text-texto-sec">
               <th className="px-2 py-2 text-left">{th("Nome", "nome")}</th>
               <th className="px-2 py-2 text-left">{th("MQL", "tier")}</th>
-              {comOrigem && <th className="px-2 py-2 text-left">{th("Origem", "origem")}</th>}
+              {comOrigem && (
+                <th className="px-2 py-2 text-left">
+                  {semBadgeOrigem ? <span className="font-medium">Sinais</span> : th("Origem", "origem")}
+                </th>
+              )}
               {!semColunaDono && <th className="px-2 py-2 text-left">{th("Dono", "dono")}</th>}
+              {comParadoDesde && <th className="whitespace-nowrap px-2 py-2 text-left font-medium">Parado há</th>}
               {multiEvento && <th className="px-2 py-2 text-left font-medium">Evento</th>}
               <th className="px-2 py-2 text-left font-medium">Telefone</th>
               <th className="px-2 py-2 text-left font-medium">E-mail</th>
@@ -1642,12 +2383,17 @@ function ListaPendentes({
                 </td>
                 {comOrigem && (
                   <td className="whitespace-nowrap px-2 py-2">
-                    <OrigemCelula lead={l} />
+                    <OrigemCelula lead={l} semBadge={semBadgeOrigem} />
                   </td>
                 )}
                 {!semColunaDono && (
                   <td className="px-2 py-2">
                     <DonoBadge dono={l.dono} size="sm" />
+                  </td>
+                )}
+                {comParadoDesde && (
+                  <td className="whitespace-nowrap px-2 py-2 text-xs">
+                    <ParadoDesde iso={l.stage_desde} />
                   </td>
                 )}
                 {multiEvento && (
@@ -1696,15 +2442,16 @@ function ListaPendentes({
       {/* Cards (< md): nome + MQL + WhatsApp em destaque */}
       <ul className="space-y-2 md:hidden">
         {visiveis.map((l) => (
-          <li key={chaveDaLinha(l)} className="rounded-xl border border-borda bg-painel-claro/40 p-3">
+          <li key={chaveDaLinha(l)} className="card-interactive rounded-xl p-4">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <NomePendente lead={l} onAbrir={onAbrir} />
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <MqlBadge lead={l} size="sm" />
                   <SeloNinja lead={l} />
-                  {comOrigem && <OrigemCelula lead={l} />}
+                  {comOrigem && <OrigemCelula lead={l} semBadge={semBadgeOrigem} />}
                   {!semColunaDono && <DonoBadge dono={l.dono} size="sm" />}
+                  {comParadoDesde && <ParadoDesde iso={l.stage_desde} />}
                   {multiEvento && l.evento_tag && (
                     <span className="text-[11px] text-texto-sec">{l.evento_tag}</span>
                   )}
@@ -1773,7 +2520,7 @@ function Rodape({
   atualizando,
   onAtualizar,
 }: {
-  data: OportunidadesResponse;
+  data: Pick<OportunidadesResponse, "de" | "ate" | "eventos" | "gerado_em" | "cache">;
   atualizando: boolean;
   onAtualizar: () => void;
 }) {

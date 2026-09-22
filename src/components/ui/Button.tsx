@@ -8,16 +8,23 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean;
 };
 
+// Botões do design system (.glass-button: blur 8px, 0.3s ease, sobe 1px no hover;
+// desabilitado = opacity-40; sem estilos próprios de foco/ativo na referência):
+//   primary   → bg-primary-500/30, borda primary-500/50, hover bg-primary-500/40
+//   secondary → bg-white/5, borda white/20, hover bg-white/10
+//   outline   → mesma família do secondary
+//   ghost     → só texto; Icon Button do DS (fundo white/10 no hover)
 const VARIANTES = {
-  primary: "bg-azul text-white hover:bg-azul-claro",
-  secondary: "bg-borda/50 text-texto hover:bg-borda/80",
-  outline: "border border-borda bg-transparent text-texto hover:bg-painel-claro",
-  ghost: "text-texto-sec hover:bg-painel-claro hover:text-texto",
+  primary: "glass-button border border-azul/50 bg-azul/30 text-texto hover:bg-azul/40",
+  secondary: "glass-button border border-white/20 bg-white/5 text-texto hover:bg-white/10",
+  outline: "glass-button border border-white/20 bg-white/5 text-texto hover:bg-white/10",
+  ghost: "text-texto opacity-70 transition-colors hover:bg-white/10 hover:opacity-100",
 };
 
+// md = px-6 py-3 (referência); sm = versão compacta para barras e tabelas.
 const TAMANHOS = {
-  sm: "h-8 px-3 text-xs",
-  md: "h-10 px-4 text-sm",
+  sm: "px-4 py-2 text-xs",
+  md: "px-6 py-3 text-sm",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -26,7 +33,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
         VARIANTES[variant],
         TAMANHOS[size],
         className,

@@ -1,4 +1,4 @@
-import { AlertTriangle, Bot, Lock, Star } from "lucide-react";
+import { AlertTriangle, Lock, Star } from "lucide-react";
 import type { Etapa, Temperatura } from "@/lib/api/contracts";
 import { etapaLabel, TEMPERATURA_CONFIG } from "@/lib/formatters/score";
 import { labelTrava } from "@/lib/formatters/labels";
@@ -26,9 +26,9 @@ export function OrigemBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full font-medium",
+        "inline-flex items-center whitespace-nowrap rounded-full text-[10px] font-medium uppercase tracking-wide",
         cfg.badge,
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+        size === "sm" ? "px-2 py-0.5" : "px-2 py-1",
       )}
     >
       {cfg.label}
@@ -49,11 +49,11 @@ export function DonoBadge({
     <span
       title={dono?.email ?? undefined}
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full border font-medium",
+        "inline-flex items-center whitespace-nowrap rounded-full border text-[10px] font-medium uppercase tracking-wide",
         dono
-          ? "border-borda bg-painel-claro text-texto-sec"
-          : "border-dashed border-borda bg-transparent text-texto-sec/80",
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+          ? "border-white/20 bg-white/10 text-texto"
+          : "border-dashed border-white/20 bg-transparent text-texto-sec",
+        size === "sm" ? "px-2 py-0.5" : "px-2 py-1",
       )}
     >
       {nomeDono(dono)}
@@ -68,7 +68,7 @@ export function SeloNinja({ lead }: { lead: Pick<LeadPendente, "tier" | "tier_ra
   return (
     <span
       title="Também tem a marcação Possível Ninja na Clint — classificado pela escala MQL, que tem precedência"
-      className="inline-flex items-center whitespace-nowrap rounded-full border border-verde/40 px-1.5 py-px text-[10px] font-medium text-verde"
+      className="tag tag-success px-1.5 py-px"
     >
       Ninja
     </span>
@@ -89,9 +89,9 @@ export function MqlBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center whitespace-nowrap rounded-full font-medium",
+        "inline-flex items-center whitespace-nowrap rounded-full text-[10px] font-medium uppercase tracking-wide",
         cfg.badge,
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+        size === "sm" ? "px-2 py-0.5" : "px-2 py-1",
       )}
     >
       {cfg.label}
@@ -157,9 +157,9 @@ export function TemperatureBadge({
     <span
       title={`Score ${cfg.faixa}`}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full font-medium",
+        "inline-flex items-center gap-1.5 rounded-full text-[10px] font-medium uppercase tracking-wide",
         cfg.badge,
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+        size === "sm" ? "px-2 py-0.5" : "px-2 py-1",
       )}
     >
       <Icon className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />
@@ -211,11 +211,11 @@ export function EtapaBadge({ etapa, size = "md" }: { etapa: Etapa | null; size?:
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border font-medium",
+        "inline-flex items-center rounded-full border text-[10px] font-medium uppercase tracking-wide",
         etapa
-          ? "border-borda bg-painel-claro text-texto-sec"
-          : "border-dashed border-borda bg-transparent text-texto-sec/80",
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+          ? "border-white/20 bg-white/10 text-texto"
+          : "border-dashed border-white/20 bg-transparent text-texto-sec",
+        size === "sm" ? "px-2 py-0.5" : "px-2 py-1",
       )}
     >
       {etapaLabel(etapa)}
@@ -227,28 +227,12 @@ export function AlertaBadge({ alerta, size = "md" }: { alerta: string; size?: "s
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-rosa/30 bg-rosa/15 font-medium text-rosa",
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+        "tag tag-error",
+        size === "sm" ? "px-2 py-0.5" : "px-2 py-1",
       )}
     >
       <AlertTriangle className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />
       {alerta}
-    </span>
-  );
-}
-
-// Origem Hana (sdr_pool=true): lead da IA agendadora, visível a todos os SDRs.
-export function HanaBadge({ size = "md" }: { size?: "sm" | "md" }) {
-  return (
-    <span
-      title="Lead do pool da Hana (IA agendadora) — visível a todos os SDRs"
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-violeta/30 bg-violeta/15 font-medium text-violeta",
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
-      )}
-    >
-      <Bot className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />
-      Pool da Hana
     </span>
   );
 }
@@ -259,8 +243,8 @@ export function TravaBadge({ trava, size = "md" }: { trava: string; size?: "sm" 
     <span
       title={texto}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-laranja/30 bg-laranja/15 font-medium text-laranja",
-        size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs",
+        "tag tag-warning",
+        size === "sm" ? "px-2 py-0.5" : "px-2 py-1",
       )}
     >
       <Lock className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />

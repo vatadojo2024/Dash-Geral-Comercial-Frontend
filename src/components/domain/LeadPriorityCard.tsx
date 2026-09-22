@@ -7,7 +7,6 @@ import {
   AlertaBadge,
   EstrelaDestaque,
   EtapaBadge,
-  HanaBadge,
   ScoreBadge,
   TemperatureBadge,
   TravaBadge,
@@ -28,10 +27,10 @@ export function LeadPriorityCard({
   return (
     <Link
       href={`/leads/${item.lead_id}`}
-      className="block rounded-xl border border-borda bg-painel p-4 shadow-sm transition-colors hover:border-azul/60"
+      className="card-interactive block rounded-xl p-4"
     >
       <div className="flex items-start gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-painel-claro text-xs font-semibold text-texto-sec">
+        <span className="icon-circle h-7 w-7 text-xs font-semibold text-violeta">
           {rank}
         </span>
         <div className="min-w-0 flex-1">
@@ -55,7 +54,6 @@ export function LeadPriorityCard({
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             <TemperatureBadge temperatura={item.temperatura} size="sm" />
             <EtapaBadge etapa={item.etapa_atual} size="sm" />
-            {item.sdr_pool && <HanaBadge size="sm" />}
             {item.trava_aplicada && <TravaBadge trava={item.trava_aplicada} size="sm" />}
           </div>
 

@@ -48,9 +48,39 @@ export const LeadPendenteSchema = z
     // Marcação "Possível Ninja" na Clint. Vem true MESMO quando o tier mostra uma
     // tag da escala MQL (que tem precedência na classificação) — daí o selo.
     possivel_ninja: z.boolean().nullish(),
+    // Desde quando o negócio está na etapa atual. Só o endpoint de "Não
+    // abordados" manda (é o campo que prioriza aquele recorte); aqui é opcional
+    // para o MESMO tipo de lead servir às duas fontes.
+    stage_desde: z.string().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
+
+// ---------------------------------------------------------------------------
+// Recortes da aba (sub-abas com rota própria). Os quatro primeiros têm funil,
+// filtros e tabela próprios sobre a MESMA resposta de /oportunidades (nada de
+// chamada extra ao trocar). "Não abordados" é OUTRA população, com endpoint
+// próprio (lib/sdr/naoAbordados.ts) — por isso o tipo separado abaixo.
+// ---------------------------------------------------------------------------
+
+export type RecorteLevantou = "geral" | "ao_vivo" | "replay" | "resgate" | "nao_abordados";
+// Recortes que derivam da resposta de /oportunidades.
+export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados">;
+
+// Base de cada recorte, ANTES dos chips: os filtros da tela aplicam em série
+// sobre esta lista.
+export function leadsDoRecorte(leads: LeadPendente[], recorte: RecorteOportunidades): LeadPendente[] {
+  switch (recorte) {
+    case "ao_vivo":
+      return leads.filter((l) => origemDoLead(l)?.chave === "ao_vivo");
+    case "replay":
+      return leads.filter((l) => origemDoLead(l)?.chave === "replay");
+    case "resgate":
+      return leads.filter((l) => l.convidado_resgate === true);
+    default:
+      return leads;
+  }
+}
 
 // Chave estável da LINHA da tabela: (contato, evento).
 export function chaveDaLinha(l: Pick<LeadPendente, "clint_contact_id" | "evento_tag">): string {
@@ -160,6 +190,7 @@ const ROTULO_DEGRAU: Record<string, string> = {
   assistiram: "Assistiram",
   agendaram: "Agendaram",
   pendentes: "Pendentes",
+  nao_abordados: "Não abordados",
 };
 
 // `nome` do degrau → rótulo. "aplicaram" muda por recorte: no ao vivo (e no
@@ -238,11 +269,14 @@ export function traduzirAvisos(avisos: readonly string[] | null | undefined): st
   return [...new Set(textos)];
 }
 
-// Códigos de erro do endpoint (seção 10 do backend) → tratamento da UI.
+// Códigos de erro dos endpoints de evento (oportunidades e não abordados) →
+// tratamento da UI. `leads_indisponivel` é só do endpoint de não abordados
+// (tabela `leads` fora do ar no cruzamento com o Mapa).
 export type CodigoErroOportunidades =
   | "clint_auth"
   | "clint_indisponivel"
   | "agendamentos_indisponivel"
+  | "leads_indisponivel"
   | "intervalo_muito_grande"
   | "parametros_invalidos"
   | "desconhecido";
@@ -603,6 +637,8 @@ export type FiltroPendentes = {
   origens?: readonly OrigemChave[];
   // "Convidados de resgate": filtro independente, combina com qualquer outro.
   soResgate?: boolean;
+  // Marcadores exigidos (todos): "viu_replay" / "esteve_ao_vivo".
+  marcadores?: readonly MarcadorOrigem[];
   busca: string;
 };
 
@@ -622,6 +658,10 @@ export function filtrarPendentes(leads: LeadPendente[], f: FiltroPendentes): Lea
       if (!origem || !origens.has(origem)) return false;
     }
     if (f.soResgate && !l.convidado_resgate) return false;
+    if (f.marcadores && f.marcadores.length > 0) {
+      const tem = marcadoresDoLead(l);
+      if (!f.marcadores.every((m) => tem.includes(m))) return false;
+    }
     if (!termo) return true;
     if (normalizar(l.nome).includes(termo)) return true;
     if (normalizar(l.email).includes(termo)) return true;

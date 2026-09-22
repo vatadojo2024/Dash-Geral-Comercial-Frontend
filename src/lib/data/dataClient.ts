@@ -18,6 +18,7 @@ import {
   type CodigoErroOportunidades,
   type OportunidadesResponse,
 } from "@/lib/sdr/oportunidades";
+import { NaoAbordadosResponseSchema, type NaoAbordadosResponse } from "@/lib/sdr/naoAbordados";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de acesso a dados de leads no client. Os componentes só
@@ -136,6 +137,7 @@ function codigoDoCorpo(status: number, corpo: unknown): CodigoErroOportunidades 
     erro === "clint_auth" ||
     erro === "clint_indisponivel" ||
     erro === "agendamentos_indisponivel" ||
+    erro === "leads_indisponivel" ||
     erro === "intervalo_muito_grande"
   ) {
     return erro;
@@ -145,16 +147,17 @@ function codigoDoCorpo(status: number, corpo: unknown): CodigoErroOportunidades 
   return "desconhecido";
 }
 
-// Única porta da aba "Levantou a Mão" (GET /api/eventos/oportunidades?de&ate).
-// O corte por período é do backend; MQL/busca ficam no cliente (lib/sdr/oportunidades).
-export async function fetchOportunidades(
+// Os dois endpoints de evento têm o mesmo protocolo (de/ate, erros por código):
+// uma função só, parametrizada pelo caminho e pelo schema da resposta.
+async function fetchEndpointEventos<T>(
+  caminho: string,
+  rotulo: string,
+  schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } } },
   de: string,
   ate: string,
-): Promise<OportunidadesResponse> {
+): Promise<T> {
   const qs = `de=${encodeURIComponent(de)}&ate=${encodeURIComponent(ate)}`;
-  const res = await fetch(`/api/eventos/oportunidades?${qs}`, {
-    headers: await headersComToken(),
-  });
+  const res = await fetch(`${caminho}?${qs}`, { headers: await headersComToken() });
   const corpo = (await res.json().catch(() => null)) as unknown;
   if (!res.ok) {
     if (res.status === 401 && typeof window !== "undefined") {
@@ -163,19 +166,31 @@ export async function fetchOportunidades(
       window.location.href = "/login";
     }
     const mensagem =
-      (corpo as { error?: string } | null)?.error ??
-      `A consulta de oportunidades respondeu ${res.status}.`;
+      (corpo as { error?: string } | null)?.error ?? `A consulta de ${rotulo} respondeu ${res.status}.`;
     throw new OportunidadesError(mensagem, res.status, codigoDoCorpo(res.status, corpo));
   }
-  const parsed = OportunidadesResponseSchema.safeParse(corpo);
+  const parsed = schema.safeParse(corpo);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
     throw new OportunidadesError(
-      `Resposta de /api/eventos/oportunidades fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      `Resposta de ${caminho} fora do contrato: ${issue?.path.map(String).join(".")} — ${issue?.message}`,
       res.status,
       "desconhecido",
     );
   }
   return parsed.data;
+}
+
+// Única porta da aba "Oportunidades do Evento" (GET /api/eventos/oportunidades?de&ate).
+// O corte por período é do backend; MQL/busca ficam no cliente (lib/sdr/oportunidades).
+export function fetchOportunidades(de: string, ate: string): Promise<OportunidadesResponse> {
+  return fetchEndpointEventos("/api/eventos/oportunidades", "oportunidades", OportunidadesResponseSchema, de, ate);
+}
+
+// Recorte "Não abordados" (GET /api/eventos/nao-abordados?de&ate): outra
+// população, endpoint próprio, mesmos códigos de erro (+ leads_indisponivel).
+export function fetchNaoAbordados(de: string, ate: string): Promise<NaoAbordadosResponse> {
+  return fetchEndpointEventos("/api/eventos/nao-abordados", "não abordados", NaoAbordadosResponseSchema, de, ate);
 }
 
 // PATCH do destaque do lead (só admin — a API responde 403 para os demais).

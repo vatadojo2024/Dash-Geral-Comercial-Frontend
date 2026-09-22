@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTheme } from "./ThemeProvider";
 
 // Hook para os ÚNICOS consumidores de cor em JS (gráficos recharts e células
 // do heatmap, que precisam de cor bruta em inline-style). Lê as MESMAS
 // variáveis CSS de globals.css (single source) via getComputedStyle, então
-// nunca há divergência com as classes Tailwind. Re-lê quando o tema muda.
+// nunca há divergência com as classes Tailwind. Tema escuro único: lê uma vez
+// após a montagem.
 
 const TOKENS = [
   "noite",
@@ -34,30 +34,29 @@ const TOKENS = [
 
 export type CorToken = (typeof TOKENS)[number];
 
-// Fallback (canais do modo escuro) para o primeiro render antes do efeito
-// rodar — espelha o :root de globals.css. Os gráficos são client-only, então
-// esse instante é praticamente invisível.
-const FALLBACK_DARK: Record<CorToken, string> = {
-  noite: "11 19 34",
-  painel: "19 29 48",
-  "painel-claro": "25 39 63",
-  borda: "48 65 95",
-  texto: "229 238 252",
-  "texto-sec": "147 164 195",
-  azul: "59 130 246",
-  "azul-claro": "86 145 255",
+// Fallback para o primeiro render, antes do efeito rodar — espelha o :root de
+// globals.css. Os gráficos são client-only, então esse instante é invisível.
+const FALLBACK: Record<CorToken, string> = {
+  noite: "20 18 21",
+  painel: "34 31 36",
+  "painel-claro": "46 42 48",
+  borda: "74 66 74",
+  texto: "255 255 255",
+  "texto-sec": "196 200 212",
+  azul: "196 60 68",
+  "azul-claro": "228 110 116",
   teal: "45 212 191",
   laranja: "245 158 11",
-  verde: "34 197 94",
+  verde: "52 211 153",
   rosa: "251 113 133",
   amarelo: "250 204 21",
   cinza: "148 163 184",
-  violeta: "167 139 250",
+  violeta: "250 176 176",
   "muito-quente": "251 113 133",
   quente: "245 158 11",
   "morno-alto": "250 204 21",
   "morno-baixo": "45 212 191",
-  frio: "86 145 255",
+  frio: "96 165 250",
   congelado: "148 163 184",
 };
 
@@ -67,17 +66,16 @@ export function rgb(canais: string, alpha?: number): string {
 }
 
 export function useThemeColors(): Record<CorToken, string> {
-  const { tema } = useTheme();
-  const [cores, setCores] = useState<Record<CorToken, string>>(FALLBACK_DARK);
+  const [cores, setCores] = useState<Record<CorToken, string>>(FALLBACK);
 
   useEffect(() => {
     const cs = getComputedStyle(document.documentElement);
     const proximo = {} as Record<CorToken, string>;
     for (const t of TOKENS) {
-      proximo[t] = cs.getPropertyValue(`--c-${t}`).trim() || FALLBACK_DARK[t];
+      proximo[t] = cs.getPropertyValue(`--c-${t}`).trim() || FALLBACK[t];
     }
     setCores(proximo);
-  }, [tema]);
+  }, []);
 
   return cores;
 }

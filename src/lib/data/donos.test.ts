@@ -77,7 +77,7 @@ describe("opcoesDeDono", () => {
     ]);
     expect(sdrs).toEqual([
       { id: "s1", nome: "Benhur" },
-      { id: SEM_SDR, nome: "Hana (IA)" },
+      { id: SEM_SDR, nome: "Sem SDR" },
     ]);
   });
 

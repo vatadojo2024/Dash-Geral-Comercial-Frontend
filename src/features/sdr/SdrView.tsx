@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   BookOpenCheck,
-  Bot,
   CalendarDays,
   Inbox,
   Percent,
@@ -36,6 +35,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
 import { ABAS_SDR, hrefDaAba, type AbaSdr } from "./abas";
+import type { RecorteLevantou } from "@/lib/sdr/oportunidades";
 import { AgendamentosPanel } from "./AgendamentosPanel";
 import { ChartsPanel } from "./ChartsPanel";
 import { ComissoesPanel } from "./ComissoesPanel";
@@ -52,7 +52,7 @@ const COR_STATUS = {
 } as const;
 
 function notaDeMetas(m: SdrMetrics): string {
-  if (!m.metas) return "Linha informativa — sem meta (IA de apoio)";
+  if (!m.metas) return "Linha informativa — sem meta";
   if (m.metasBatidas === 0) return "Nenhuma meta batida ainda";
   return `${["M1", "M1/M2", "M1/M2/M3"][m.metasBatidas - 1]} ${m.metasBatidas === 1 ? "batida" : "batidas"}`;
 }
@@ -77,7 +77,6 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-base font-semibold text-texto">
-              {m.sdr === "Hana" && <Bot className="h-4 w-4 text-violeta" aria-hidden />}
               {m.sdr}
               {destaque && (
                 <span className="rounded-full border border-azul/30 bg-azul/15 px-2 py-px text-[10px] font-medium text-azul-claro">
@@ -126,7 +125,7 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
   );
 }
 
-export function SdrView({ aba }: { aba: AbaSdr }) {
+export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: RecorteLevantou }) {
   const user = useSession();
   const hojeISO = new Date().toISOString().slice(0, 10);
   const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
@@ -145,7 +144,7 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
   );
 
   const insights = useMemo(
-    () => (dashboard ? getInsights(dashboard.sdrs) : []),
+    () => (dashboard ? getInsights(dashboard.sdrs.filter((s) => s.sdr !== "Hana")) : []),
     [dashboard],
   );
 
@@ -161,7 +160,7 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
       <div
         role="tablist"
         aria-label="Abas da produtividade"
-        className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-borda bg-painel p-1"
+        className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/5 p-1"
       >
         {ABAS_SDR.filter((a) => !a.soAdmin || user.role === "admin").map((a) => (
           <Link
@@ -170,8 +169,8 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
             href={hrefDaAba(a.aba)}
             aria-selected={aba === a.aba}
             className={cn(
-              "whitespace-nowrap rounded-lg px-4 py-1.5 text-sm font-medium transition-colors",
-              aba === a.aba ? "bg-azul/20 text-azul-claro" : "text-texto-sec hover:text-texto",
+              "nav-link whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium transition-all",
+              aba === a.aba ? "border-azul/50 bg-azul/15 text-texto" : "border-transparent text-texto",
             )}
           >
             {a.label}
@@ -188,7 +187,7 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
             id="mes-sdr"
             value={mes}
             onChange={(e) => setMesSelecionado(e.target.value)}
-            className="h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm text-texto"
+            className="h-9 rounded-xl border border-white/20 bg-white/5 px-2 text-sm text-texto"
           >
             {meses.map((m) => (
               <option key={m} value={m}>
@@ -207,7 +206,7 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
     return (
       <div className="space-y-4">
         {barraAbas}
-        {aba === "agendamentos" ? <AgendamentosPanel /> : <LevantouMaoPanel />}
+        {aba === "agendamentos" ? <AgendamentosPanel /> : <LevantouMaoPanel recorte={recorte} />}
       </div>
     );
   }
@@ -216,7 +215,7 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
     return (
       <div className="space-y-4" aria-label="Carregando produtividade SDR">
         {barraAbas}
-        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-9">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9">
           {Array.from({ length: 9 }).map((_, i) => (
             <Skeleton key={i} className="h-16 rounded-xl" />
           ))}
@@ -260,7 +259,8 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
     );
   }
 
-  const sdrs = dashboard.sdrs;
+  // A Hana (IA) não é exibida: cards, KPIs, gráficos, tabela e comissões só com o time.
+  const sdrs = dashboard.sdrs.filter((s) => s.sdr !== "Hana");
   const comMeta = sdrs.filter((s) => s.metas !== null);
   const totalAgendadas = sdrs.reduce((a, s) => a + s.callsAgendadas, 0);
   const totalRealizadas = sdrs.reduce((a, s) => a + s.callsRealizadas, 0);
@@ -296,7 +296,7 @@ export function SdrView({ aba }: { aba: AbaSdr }) {
           </p>
 
           {/* 6.3 — os 9 KPIs agregados do original */}
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-9">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9">
             <KpiChip icon={CalendarDays} rotulo="Calls agendadas" valor={String(totalAgendadas)} />
             <KpiChip icon={PhoneCall} rotulo="Calls realizadas" valor={String(totalRealizadas)} />
             <KpiChip icon={UserCheck2} rotulo="Leads qualificados" valor={String(totalQualificados)} />

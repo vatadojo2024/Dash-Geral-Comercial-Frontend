@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   agruparPorDono,
   altoValorPendente,
+  leadsDoRecorte,
   ehAltoValor,
   mostraSeloNinja,
   TIERS,
@@ -551,5 +552,36 @@ describe("avisos (V4)", () => {
     expect(textos[1]).toBe("Aplicaram supera assistiram — inconsistência de cálculo, avise o time técnico.");
     expect(textos[2]).toBe("Há taxa acima de 100% — verificar base.");
     expect(traduzirAvisos(null)).toEqual([]);
+  });
+});
+
+describe("recortes (sub-abas)", () => {
+  const leads = [
+    lead({ clint_contact_id: "1", nome: "Ana", origem: "ao_vivo" }),
+    lead({ clint_contact_id: "2", nome: "Bia", origem: "replay", convidado_resgate: true }),
+    lead({ clint_contact_id: "3", nome: "Caio", origem: "ao_vivo", convidado_resgate: true, assistiu_replay: true }),
+    lead({ clint_contact_id: "4", nome: "Dudu", origem: "replay", assistiu_ao_vivo: true }),
+  ];
+  const nomes = (ls: typeof leads) => ls.map((l) => l.nome);
+
+  it("cada recorte parte da resposta inteira, sem nova chamada", () => {
+    expect(nomes(leadsDoRecorte(leads, "geral"))).toEqual(["Ana", "Bia", "Caio", "Dudu"]);
+    expect(nomes(leadsDoRecorte(leads, "ao_vivo"))).toEqual(["Ana", "Caio"]);
+    expect(nomes(leadsDoRecorte(leads, "replay"))).toEqual(["Bia", "Dudu"]);
+    expect(nomes(leadsDoRecorte(leads, "resgate"))).toEqual(["Bia", "Caio"]);
+  });
+
+  it("filtros por marcador (todos exigidos) aplicam em série com o resgate", () => {
+    const f = (x: Parameters<typeof filtrarPendentes>[1]) => nomes(filtrarPendentes(leads, x));
+    expect(f({ tiers: [], marcadores: ["viu_replay"], busca: "" })).toEqual(["Caio"]);
+    expect(f({ tiers: [], marcadores: ["esteve_ao_vivo"], busca: "" })).toEqual(["Dudu"]);
+    expect(f({ tiers: [], marcadores: ["resgate", "viu_replay"], busca: "" })).toEqual(["Caio"]);
+    expect(f({ tiers: [], soResgate: true, busca: "" })).toEqual(["Bia", "Caio"]);
+  });
+
+  it("contrato: stage_desde é opcional (só o endpoint de não abordados manda)", () => {
+    const resp = { de: "x", ate: "x", eventos: [], totais: { pendentes: 0 }, gerado_em: "x", cache: "miss" };
+    const r = OportunidadesResponseSchema.safeParse({ ...resp, leads: [lead({ stage_desde: "2026-09-18T01:31:56.884Z" }), lead({})] });
+    expect(r.success && r.data.leads.map((l) => l.stage_desde)).toEqual(["2026-09-18T01:31:56.884Z", undefined]);
   });
 });

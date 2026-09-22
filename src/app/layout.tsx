@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "./providers";
+import { Fundo } from "@/components/layout/Fundo";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,17 +10,27 @@ export const metadata: Metadata = {
   description: "Mesa de decisão comercial: leads ranqueados por score.",
 };
 
-// Aplica o tema salvo ANTES da pintura, evitando flash do tema errado.
-// Default = "azul"; só usa o salvo se for um dos três temas válidos.
-const SCRIPT_ANTI_FLASH = `(function(){try{var v=localStorage.getItem('mdc-theme');var t=(v==='dark'||v==='light'||v==='azul')?v:'azul';document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='azul';}})();`;
+// Tipografia do design system: Inter no corpo, Plus Jakarta Sans nos títulos.
+// Servidas pelo next/font — sem request externo em runtime e sem flash de fonte.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: SCRIPT_ANTI_FLASH }} />
-      </head>
+    <html lang="pt-BR" className={`${inter.variable} ${jakarta.variable}`}>
       <body>
+        <Fundo />
         <Providers>{children}</Providers>
       </body>
     </html>

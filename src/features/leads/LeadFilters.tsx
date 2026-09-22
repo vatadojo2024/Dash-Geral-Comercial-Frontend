@@ -162,20 +162,6 @@ export function LeadFilters({ params, onChange, onLimpar, closers, sdrs }: Props
           />
         </div>
 
-        {user.role !== "closer" && (
-          <button
-            onClick={() => onChange("pool", params.get("pool") === "1" ? null : "1")}
-            aria-pressed={params.get("pool") === "1"}
-            className={`h-9 rounded-lg border px-3 text-sm font-medium transition-colors ${
-              params.get("pool") === "1"
-                ? "border-violeta/40 bg-violeta/15 text-violeta"
-                : "border-borda bg-painel-claro text-texto-sec hover:text-texto"
-            }`}
-          >
-            Pool da Hana
-          </button>
-        )}
-
         {ativos > 0 && (
           <Button variant="ghost" size="sm" onClick={onLimpar}>
             <X className="h-3.5 w-3.5" aria-hidden />

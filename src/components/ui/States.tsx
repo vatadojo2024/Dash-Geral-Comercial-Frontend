@@ -1,6 +1,9 @@
 import { AlertTriangle, Inbox, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 import { Button } from "./Button";
 
+// Estados vazios/erro no padrão do DS: ícone em círculo (.icon-circle) com o
+// ícone em text-lg, título "Bold M" e descrição "Regular S".
 export function EmptyState({
   titulo,
   descricao,
@@ -15,17 +18,11 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-12 text-center" role="status">
-      <span
-        className={
-          tom === "positivo"
-            ? "flex h-12 w-12 items-center justify-center rounded-full bg-verde/15"
-            : "flex h-12 w-12 items-center justify-center rounded-full bg-painel-claro"
-        }
-      >
-        <Icon className={tom === "positivo" ? "h-6 w-6 text-verde" : "h-6 w-6 text-texto-sec"} aria-hidden />
+      <span className={cn("icon-circle", tom === "positivo" && "border-sucesso-forte/30 bg-sucesso-forte/20")}>
+        <Icon className={cn("h-5 w-5", tom === "positivo" ? "text-sucesso" : "text-violeta")} aria-hidden />
       </span>
-      <p className="text-sm font-semibold text-texto">{titulo}</p>
-      {descricao && <p className="max-w-sm text-sm text-texto-sec">{descricao}</p>}
+      <p className="text-sm font-medium text-texto">{titulo}</p>
+      {descricao && <p className="max-w-sm text-xs opacity-70">{descricao}</p>}
     </div>
   );
 }
@@ -43,13 +40,13 @@ export function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-12 text-center" role="alert">
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-rosa/15">
-        <AlertTriangle className="h-6 w-6 text-rosa" aria-hidden />
+      <span className="icon-circle border-erro-forte/30 bg-erro-forte/20">
+        <AlertTriangle className="h-5 w-5 text-erro" aria-hidden />
       </span>
-      <p className="text-sm font-semibold text-texto">{titulo}</p>
-      {descricao && <p className="max-w-sm text-sm text-texto-sec">{descricao}</p>}
+      <p className="text-sm font-medium text-texto">{titulo}</p>
+      {descricao && <p className="max-w-sm text-xs opacity-70">{descricao}</p>}
       {onRetry && (
-        <Button variant="outline" size="sm" onClick={onRetry}>
+        <Button variant="secondary" size="sm" onClick={onRetry}>
           {retryLabel}
         </Button>
       )}

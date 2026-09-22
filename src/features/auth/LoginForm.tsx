@@ -4,7 +4,6 @@ import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, Eye, EyeOff, Flame, Lock, Mail } from "lucide-react";
 import { AuthError, loginComEmailSenha, type AuthMode } from "@/lib/auth/authClient";
-import { ThemeToggle } from "@/features/theme/ThemeToggle";
 import { Button } from "@/components/ui/Button";
 
 function CampoLogin({
@@ -59,23 +58,28 @@ function FormContent({ authMode }: { authMode: AuthMode }) {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-noite px-4 py-10">
-      <ThemeToggle className="absolute right-4 top-4" />
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-rosa/90">
-            <Flame className="h-6 w-6 text-noite" aria-hidden />
-          </span>
-          <div>
-            <h1 className="text-xl font-semibold text-texto">Mapa de Calor</h1>
-            <p className="text-sm text-texto-sec">Mesa de decisão comercial — Vata Dojo</p>
-          </div>
-        </div>
-
+    <main className="relative flex min-h-screen items-center justify-center px-4 py-10">
+      {/* Hero em camadas do DS: card base com glow atrás (deslocado) e o modal
+          de vidro na frente, com bordas em gradiente. */}
+      <div className="relative w-full max-w-md">
+        <div
+          aria-hidden
+          className="glow absolute inset-x-8 top-16 -z-10 h-2/3 translate-x-8 translate-y-10 rounded-modal bg-azul/30"
+        />
         <form
           onSubmit={entrar}
-          className="space-y-4 rounded-2xl border border-borda bg-painel p-6"
+          className="modal-surface modal-border relative flex w-full flex-col rounded-modal shadow-layered"
         >
+          <div className="flex items-center gap-4 pb-0 pl-6 pr-6 pt-6">
+            <span className="icon-circle shadow-layered">
+              <Flame className="h-5 w-5 text-violeta" aria-hidden />
+            </span>
+            <div>
+              <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">Mapa de Calor</h1>
+              <p className="text-sm opacity-80">Mesa de decisão comercial — Vata Dojo</p>
+            </div>
+          </div>
+          <div className="space-y-4 p-6">
           <CampoLogin id="email" rotulo="E-mail">
             <div className="relative">
               <Mail
@@ -89,7 +93,7 @@ function FormContent({ authMode }: { authMode: AuthMode }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="voce@vatadojo.com.br"
-                className="h-10 w-full rounded-lg border border-borda bg-noite pl-9 pr-3 text-sm text-texto placeholder:text-texto-sec/60"
+                className="h-10 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto transition-colors placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
               />
             </div>
           </CampoLogin>
@@ -107,13 +111,13 @@ function FormContent({ authMode }: { authMode: AuthMode }) {
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 placeholder="Sua senha"
-                className="h-10 w-full rounded-lg border border-borda bg-noite pl-9 pr-10 text-sm text-texto placeholder:text-texto-sec/60"
+                className="h-10 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-10 text-sm text-texto transition-colors placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
               />
               <button
                 type="button"
                 onClick={() => setMostrarSenha((v) => !v)}
                 aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-texto-sec hover:text-texto"
+                className="icon-button absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
               >
                 {mostrarSenha ? (
                   <EyeOff className="h-4 w-4" aria-hidden />
@@ -127,16 +131,20 @@ function FormContent({ authMode }: { authMode: AuthMode }) {
           {erro && (
             <p
               role="alert"
-              className="flex items-start gap-2 rounded-lg border border-rosa/30 bg-rosa/10 px-3 py-2 text-xs text-rosa"
+              className="flex items-start gap-2 rounded-xl border border-erro-forte/30 bg-erro-forte/20 px-3 py-2 text-xs text-erro"
             >
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
               {erro}
             </p>
           )}
 
-          <Button type="submit" loading={entrando} className="w-full">
-            Entrar
-          </Button>
+          </div>
+          {/* Action bar do modal: p-6 pt-0, borda superior white/10 */}
+          <div className="border-t border-white/10 p-6 pt-0">
+            <Button type="submit" loading={entrando} className="mt-6 w-full">
+              Entrar
+            </Button>
+          </div>
         </form>
       </div>
     </main>

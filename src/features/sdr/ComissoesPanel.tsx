@@ -62,8 +62,7 @@ function CardComissaoSdr({
           </p>
           <p className="mt-2 flex items-start gap-2 text-sm text-texto-sec">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            IA de apoio — sem comissão. As reuniões e vendas da Hana ficam fora
-            dos totais do time.
+            Sem comissão — linha informativa, fora dos totais do time.
           </p>
           <div className="mt-3">
             <Linha rotulo="Reuniões qualificadas" valor={String(m.qualificadosBase)} />
@@ -197,7 +196,7 @@ export function ComissoesPanel({
       <p className="text-xs text-texto-sec" role="status">
         Regras oficiais: R$ 40/60/80/100 por reunião qualificada realizada conforme o
         patamar da meta (retroativo) · R$ 20 a cada 3 calls QC · % sobre as vendas
-        originadas dos agendamentos. Total do time (sem a Hana):{" "}
+        originadas dos agendamentos. Total do time:{" "}
         <span className="font-semibold text-texto">{formatarBRLExato(totalTime)}</span>
       </p>
 

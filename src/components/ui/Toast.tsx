@@ -6,9 +6,8 @@ import { cn } from "@/lib/utils/cn";
 
 // ---------------------------------------------------------------------------
 // Toast enxuto e CONTROLADO: quem chama guarda a mensagem em estado e monta o
-// componente. Sem provider/fila global — o app ainda tem um único ponto de uso
-// (erro ao alternar o destaque) e um contexto global seria infra a mais.
-// Visual 100% em tokens da paleta (painel/borda/rosa), como o ErrorState.
+// componente. Visual = "Notice Card" do DS (ícone em círculo colorido à
+// esquerda, texto à direita, sombra em camadas) + Icon Button para fechar.
 // ---------------------------------------------------------------------------
 
 export function Toast({
@@ -32,18 +31,15 @@ export function Toast({
       role="alert"
       aria-live="assertive"
       className={cn(
-        "fixed bottom-4 right-4 z-50 flex max-w-sm items-start gap-2.5 rounded-xl border border-rosa/40 bg-painel px-3.5 py-3 shadow-lg",
+        "glass-effect fixed bottom-4 right-4 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-white/10 bg-painel/90 p-4 shadow-layered",
         className,
       )}
     >
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rosa" aria-hidden />
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-erro-forte/20">
+        <AlertTriangle className="h-3.5 w-3.5 text-erro" aria-hidden />
+      </span>
       <p className="text-sm text-texto">{mensagem}</p>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Fechar aviso"
-        className="-mr-1 rounded-md p-1 text-texto-sec hover:bg-painel-claro hover:text-texto"
-      >
+      <button type="button" onClick={onClose} aria-label="Fechar aviso" className="icon-button -mr-1 -mt-1">
         <X className="h-3.5 w-3.5" aria-hidden />
       </button>
     </div>

@@ -13,7 +13,7 @@ import { nomeDoUsuario } from "@/lib/mock/users";
 
 export type OpcaoDono = { id: string; nome: string };
 
-// Sentinela do filtro de SDR para os leads SEM sdr individual (Hana / pool).
+// Sentinela do filtro de SDR para os leads SEM sdr individual (pool).
 export const SEM_SDR = "sem_sdr";
 
 function distintos(ids: (string | null | undefined)[]): string[] {
@@ -41,13 +41,11 @@ function opcoesDe(
     .sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
-// Opção "Hana"/"Sem SDR" quando houver leads sem sdr_id. Rótulo "Hana (IA)" se
-// algum desses leads é do pool da Hana; senão "Sem SDR". value = SEM_SDR.
+// Opção "Sem SDR" quando houver leads sem sdr_id (inclui os do pool). value = SEM_SDR.
 export function opcaoSemSdr(leads: LeadListItem[]): OpcaoDono | null {
   const semSdr = leads.filter((l) => !l.sdr_id);
   if (semSdr.length === 0) return null;
-  const hana = semSdr.some((l) => l.sdr_pool);
-  return { id: SEM_SDR, nome: hana ? "Hana (IA)" : "Sem SDR" };
+  return { id: SEM_SDR, nome: "Sem SDR" };
 }
 
 export function opcoesDeDono(
@@ -61,7 +59,7 @@ export function opcoesDeDono(
   const sem = opcaoSemSdr(leads);
   return {
     closers: opcoesDe(leads, (l) => l.closer_id, (l) => l.closer_nome, mapa),
-    // A opção "Hana/Sem SDR" entra no fim da lista de SDRs (quando há).
+    // A opção "Sem SDR" entra no fim da lista de SDRs (quando há).
     sdrs: sem ? [...sdrs, sem] : sdrs,
   };
 }

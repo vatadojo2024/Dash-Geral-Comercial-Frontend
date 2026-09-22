@@ -41,7 +41,6 @@ type Filtros = {
   closer: string;
   sdr: string;
   produto: string;
-  pool: boolean;
   // Filtro pronto "só os destacados" — o atalho para achar os leads com estrela
   // sem digitar nada. Como os demais, redesenha mapa, cards e ações.
   destaque: boolean;
@@ -51,7 +50,6 @@ const SEM_FILTROS: Filtros = {
   closer: "",
   sdr: "",
   produto: "",
-  pool: false,
   destaque: false,
 };
 
@@ -85,7 +83,6 @@ export function DashboardView() {
       if (!leadDoSdr(l, filtros.sdr)) return false; // inclui a sentinela "sem SDR"
       if (filtros.produto && chaveDoProduto(l.produto_sugerido) !== filtros.produto)
         return false;
-      if (filtros.pool && !l.sdr_pool) return false;
       if (filtros.destaque && !l.destaque) return false;
       return true;
     });
@@ -131,7 +128,6 @@ export function DashboardView() {
     filtros.closer !== "" ||
     filtros.sdr !== "" ||
     filtros.produto !== "" ||
-    filtros.pool ||
     filtros.destaque;
 
   function alternarRecorte(novo: Recorte) {
@@ -304,20 +300,6 @@ export function DashboardView() {
           />
           Destaques
         </button>
-
-        {user.role !== "closer" && (
-          <button
-            onClick={() => setFiltros((f) => ({ ...f, pool: !f.pool }))}
-            aria-pressed={filtros.pool}
-            className={`h-9 rounded-lg border px-3 text-sm font-medium transition-colors ${
-              filtros.pool
-                ? "border-violeta/40 bg-violeta/15 text-violeta"
-                : "border-borda bg-painel-claro text-texto-sec hover:text-texto"
-            }`}
-          >
-            Pool da Hana
-          </button>
-        )}
 
         {temFiltro && (
           <Button variant="ghost" size="sm" onClick={() => setFiltros(SEM_FILTROS)}>

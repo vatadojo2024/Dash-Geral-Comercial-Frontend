@@ -289,7 +289,7 @@ export function VisaoGeralView() {
               );
             })}
             <p className="text-xs text-texto-sec">
-              Qualificados do time inteiro (inclui Hana) no mês corrente.
+              Qualificados do time inteiro no mês corrente.
             </p>
           </CardContent>
         </Card>

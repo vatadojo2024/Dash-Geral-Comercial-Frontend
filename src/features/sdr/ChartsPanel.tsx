@@ -83,7 +83,7 @@ export function ChartsPanel({ sdrs }: { sdrs: SdrMetrics[] }) {
     count: s.noShowCount,
   }));
 
-  // Hana fica fora do gráfico de meta/gap (não tem meta)
+  // SDR sem meta fica fora do gráfico de meta/gap
   const metaGap = sdrs
     .filter((s) => s.metas !== null)
     .map((s) => ({
@@ -142,7 +142,7 @@ export function ChartsPanel({ sdrs }: { sdrs: SdrMetrics[] }) {
       <Card className="lg:col-span-2">
         <CardHeader
           title="Atingimento de meta e gap"
-          subtitle="Meta atual vs. qualificadas, com o gap em área (Hana fora — sem meta)"
+          subtitle="Meta atual vs. qualificadas, com o gap em área"
         />
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
