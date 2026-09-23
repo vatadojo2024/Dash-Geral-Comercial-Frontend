@@ -33,7 +33,13 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { fetchNaoAbordados, fetchOportunidades, fetchPresentes, OportunidadesError } from "@/lib/data/dataClient";
+import {
+  fetchInscritos,
+  fetchNaoAbordados,
+  fetchOportunidades,
+  fetchPresentes,
+  OportunidadesError,
+} from "@/lib/data/dataClient";
 import {
   rotuloCiclo,
 } from "@/lib/sdr/ciclo";
@@ -42,6 +48,7 @@ import {
   altoValorPendente,
   blocosDoFunil,
   blocosDoResgate,
+  blocosFunilAoVivo,
   leadsDoRecorte,
   celulaMatriz,
   chaveDaLinha,
@@ -101,11 +108,21 @@ import {
   type PresentesResponse,
 } from "@/lib/sdr/presentesSemAplicar";
 import { rotuloMinutos } from "@/lib/sdr/retencao";
+import {
+  contarSinais,
+  csvDeInscritos,
+  filtrarInscritos,
+  SINAIS,
+  sinaisDoInscrito,
+  type InscritosResponse,
+  type SinalChave,
+} from "@/lib/sdr/inscritos";
 import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
 import { DonoBadge, MqlBadge, OrigemBadge, SeloAgendou, SeloNinja } from "@/components/domain/Badges";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils/cn";
 import { hrefDoRecorte, RECORTES_LEVANTOU } from "./abas";
 import { KpiChip } from "./KpiChip";
@@ -155,6 +172,16 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     queryKey: ["presentes-sem-aplicar", periodo.de, periodo.ate],
     queryFn: () => fetchPresentes(periodo.de, periodo.ate),
     enabled: !erroIntervalo && ehPresentes,
+    retry: false,
+  });
+  // Visão geral: além de /oportunidades (matriz, funis), a lista COMPLETA dos
+  // inscritos vem de /inscritos (contrato provisório). Se falhar (rota ainda
+  // não publicada), a Visão geral mostra os pendentes e avisa — nunca quebra.
+  const ehGeral = recorte === "geral";
+  const inscritos = useQuery({
+    queryKey: ["inscritos", periodo.de, periodo.ate],
+    queryFn: () => fetchInscritos(periodo.de, periodo.ate),
+    enabled: !erroIntervalo && ehGeral,
     retry: false,
   });
   const { error, isLoading, isFetching, isError, refetch } = ehNaoAbordados
@@ -236,9 +263,15 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
           key={recorte}
           recorte={recorte}
           data={data}
+          inscritos={ehGeral ? inscritos.data ?? null : null}
+          inscritosIndisponivel={ehGeral && inscritos.isError}
+          inscritosCarregando={ehGeral && inscritos.isLoading}
           periodo={periodo}
-          atualizando={isFetching}
-          onAtualizar={() => refetch()}
+          atualizando={isFetching || (ehGeral && inscritos.isFetching)}
+          onAtualizar={() => {
+            refetch();
+            if (ehGeral) inscritos.refetch();
+          }}
         />
       )}
 
@@ -291,12 +324,19 @@ const VAZIO_RECORTE: Record<RecorteOportunidades, { titulo: string; descricao: s
 function ConteudoRecorte({
   recorte,
   data,
+  inscritos = null,
+  inscritosIndisponivel = false,
+  inscritosCarregando = false,
   periodo,
   atualizando,
   onAtualizar,
 }: {
   recorte: RecorteOportunidades;
   data: OportunidadesResponse;
+  // Lista completa dos inscritos (só na Visão geral; null = sem dado).
+  inscritos?: InscritosResponse | null;
+  inscritosIndisponivel?: boolean;
+  inscritosCarregando?: boolean;
   periodo: { de: string; ate: string };
   atualizando: boolean;
   onAtualizar: () => void;
@@ -451,7 +491,7 @@ function ConteudoRecorte({
               ) : (
                 <Kpis data={data} />
               )}
-              {data.funis && <FunisDoCiclo funis={data.funis} />}
+              {data.funis && <FunisDoCiclo funis={data.funis} resumo={data.resumo} />}
               {data.resgate && <FunilResgate resgate={data.resgate} />}
             </>
           ) : (
@@ -462,6 +502,18 @@ function ConteudoRecorte({
           )}
 
 
+          {recorte === "geral" && inscritos ? (
+            <ListaInscritos data={inscritos} periodo={periodo} />
+          ) : recorte === "geral" && inscritosCarregando ? (
+            <Skeleton className="h-72 rounded-2xl" />
+          ) : (
+            <>
+              {recorte === "geral" && inscritosIndisponivel && (
+                <p className="ds-card px-6 py-3 text-xs text-texto-sec" role="note">
+                  A lista completa dos inscritos ainda não está disponível no backend (rota
+                  /api/eventos/inscritos). Abaixo, só os pendentes: quem levantou a mão e não agendou.
+                </p>
+              )}
           {data.totais.pendentes === 0 || leads.length === 0 ? (
             <Card>
               <EmptyState
@@ -624,6 +676,8 @@ function ConteudoRecorte({
                   )}
                 </CardContent>
               </Card>
+            </>
+          )}
             </>
           )}
 
@@ -1375,6 +1429,257 @@ function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: Tota
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Visão geral: lista COMPLETA dos inscritos do ciclo (todas as classificações),
+// de /api/eventos/inscritos — contrato provisório. Chips de sinal do ciclo
+// (presente, aplicou, levantou a mão, agendou, replay, resgate, sem atendimento)
+// combinam em E; classificação, dono e busca como nos outros recortes.
+// ---------------------------------------------------------------------------
+
+type FiltrosInscritosSalvos = {
+  tiers: TierChave[];
+  donos: string[];
+  sinais: SinalChave[];
+  visao: Visao;
+  busca: string;
+};
+const memoriaFiltrosInscritos: { salvo: FiltrosInscritosSalvos | null } = { salvo: null };
+
+function ListaInscritos({ data, periodo }: { data: InscritosResponse; periodo: { de: string; ate: string } }) {
+  const salvo = memoriaFiltrosInscritos.salvo;
+  const [tiersSel, setTiersSel] = useState<TierChave[]>(salvo?.tiers ?? []);
+  const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
+  const [sinaisSel, setSinaisSel] = useState<SinalChave[]>(salvo?.sinais ?? []);
+  const [visao, setVisao] = useState<Visao>(salvo?.visao ?? "lista");
+  const [busca, setBusca] = useState(salvo?.busca ?? "");
+  const [pagina, setPagina] = useState(1);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    memoriaFiltrosInscritos.salvo = { tiers: tiersSel, donos: donosSel, sinais: sinaisSel, visao, busca };
+  }, [tiersSel, donosSel, sinaisSel, visao, busca]);
+
+  const leads = data.leads;
+  const contagem = useMemo(() => contarPorTier(leads), [leads]);
+  const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
+  const contagemSinais = useMemo(() => contarSinais(leads), [leads]);
+  const filtrados = useMemo(
+    () => filtrarInscritos(leads, { tiers: tiersSel, donos: donosSel, sinais: sinaisSel, busca }),
+    [leads, tiersSel, donosSel, sinaisSel, busca],
+  );
+  const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
+  const multiEvento = data.eventos.length > 1;
+  const selecionado = useMemo(
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
+  useEffect(() => setPagina(1), [tiersSel, donosSel, sinaisSel, busca, data]);
+
+  function alternarTier(chave: TierChave) {
+    setTiersSel((atual) => (atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave]));
+  }
+  function alternarDono(chave: string) {
+    setDonosSel((atual) => (atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave]));
+  }
+  function alternarSinal(chave: SinalChave) {
+    setSinaisSel((atual) => (atual.includes(chave) ? atual.filter((x) => x !== chave) : [...atual, chave]));
+  }
+  const soAltoValor =
+    tiersSel.length === TIERS_ALTO_VALOR.length && TIERS_ALTO_VALOR.every((t) => tiersSel.includes(t));
+
+  function exportarCsv() {
+    const csv = "\uFEFF" + csvDeInscritos(filtrados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `inscritos_${periodo.de}_${periodo.ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (leads.length === 0) {
+    return (
+      <Card>
+        <EmptyState
+          icon={Users}
+          titulo="Nenhum inscrito neste período"
+          descricao={data.eventos.length > 0 ? `Tag consultada: ${data.eventos.join(", ")}.` : "Nenhuma tag WG no período."}
+        />
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader
+          title="Todos os inscritos por classificação"
+          subtitle="Todas as classificações, inclusive sem classificação. Clique numa barra ou num chip para filtrar; os chips de sinal combinam (todos exigidos)."
+        />
+        <CardContent className="space-y-4">
+          <FiltroClassificacao
+            contagem={contagem}
+            selecionados={tiersSel}
+            soAltoValor={soAltoValor}
+            onAlternar={alternarTier}
+            onAltoValor={() => setTiersSel(soAltoValor ? [] : [...TIERS_ALTO_VALOR])}
+            onLimpar={() => setTiersSel([])}
+          />
+          <FiltroDono opcoes={opcoesDono} selecionados={donosSel} onAlternar={alternarDono} onLimpar={() => setDonosSel([])} />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+              <Radio className="h-3.5 w-3.5" aria-hidden />
+              Sinais do ciclo:
+            </span>
+            <Chips
+              rotulo="Filtrar por sinal do ciclo"
+              opcoes={SINAIS.map((s) => ({ chave: s.chave, label: s.label, contagem: contagemSinais[s.chave], classeAtivo: s.classe }))}
+              selecionados={sinaisSel}
+              onAlternar={(chave) => alternarSinal(chave as SinalChave)}
+            >
+              {sinaisSel.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSinaisSel([])}
+                  className="text-xs text-texto-sec underline-offset-2 hover:text-texto hover:underline"
+                >
+                  Limpar
+                </button>
+              )}
+            </Chips>
+          </div>
+          <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title={`Todos os inscritos${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
+          subtitle={`${filtrados.length} de ${leads.length} ${leads.length === 1 ? "inscrito" : "inscritos"} · ordem do backend`}
+          action={
+            <Button variant="outline" size="sm" onClick={exportarCsv} disabled={filtrados.length === 0}>
+              <Download className="h-3.5 w-3.5" aria-hidden />
+              Exportar CSV
+            </Button>
+          }
+        />
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="relative w-full max-w-sm">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec" aria-hidden />
+              <input
+                type="search"
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome, e-mail ou telefone"
+                aria-label="Buscar inscrito"
+                className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
+              />
+            </div>
+            <Alternador<Visao>
+              rotulo="Visão da lista"
+              valor={visao}
+              onChange={setVisao}
+              opcoes={[
+                { valor: "lista", label: "Lista" },
+                { valor: "por_sdr", label: "Por SDR" },
+              ]}
+            />
+          </div>
+
+          {filtrados.length === 0 ? (
+            <EmptyState titulo="Nenhum inscrito neste recorte" descricao="Ajuste os chips de classificação, de dono, de sinal ou a busca." />
+          ) : visao === "lista" ? (
+            <ListaPendentes
+              leads={filtrados}
+              pagina={pagina}
+              onPagina={setPagina}
+              multiEvento={multiEvento}
+              ordenacao={null}
+              onOrdenar={() => {}}
+              onAbrir={setSelecionadoId}
+              ordenavel={false}
+              comSinais
+            />
+          ) : (
+            <div className="space-y-5">
+              {grupos.map((g) => (
+                <section key={g.chave} aria-label={`Inscritos de ${g.nome}`}>
+                  <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borda/60 pb-1.5">
+                    <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                      <UserRound className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
+                      {g.nome}
+                    </h3>
+                    <span className="text-xs text-texto-sec">
+                      <span className="font-semibold tabular-nums text-texto">{g.leads.length}</span>{" "}
+                      {g.leads.length === 1 ? "inscrito" : "inscritos"}
+                      {" · "}
+                      <span className="font-semibold tabular-nums text-texto">{g.altoValor}</span> alto valor
+                    </span>
+                  </header>
+                  <ListaPendentes
+                    leads={g.leads}
+                    pagina={1}
+                    onPagina={() => {}}
+                    multiEvento={multiEvento}
+                    ordenacao={null}
+                    onOrdenar={() => {}}
+                    onAbrir={setSelecionadoId}
+                    ordenavel={false}
+                    paginar={false}
+                    semColunaDono
+                    comSinais
+                  />
+                </section>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      {selecionado && <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />}
+    </>
+  );
+}
+
+// Chips (só leitura) com os sinais do inscrito no ciclo.
+function SinaisCelula({ lead, vazio = "—" }: { lead: LeadPendente; vazio?: string }) {
+  const sinais = sinaisDoInscrito(lead);
+  if (sinais.length === 0) return <span className="text-xs text-texto-sec/60">{vazio}</span>;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {sinais.map((s) => (
+        <span key={s.chave} title={s.label} className={cn("tag px-1.5 py-px", s.classe)}>
+          {s.curto}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// Fileira de cards com um rótulo curto à esquerda ("Sem filtro", "Qualificados"):
+// deixa claro de que base cada grupo de números vem.
+function FileiraCards({
+  rotulo,
+  descricao,
+  children,
+}: {
+  rotulo: string;
+  descricao: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 flex flex-wrap items-baseline gap-x-2 px-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-texto">{rotulo}</span>
+        <span className="text-[11px] text-texto-sec">{descricao}</span>
+      </p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">{children}</div>
+    </div>
+  );
+}
+
 // Cards com os números do recorte selecionado (no lugar da matriz completa).
 // Fonte: a linha da matriz do recorte ou o bloco `resgate`. A "% agendaram" é a
 // taxa de agendamento do backend.
@@ -1389,6 +1694,71 @@ function CardsDoRecorte({
 }) {
   const altoValor = altoValorPendente(base);
   const grade = "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5";
+
+  // Ao vivo com o bloco `resumo`: mesma leitura da Visão geral — uma fileira
+  // SEM filtro (base bruta) e outra só dos QUALIFICADOS (matriz.ao_vivo).
+  if (recorte === "ao_vivo" && data.resumo && data.matriz) {
+    const r = data.resumo;
+    const l = data.matriz.ao_vivo;
+    const bruto = r.inscritos;
+    const presentes = r.presentes_ao_vivo;
+    const pctDe = (parte: number | null | undefined, todo: number | null | undefined) =>
+      parte != null && todo ? `${formatarPct(pct(parte, todo))}` : null;
+    return (
+      <div className="space-y-3">
+        <FileiraCards rotulo="Sem filtro" descricao="todos com a tag do evento, inclusive QC e desqualificados">
+          <KpiChip icon={Users} rotulo="Inscritos" valor={celulaMatriz(bruto)} detalhe="todos com a tag do evento" filtro="sem filtro" />
+          <KpiChip
+            icon={Radio}
+            rotulo="Assistiram ao vivo"
+            valor={celulaMatriz(presentes)}
+            detalhe={pctDe(presentes, bruto) ? `${pctDe(presentes, bruto)} dos inscritos` : undefined}
+            filtro="sem filtro"
+          />
+          <KpiChip
+            icon={Hand}
+            rotulo="Aplicaram"
+            valor={celulaMatriz(r.aplicaram)}
+            detalhe={pctDe(r.aplicaram, presentes) ? `${pctDe(r.aplicaram, presentes)} dos que assistiram` : "durante o evento"}
+            filtro="aplicaram durante o evento · sem filtro"
+          />
+          {r.qualificados_presentes != null && (
+            <KpiChip
+              icon={Eye}
+              rotulo="Assistiram · MQL+ ou acima"
+              valor={String(r.qualificados_presentes)}
+              detalhe={pctDe(r.qualificados_presentes, presentes) ? `${pctDe(r.qualificados_presentes, presentes)} dos que assistiram` : undefined}
+              filtro="MQL+ ou acima"
+            />
+          )}
+        </FileiraCards>
+        <FileiraCards rotulo="Qualificados" descricao="quem levantou a mão — só quem se qualifica recebe a tag">
+          <KpiChip
+            icon={Hand}
+            rotulo="Levantaram a mão"
+            valor={celulaMatriz(l.aplicaram)}
+            detalhe={pctDe(l.aplicaram, r.qualificados_presentes ?? presentes) ? `${pctDe(l.aplicaram, r.qualificados_presentes ?? presentes)} ${r.qualificados_presentes != null ? "dos MQL+ que assistiram" : "dos que assistiram"}` : undefined}
+            filtro="levantaram a mão"
+          />
+          <KpiChip
+            icon={CalendarCheck2}
+            rotulo="Agendaram"
+            valor={celulaMatriz(l.agendaram)}
+            detalhe={`${formatarTaxa(l.taxa_agendamento)} de conversão`}
+            filtro="qualificados"
+          />
+          <KpiChip icon={Hourglass} rotulo="Pendentes" valor={celulaMatriz(l.pendentes)} detalhe="levantaram a mão e não agendaram" filtro="qualificados" destaque />
+          <KpiChip
+            icon={Gem}
+            rotulo="Alto valor pendente"
+            valor={celulaMatriz(l.alto_valor_pendente ?? altoValor)}
+            detalhe="entre os pendentes"
+            filtro="UMQL+ · UMQL · HMQL"
+          />
+        </FileiraCards>
+      </div>
+    );
+  }
 
   if (recorte === "ao_vivo" || recorte === "replay") {
     const l = recorte === "ao_vivo" ? data.matriz?.ao_vivo : data.matriz?.replay;
@@ -1464,7 +1834,7 @@ function CardsDoRecorte({
 function FunilDoRecorte({ recorte, data }: { recorte: RecorteOportunidades; data: OportunidadesResponse }) {
   switch (recorte) {
     case "ao_vivo":
-      return data.funis ? <FunilAoVivo funis={data.funis} /> : null;
+      return data.funis ? <FunilAoVivo funis={data.funis} resumo={data.resumo} /> : null;
     case "replay":
       return data.funis ? <FunilReplay funis={data.funis} /> : null;
     case "resgate":
@@ -1556,6 +1926,7 @@ const COR_ETAPA: Record<string, string> = {
   convidados: "bg-azul/25 text-azul-claro",
   acessaram: "bg-azul/25 text-azul-claro",
   assistiram: "bg-violeta/25 text-violeta",
+  assistiram_mql: "bg-violeta/40 text-violeta",
   aplicaram: "bg-teal/25 text-teal",
   agendaram: "bg-verde/25 text-verde",
   pendentes: "bg-laranja/20 text-laranja",
@@ -1626,15 +1997,32 @@ function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
 // degraus vêm prontos do backend; as taxas são calculadas no front. Replay sem
 // nenhum dado é renderizado com zeros + nota — não é escondido, para o time
 // ver que o dado não chegou.
-function FunilAoVivo({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
+function FunilAoVivo({
+  funis,
+  resumo,
+}: {
+  funis: NonNullable<OportunidadesResponse["funis"]>;
+  resumo?: ResumoEvento | null;
+}) {
+  const completo = resumo?.presentes_ao_vivo != null;
+  const temMql = completo && resumo?.qualificados_presentes != null;
   return (
     <Card>
       <CardHeader
         title="Funil ao vivo — Qualificados"
-        subtitle="Quem se inscreveu e participou ao vivo; “Levantaram a mão” é a tag Levantou a Mão, que só os qualificados recebem."
+        subtitle={
+          completo
+            ? `Todos que assistiram ao vivo${temMql ? ", os MQL+ ou acima entre eles" : ""} e, daí, só os qualificados: “Levantaram a mão” é a tag Levantou a Mão, que só quem se qualifica recebe.`
+            : "Quem se inscreveu e participou ao vivo; “Levantaram a mão” é a tag Levantou a Mão, que só os qualificados recebem."
+        }
       />
-      <CardContent>
-        <FunilBlocos blocos={blocosDoFunil(funis.ao_vivo.degraus, "ao_vivo")} />
+      <CardContent className="space-y-2">
+        <FunilBlocos blocos={blocosFunilAoVivo(funis.ao_vivo.degraus, resumo)} />
+        {completo && !temMql && (
+          <p className="text-[11px] text-texto-sec/80" role="note">
+            O degrau “MQL+ ou acima que assistiram” entra quando o backend enviar resumo.qualificados_presentes.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -1657,10 +2045,16 @@ function FunilReplay({ funis }: { funis: NonNullable<OportunidadesResponse["funi
   );
 }
 
-function FunisDoCiclo({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
+function FunisDoCiclo({
+  funis,
+  resumo,
+}: {
+  funis: NonNullable<OportunidadesResponse["funis"]>;
+  resumo?: ResumoEvento | null;
+}) {
   return (
     <div className="space-y-4">
-      <FunilAoVivo funis={funis} />
+      <FunilAoVivo funis={funis} resumo={resumo} />
       <FunilReplay funis={funis} />
     </div>
   );
@@ -2325,6 +2719,12 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
             </LinhaDetalhe>
           )}
 
+          {(lead.levantou_mao != null || lead.aplicou_ao_vivo != null) && (
+            <LinhaDetalhe rotulo="Sinais do ciclo">
+              <SinaisCelula lead={lead} vazio="Inscrito sem nenhum sinal neste ciclo." />
+            </LinhaDetalhe>
+          )}
+
           {(lead.minutos_assistidos != null || lead.percentual_assistido != null) && (
             <LinhaDetalhe rotulo="Presença ao vivo">
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -2558,6 +2958,7 @@ function ListaPendentes({
   semBadgeOrigem = false,
   comParadoDesde = false,
   comAssistido = false,
+  comSinais = false,
 }: {
   leads: LeadPendente[];
   pagina: number;
@@ -2578,6 +2979,8 @@ function ListaPendentes({
   comParadoDesde?: boolean;
   // Recorte "Presentes que não aplicaram": coluna com o tempo assistido ao vivo.
   comAssistido?: boolean;
+  // Lista completa dos inscritos: coluna com os sinais do ciclo (chips).
+  comSinais?: boolean;
 }) {
   const paginar = permitePaginar && leads.length > TAMANHO_PAGINA;
   const th = (rotulo: string, campo: CampoOrdenacao) =>
@@ -2602,6 +3005,7 @@ function ListaPendentes({
               <th className="px-2 py-2 text-left">{th("Nome", "nome")}</th>
               <th className="px-2 py-2 text-left">{th("MQL", "tier")}</th>
               {comAssistido && <th className="whitespace-nowrap px-2 py-2 text-left font-medium">Assistiu ao vivo</th>}
+              {comSinais && <th className="min-w-[200px] px-2 py-2 text-left font-medium">Sinais do ciclo</th>}
               {comOrigem && (
                 <th className="px-2 py-2 text-left">
                   {semBadgeOrigem ? <span className="font-medium">Sinais</span> : th("Origem", "origem")}
@@ -2626,12 +3030,17 @@ function ListaPendentes({
                   <span className="inline-flex flex-wrap items-center gap-1">
                     <MqlBadge lead={l} size="sm" />
                     <SeloNinja lead={l} />
-                    <SeloAgendou lead={l} />
+                    {!comSinais && <SeloAgendou lead={l} />}
                   </span>
                 </td>
                 {comAssistido && (
                   <td className="whitespace-nowrap px-2 py-2">
                     <Assistido lead={l} />
+                  </td>
+                )}
+                {comSinais && (
+                  <td className="px-2 py-2">
+                    <SinaisCelula lead={l} />
                   </td>
                 )}
                 {comOrigem && (
@@ -2702,8 +3111,9 @@ function ListaPendentes({
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <MqlBadge lead={l} size="sm" />
                   <SeloNinja lead={l} />
-                  <SeloAgendou lead={l} />
+                  {!comSinais && <SeloAgendou lead={l} />}
                   {comAssistido && <Assistido lead={l} />}
+                  {comSinais && <SinaisCelula lead={l} />}
                   {comOrigem && <OrigemCelula lead={l} semBadge={semBadgeOrigem} />}
                   {!semColunaDono && <DonoBadge dono={l.dono} size="sm" />}
                   {comParadoDesde && <ParadoDesde iso={l.stage_desde} />}

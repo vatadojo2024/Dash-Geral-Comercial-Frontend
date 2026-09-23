@@ -57,6 +57,10 @@ export const LeadPendenteSchema = z
     percentual_assistido: z.number().nullish(),
     minutos_assistidos: z.number().nullish(),
     ja_agendou: z.boolean().nullish(),
+    // Só o endpoint de inscritos (lista completa da Visão geral) manda:
+    // aplicou durante o evento (tag Pós WG) e levantou a mão (tag Levantou a Mão).
+    aplicou_ao_vivo: z.boolean().nullish(),
+    levantou_mao: z.boolean().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
@@ -156,6 +160,9 @@ export const ResumoEventoSchema = z
     aplicaram: z.number().int().nullish(),
     qualificados_aplicaram: z.number().int().nullish(),
     qualificados_sem_aplicar: z.number().int().nullish(),
+    // MQL+ ou acima que ASSISTIRAM ao vivo (pedido ao backend em 23/09; opcional
+    // até chegar — o funil pula o degrau quando falta).
+    qualificados_presentes: z.number().int().nullish(),
     fora_dos_qualificados: z
       .object({ qc: z.number().int().nullish(), desqualificados: z.number().int().nullish() })
       .passthrough()
@@ -296,6 +303,63 @@ export function blocosDoResgate(r: Resgate): BlocoFunil[] {
     ],
     "resgate",
   );
+}
+
+// Funil ao vivo COMPLETO (com o bloco `resumo`): começa em todos que assistiram
+// (sem filtro), passa pelos MQL+ que assistiram (quando o backend manda) e daí
+// segue só com os qualificados: levantaram a mão → agendaram → pendentes (os
+// três últimos vêm dos degraus de `funis.ao_vivo`). Sem `resumo`, é o funil de
+// degraus de sempre. "Pendentes" é medido contra "levantaram a mão" (ver
+// blocosDoFunil).
+export function blocosFunilAoVivo(
+  degraus: readonly Degrau[],
+  resumo: ResumoEvento | null | undefined,
+): BlocoFunil[] {
+  if (!resumo || resumo.presentes_ao_vivo == null) return blocosDoFunil(degraus, "ao_vivo");
+  const valorDe = (nome: string) => degraus.find((d) => d.nome === nome)?.valor ?? 0;
+  const inscritos = resumo.inscritos ?? valorDe("inscritos");
+  const assistiram = resumo.presentes_ao_vivo;
+  const mql = resumo.qualificados_presentes ?? null;
+  const levantaram = valorDe("aplicaram");
+  const agendaram = valorDe("agendaram");
+  const pendentes = valorDe("pendentes");
+  const blocos: BlocoFunil[] = [
+    { chave: "inscritos", rotulo: "Inscritos", valor: inscritos, passagem: null },
+    {
+      chave: "assistiram",
+      rotulo: "Assistiram · todos",
+      valor: assistiram,
+      passagem: passagemCalculada(assistiram, inscritos),
+    },
+  ];
+  if (mql != null) {
+    blocos.push({
+      chave: "assistiram_mql",
+      rotulo: "Assistiram · MQL+ ou acima",
+      valor: mql,
+      passagem: passagemCalculada(mql, assistiram),
+      baseDaPassagem: "dos que assistiram",
+    });
+  }
+  const baseLevantaram = mql ?? assistiram;
+  blocos.push(
+    {
+      chave: "aplicaram",
+      rotulo: "Levantaram a mão",
+      valor: levantaram,
+      passagem: passagemCalculada(levantaram, baseLevantaram),
+      baseDaPassagem: mql != null ? "dos MQL+ que assistiram" : "dos que assistiram",
+    },
+    { chave: "agendaram", rotulo: "Agendaram", valor: agendaram, passagem: passagemCalculada(agendaram, levantaram) },
+    {
+      chave: "pendentes",
+      rotulo: "Pendentes",
+      valor: pendentes,
+      passagem: passagemCalculada(pendentes, levantaram),
+      baseDaPassagem: "de quem levantou a mão",
+    },
+  );
+  return blocos;
 }
 
 // Avisos de sanidade do backend → linguagem direta. A chave crua NUNCA vai para

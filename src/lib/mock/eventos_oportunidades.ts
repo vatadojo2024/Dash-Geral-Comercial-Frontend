@@ -134,6 +134,7 @@ export type OportunidadesMock = {
     aplicaram: number;
     qualificados_aplicaram: number;
     qualificados_sem_aplicar: number;
+    qualificados_presentes: number;
     fora_dos_qualificados: { qc: number; desqualificados: number };
   };
   funis: { ao_vivo: { degraus: DegrauMock[] }; replay: { degraus: DegrauMock[] } };
@@ -282,6 +283,7 @@ export function mockOportunidades(
         aplicaram: aoVivo.aplicaram + 20 * n,
         qualificados_aplicaram: aoVivo.aplicaram,
         qualificados_sem_aplicar: ativo ? 28 * n : 0,
+        qualificados_presentes: aoVivo.aplicaram + (ativo ? 28 * n : 0),
         fora_dos_qualificados: { qc, desqualificados },
       },
       funis: {

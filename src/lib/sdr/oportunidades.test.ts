@@ -9,6 +9,7 @@ import {
   TIERS_ALTO_VALOR,
   blocosDoFunil,
   blocosDoResgate,
+  blocosFunilAoVivo,
   celulaMatriz,
   chaveDaLinha,
   chaveDono,
@@ -571,6 +572,34 @@ describe("bloco resumo (cards do topo)", () => {
     expect(OportunidadesResponseSchema.safeParse(base).success).toBe(true);
     const r = OportunidadesResponseSchema.safeParse({ ...base, resumo: { ...resumo, extra: 1 } });
     expect(r.success && r.data.resumo?.qualificados_sem_aplicar).toBe(28);
+  });
+
+  it("funil ao vivo completo: todos que assistiram → MQL+ que assistiram → qualificados; sem o degrau MQL+ quando falta", () => {
+    const degraus = [
+      { nome: "inscritos", valor: 438 },
+      { nome: "assistiram", valor: 120 },
+      { nome: "aplicaram", valor: 34 },
+      { nome: "agendaram", valor: 12 },
+      { nome: "pendentes", valor: 22 },
+    ];
+    const b = blocosFunilAoVivo(degraus, { ...resumo, qualificados_presentes: 62 });
+    expect(b.map((x) => [x.chave, x.valor])).toEqual([
+      ["inscritos", 485],
+      ["assistiram", 162],
+      ["assistiram_mql", 62],
+      ["aplicaram", 34],
+      ["agendaram", 12],
+      ["pendentes", 22],
+    ]);
+    expect(b[2]).toMatchObject({ passagem: { tipo: "pct", texto: "38%" }, baseDaPassagem: "dos que assistiram" });
+    expect(b[3]).toMatchObject({ passagem: { tipo: "pct", texto: "55%" }, baseDaPassagem: "dos MQL+ que assistiram" });
+    expect(b[5]).toMatchObject({ passagem: { tipo: "pct", texto: "65%" }, baseDaPassagem: "de quem levantou a mão" });
+
+    const semMql = blocosFunilAoVivo(degraus, resumo);
+    expect(semMql.map((x) => x.chave)).toEqual(["inscritos", "assistiram", "aplicaram", "agendaram", "pendentes"]);
+    expect(semMql[2]).toMatchObject({ passagem: { tipo: "pct", texto: "21%" }, baseDaPassagem: "dos que assistiram" });
+    // Sem resumo: o funil de degraus de sempre.
+    expect(blocosFunilAoVivo(degraus, null).map((x) => x.valor)).toEqual([438, 120, 34, 12, 22]);
   });
 
   it("a conta fecha quando inscritos − qc − desqualificados = totais.inscritos; sem número, não afirma", () => {

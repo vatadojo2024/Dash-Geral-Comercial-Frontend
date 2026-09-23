@@ -22,7 +22,7 @@ export const ROTA_SDR = "/produtividade-sdr";
 // Sub-abas (recortes) de "Levantou a Mão": /produtividade-sdr/levantou-a-mao/<slug>.
 export const RECORTES_LEVANTOU: { recorte: RecorteLevantou; slug: string; label: string }[] = [
   { recorte: "geral", slug: "", label: "Visão geral" },
-  { recorte: "ao_vivo", slug: "ao-vivo", label: "Ao vivo" },
+  { recorte: "ao_vivo", slug: "ao-vivo", label: "Ao vivo — Qualificados" },
   { recorte: "replay", slug: "replay", label: "Replay" },
   { recorte: "presentes", slug: "presentes-sem-aplicar", label: "Presentes que não aplicaram" },
   { recorte: "resgate", slug: "resgate", label: "Campanha de resgate" },
