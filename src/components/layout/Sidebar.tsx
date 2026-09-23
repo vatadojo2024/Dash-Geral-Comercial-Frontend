@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   Flame,
   Gauge,
   LayoutDashboard,
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/chat", label: "Chat IA", icon: MessageSquare, roles: TODOS },
   { href: "/salesops", label: "Sales Ops", icon: Wallet, roles: ["closer", "admin"] },
   { href: "/produtividade-sdr", label: "Produtividade SDR", icon: PhoneCall, roles: ["sdr", "admin"] },
+  { href: "/retencao", label: "Retenção da audiência", icon: Activity, roles: ["sdr", "admin"] },
 ];
 
 function NavContent({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {

@@ -15,6 +15,8 @@ const nextConfig = {
       // "Levantou a Mão" virou "Oportunidades do Evento" (set/2026).
       { source: "/produtividade-sdr/levantou-a-mao", destination: "/produtividade-sdr/oportunidades", permanent: false },
       { source: "/produtividade-sdr/levantou-a-mao/:recorte", destination: "/produtividade-sdr/oportunidades/:recorte", permanent: false },
+      // "Retenção da audiência" saiu da Produtividade SDR e virou item do menu (23/09).
+      { source: "/produtividade-sdr/retencao", destination: "/retencao", permanent: false },
     ];
   },
 };

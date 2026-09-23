@@ -7,13 +7,12 @@
 
 import type { RecorteLevantou } from "@/lib/sdr/oportunidades";
 
-export type AbaSdr = "dashboard" | "agendamentos" | "levantou" | "retencao" | "comissoes" | "lideranca";
+export type AbaSdr = "dashboard" | "agendamentos" | "levantou" | "comissoes" | "lideranca";
 
 export const ABAS_SDR: { aba: AbaSdr; slug: string; label: string; soAdmin?: boolean }[] = [
   { aba: "dashboard", slug: "", label: "Dashboard SDR" },
   { aba: "agendamentos", slug: "calls-por-ciclo", label: "Calls por Ciclo" },
   { aba: "levantou", slug: "oportunidades", label: "Oportunidades do Evento" },
-  { aba: "retencao", slug: "retencao", label: "Retenção da audiência" },
   { aba: "comissoes", slug: "comissoes", label: "Comissões" },
   { aba: "lideranca", slug: "lideranca", label: "Liderança Pré-venda", soAdmin: true },
 ];

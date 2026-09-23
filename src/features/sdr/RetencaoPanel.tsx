@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Activity,
   Eye,
   EyeOff,
   FileText,
@@ -48,9 +47,9 @@ import { CarregandoEventos, ErroEventos, FaixaAvisos, RodapeEventos } from "./Ev
 import { SeletorPeriodo, usePeriodoEvento } from "./PeriodoEvento";
 
 // ---------------------------------------------------------------------------
-// Aba "Retenção da audiência": quanto do webinar cada inscrito assistiu, pelas
-// tags "Assistiu N%" da Clint. Período compartilhado com a aba de
-// Oportunidades (usePeriodoEvento). Curva de 7 degraus (eixo X = percentual com
+// Página "Retenção da audiência" (/retencao, item próprio do menu): quanto do
+// webinar cada inscrito assistiu, pelas tags "Assistiu N%" da Clint. Período
+// compartilhado com a aba de Oportunidades (usePeriodoEvento). Curva de 7 degraus (eixo X = percentual com
 // o minuto correspondente; eixo Y = quantos chegaram até ali), três cards e a
 // lista dos medidos, na ordem do backend.
 // ---------------------------------------------------------------------------
@@ -71,17 +70,8 @@ export function RetencaoPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold text-texto">
-            <Activity className="h-4 w-4 text-azul-claro" aria-hidden />
-            Retenção da audiência
-          </h2>
-          <p className="mt-0.5 text-xs text-texto-sec">
-            Até onde cada inscrito assistiu ao webinar, pelas tags &ldquo;Assistiu N%&rdquo; da
-            Clint. Quem chegou a 50% também conta nos degraus anteriores — a curva só desce.
-          </p>
-        </div>
+      {/* Título e descrição vêm do PageHeader da página /retencao. */}
+      <div className="flex flex-wrap items-center justify-end gap-3">
         <SeletorPeriodo id="ciclo-retencao" periodo={periodoEvento} campoInvalido={campoInvalido} />
       </div>
 
