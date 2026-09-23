@@ -1274,7 +1274,10 @@ function ParadoDesde({ iso, completo = false }: { iso: string | null | undefined
 
 
 // Os cinco números do topo da aba (bloco `resumo` do backend), na ordem pedida,
-// cada um com o filtro escrito no próprio card. O último abre a lista de
+// cada um com o filtro escrito no próprio card. Definições (Vata, 23/09):
+// "Aplicaram" = tag Pós WG + tag do evento, sem filtro de classificação;
+// "Qualificados que aplicaram" = tag Levantou a Mão (só qualificados a recebem);
+// "Qualificados que não aplicaram" = MQL+ ou acima, presentes, sem Pós WG. O último abre a lista de
 // /presentes-sem-aplicar (o número é, por garantia do backend, o tamanho dela).
 // Abaixo, a conta que liga a base bruta à base de pendentes.
 function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: TotaisOportunidades }) {
@@ -1307,14 +1310,14 @@ function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: Tota
           rotulo="Aplicaram"
           valor={celulaMatriz(aplicaram)}
           detalhe={pctDe(aplicaram, presentes) ? `${pctDe(aplicaram, presentes)} dos presentes` : "durante o evento"}
-          filtro="sem filtro"
+          filtro="tag Pós WG + tag do evento · sem filtro"
         />
         <KpiChip
           icon={CalendarCheck2}
           rotulo="Qualificados que aplicaram"
           valor={celulaMatriz(resumo.qualificados_aplicaram)}
           detalhe={pctDe(resumo.qualificados_aplicaram, aplicaram) ? `${pctDe(resumo.qualificados_aplicaram, aplicaram)} dos que aplicaram` : undefined}
-          filtro="MQL+ ou acima"
+          filtro="tag Levantou a Mão · só qualificados"
         />
         <KpiChip
           icon={Gem}
@@ -1610,7 +1613,10 @@ function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
 function FunilAoVivo({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
   return (
     <Card>
-      <CardHeader title="Funil ao vivo" subtitle="Quem se inscreveu e participou ao vivo." />
+      <CardHeader
+        title="Funil ao vivo — Qualificados"
+        subtitle="Quem se inscreveu e participou ao vivo; “Levantaram a mão” é a tag Levantou a Mão, que só os qualificados recebem."
+      />
       <CardContent>
         <FunilBlocos blocos={blocosDoFunil(funis.ao_vivo.degraus, "ao_vivo")} />
       </CardContent>
