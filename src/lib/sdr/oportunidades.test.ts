@@ -26,6 +26,7 @@ import {
   OportunidadesResponseSchema,
   ordenarPendentes,
   origemDoLead,
+  resumoFecha,
   passagemCalculada,
   pct,
   rotuloDoDegrau,
@@ -552,6 +553,31 @@ describe("avisos (V4)", () => {
     expect(textos[1]).toBe("Aplicaram supera assistiram — inconsistência de cálculo, avise o time técnico.");
     expect(textos[2]).toBe("Há taxa acima de 100% — verificar base.");
     expect(traduzirAvisos(null)).toEqual([]);
+  });
+});
+
+describe("bloco resumo (cards do topo)", () => {
+  const resumo = {
+    inscritos: 485,
+    presentes_ao_vivo: 162,
+    aplicaram: 34,
+    qualificados_aplicaram: 34,
+    qualificados_sem_aplicar: 28,
+    fora_dos_qualificados: { qc: 43, desqualificados: 4 },
+  };
+
+  it("contrato: resumo é opcional e tolera campos extras", () => {
+    const base = { de: "x", ate: "x", eventos: [], totais: { pendentes: 0 }, leads: [], gerado_em: "x" };
+    expect(OportunidadesResponseSchema.safeParse(base).success).toBe(true);
+    const r = OportunidadesResponseSchema.safeParse({ ...base, resumo: { ...resumo, extra: 1 } });
+    expect(r.success && r.data.resumo?.qualificados_sem_aplicar).toBe(28);
+  });
+
+  it("a conta fecha quando inscritos − qc − desqualificados = totais.inscritos; sem número, não afirma", () => {
+    expect(resumoFecha(resumo, { inscritos: 438 })).toBe(true);
+    expect(resumoFecha(resumo, { inscritos: 440 })).toBe(false);
+    expect(resumoFecha({ ...resumo, fora_dos_qualificados: null }, { inscritos: 438 })).toBeNull();
+    expect(resumoFecha(resumo, {})).toBeNull();
   });
 });
 

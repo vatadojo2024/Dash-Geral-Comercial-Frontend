@@ -139,6 +139,41 @@ export const ResgateSchema = z.object({
 });
 export type Resgate = z.infer<typeof ResgateSchema>;
 
+// Bloco `resumo` (backend 23/09): os cinco números do topo da aba, cada um com
+// o filtro explícito — os três primeiros SEM filtro (base bruta, antes de tirar
+// QC e desqualificados), os dois últimos só MQL+ ou acima. `fora_dos_qualificados`
+// explica a conta: inscritos − qc − desqualificados = totais.inscritos.
+// `qualificados_sem_aplicar` é, por garantia do backend, o tamanho da lista de
+// /presentes-sem-aplicar.
+export const ResumoEventoSchema = z
+  .object({
+    inscritos: z.number().int().nullish(),
+    presentes_ao_vivo: z.number().int().nullish(),
+    aplicaram: z.number().int().nullish(),
+    qualificados_aplicaram: z.number().int().nullish(),
+    qualificados_sem_aplicar: z.number().int().nullish(),
+    fora_dos_qualificados: z
+      .object({ qc: z.number().int().nullish(), desqualificados: z.number().int().nullish() })
+      .passthrough()
+      .nullish(),
+  })
+  .passthrough();
+export type ResumoEvento = z.infer<typeof ResumoEventoSchema>;
+
+// A conta do resumo fecha com a base de pendentes? null quando falta algum
+// número (não dá para conferir) — a tela então não afirma nada.
+export function resumoFecha(
+  resumo: ResumoEvento,
+  totais: { inscritos?: number | null | undefined },
+): boolean | null {
+  const bruto = resumo.inscritos;
+  const qc = resumo.fora_dos_qualificados?.qc;
+  const desq = resumo.fora_dos_qualificados?.desqualificados;
+  const base = totais.inscritos;
+  if (bruto == null || qc == null || desq == null || base == null) return null;
+  return bruto - qc - desq === base;
+}
+
 export const OportunidadesResponseSchema = z.object({
   de: z.string(),
   ate: z.string(),
@@ -159,6 +194,7 @@ export const OportunidadesResponseSchema = z.object({
   matriz: MatrizSchema.nullish(),
   funis: FunisSchema.nullish(),
   resgate: ResgateSchema.nullish(),
+  resumo: ResumoEventoSchema.nullish(),
   por_dono: z.array(DonoAgregadoSchema).nullish(),
   // Travas de sanidade do backend (não bloqueiam a resposta).
   avisos: z.array(z.string()).nullish(),

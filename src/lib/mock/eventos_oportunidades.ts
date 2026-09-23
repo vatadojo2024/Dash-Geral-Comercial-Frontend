@@ -128,6 +128,14 @@ export type OportunidadesMock = {
   eventos: string[];
   totais: { inscritos: number; desqualificados: number; qc: number; pendentes: number };
   matriz: { ao_vivo: LinhaMatrizMock; replay: LinhaMatrizMock; total: LinhaMatrizMock };
+  resumo: {
+    inscritos: number;
+    presentes_ao_vivo: number;
+    aplicaram: number;
+    qualificados_aplicaram: number;
+    qualificados_sem_aplicar: number;
+    fora_dos_qualificados: { qc: number; desqualificados: number };
+  };
   funis: { ao_vivo: { degraus: DegrauMock[] }; replay: { degraus: DegrauMock[] } };
   resgate: {
     convidados: number;
@@ -263,6 +271,18 @@ export function mockOportunidades(
     return {
       totais: { inscritos, desqualificados, qc, pendentes: leads.length },
       matriz: { ao_vivo: aoVivo, replay, total },
+      // Bloco resumo (23/09): base BRUTA (antes de tirar QC e desqualificados),
+      // presentes e aplicaram sem filtro; os dois "qualificados" só MQL+ ou acima.
+      // qualificados_sem_aplicar = 28 por evento, o mesmo tamanho do mock de
+      // /presentes-sem-aplicar (garantia do backend).
+      resumo: {
+        inscritos: inscritos + desqualificados + qc,
+        presentes_ao_vivo: aoVivo.assistiram,
+        aplicaram: aoVivo.aplicaram,
+        qualificados_aplicaram: Math.round(aoVivo.aplicaram * 0.7),
+        qualificados_sem_aplicar: ativo ? 28 * n : 0,
+        fora_dos_qualificados: { qc, desqualificados },
+      },
       funis: {
         ao_vivo: { degraus: degraus("inscritos", aoVivo, inscritos) },
         replay: { degraus: degraus("acessaram", replay, replay.acessaram ?? 0) },

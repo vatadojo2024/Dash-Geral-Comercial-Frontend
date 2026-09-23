@@ -75,7 +75,10 @@ import {
   type RecorteLevantou,
   type Ordenacao,
   type OportunidadesResponse,
+  resumoFecha,
   type RecorteOportunidades,
+  type ResumoEvento,
+  type TotaisOportunidades,
   type TierChave,
 } from "@/lib/sdr/oportunidades";
 import {
@@ -442,6 +445,7 @@ function ConteudoRecorte({
           <FaixaAvisos avisos={data.avisos} />
           {recorte === "geral" ? (
             <>
+              {data.resumo && <ResumoDoEvento resumo={data.resumo} totais={data.totais} />}
               {data.matriz ? (
                 <MatrizOrigem data={data} linhaAtiva={linhaAtiva} onLinha={alternarLinhaMatriz} />
               ) : (
@@ -1265,6 +1269,90 @@ function ParadoDesde({ iso, completo = false }: { iso: string | null | undefined
       {texto}
       {completo && <span className="font-normal text-texto-sec"> · desde {dataHora(iso)}</span>}
     </span>
+  );
+}
+
+
+// Os cinco números do topo da aba (bloco `resumo` do backend), na ordem pedida,
+// cada um com o filtro escrito no próprio card. O último abre a lista de
+// /presentes-sem-aplicar (o número é, por garantia do backend, o tamanho dela).
+// Abaixo, a conta que liga a base bruta à base de pendentes.
+function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: TotaisOportunidades }) {
+  const fora = resumo.fora_dos_qualificados;
+  const fecha = resumoFecha(resumo, totais);
+  const bruto = resumo.inscritos;
+  const presentes = resumo.presentes_ao_vivo;
+  const aplicaram = resumo.aplicaram;
+  const pctDe = (parte: number | null | undefined, todo: number | null | undefined) =>
+    parte != null && todo ? `${formatarPct(pct(parte, todo))}` : null;
+  return (
+    <section aria-label="Resumo do evento" className="space-y-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <KpiChip
+          icon={Users}
+          rotulo="Inscritos"
+          valor={celulaMatriz(bruto)}
+          detalhe="todos com a tag do evento"
+          filtro="sem filtro"
+        />
+        <KpiChip
+          icon={Radio}
+          rotulo="Presentes ao vivo"
+          valor={celulaMatriz(presentes)}
+          detalhe={pctDe(presentes, bruto) ? `${pctDe(presentes, bruto)} dos inscritos` : undefined}
+          filtro="sem filtro"
+        />
+        <KpiChip
+          icon={Hand}
+          rotulo="Aplicaram"
+          valor={celulaMatriz(aplicaram)}
+          detalhe={pctDe(aplicaram, presentes) ? `${pctDe(aplicaram, presentes)} dos presentes` : "durante o evento"}
+          filtro="sem filtro"
+        />
+        <KpiChip
+          icon={CalendarCheck2}
+          rotulo="Qualificados que aplicaram"
+          valor={celulaMatriz(resumo.qualificados_aplicaram)}
+          detalhe={pctDe(resumo.qualificados_aplicaram, aplicaram) ? `${pctDe(resumo.qualificados_aplicaram, aplicaram)} dos que aplicaram` : undefined}
+          filtro="MQL+ ou acima"
+        />
+        <KpiChip
+          icon={Gem}
+          rotulo="Qualificados que não aplicaram"
+          valor={celulaMatriz(resumo.qualificados_sem_aplicar)}
+          detalhe="presentes ao vivo · abrir a lista"
+          filtro="MQL+ ou acima"
+          href={hrefDoRecorte("presentes")}
+          destaque
+        />
+      </div>
+      {fora && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs text-texto-sec">
+          <span>
+            Fora dos qualificados:{" "}
+            <span className="font-semibold tabular-nums text-texto">{celulaMatriz(fora.qc)}</span> QC ·{" "}
+            <span className="font-semibold tabular-nums text-texto">{celulaMatriz(fora.desqualificados)}</span>{" "}
+            desqualificados.
+          </span>
+          {fecha != null && bruto != null && (
+            <span className="tabular-nums">
+              {bruto} − {fora.qc} − {fora.desqualificados} = {celulaMatriz(totais.inscritos)} na base de pendentes
+            </span>
+          )}
+          {fecha === true && (
+            <span className="inline-flex items-center gap-1 text-verde">
+              <Check className="h-3 w-3" aria-hidden />
+              confere
+            </span>
+          )}
+          {fecha === false && (
+            <span className="tag tag-warning" title="inscritos − qc − desqualificados deveria dar a base de pendentes">
+              verificar base
+            </span>
+          )}
+        </p>
+      )}
+    </section>
   );
 }
 
