@@ -9,8 +9,9 @@ import { getServerSession } from "@/lib/auth/session";
 //   /produtividade-sdr                  → Dashboard SDR
 //   /produtividade-sdr/calls-por-ciclo  → Calls por Ciclo
 //   /produtividade-sdr/oportunidades    → Oportunidades do Evento (visão geral)
-//   /produtividade-sdr/oportunidades/ao-vivo | replay | resgate | nao-abordados
+//   /produtividade-sdr/oportunidades/ao-vivo | replay | presentes-sem-aplicar | resgate | nao-abordados
 //   (/levantou-a-mao redireciona — next.config.mjs)
+//   /produtividade-sdr/retencao         → Retenção da audiência
 //   /produtividade-sdr/comissoes        → Comissões
 //   /produtividade-sdr/lideranca        → Liderança Pré-venda (só admin)
 // (/sdr antigo redireciona para cá — next.config.mjs.)

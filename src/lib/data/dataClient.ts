@@ -19,6 +19,8 @@ import {
   type OportunidadesResponse,
 } from "@/lib/sdr/oportunidades";
 import { NaoAbordadosResponseSchema, type NaoAbordadosResponse } from "@/lib/sdr/naoAbordados";
+import { RetencaoResponseSchema, type RetencaoResponse } from "@/lib/sdr/retencao";
+import { PresentesResponseSchema, type PresentesResponse } from "@/lib/sdr/presentesSemAplicar";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de acesso a dados de leads no client. Os componentes só
@@ -138,6 +140,7 @@ function codigoDoCorpo(status: number, corpo: unknown): CodigoErroOportunidades 
     erro === "clint_indisponivel" ||
     erro === "agendamentos_indisponivel" ||
     erro === "leads_indisponivel" ||
+    erro === "supabase_indisponivel" ||
     erro === "intervalo_muito_grande"
   ) {
     return erro;
@@ -191,6 +194,16 @@ export function fetchOportunidades(de: string, ate: string): Promise<Oportunidad
 // população, endpoint próprio, mesmos códigos de erro (+ leads_indisponivel).
 export function fetchNaoAbordados(de: string, ate: string): Promise<NaoAbordadosResponse> {
   return fetchEndpointEventos("/api/eventos/nao-abordados", "não abordados", NaoAbordadosResponseSchema, de, ate);
+}
+
+// Recorte "Presentes que não aplicaram" (GET /api/eventos/presentes-sem-aplicar?de&ate).
+export function fetchPresentes(de: string, ate: string): Promise<PresentesResponse> {
+  return fetchEndpointEventos("/api/eventos/presentes-sem-aplicar", "presentes sem aplicar", PresentesResponseSchema, de, ate);
+}
+
+// Aba "Retenção da audiência" (GET /api/eventos/retencao?de&ate).
+export function fetchRetencao(de: string, ate: string): Promise<RetencaoResponse> {
+  return fetchEndpointEventos("/api/eventos/retencao", "retenção", RetencaoResponseSchema, de, ate);
 }
 
 // PATCH do destaque do lead (só admin — a API responde 403 para os demais).

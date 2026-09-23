@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 //
 // Em mock, `simular=<código>` devolve o erro correspondente:
 //   clint_auth | clint_indisponivel | agendamentos_indisponivel |
-//   leads_indisponivel → 502; intervalo_muito_grande → 422.
+//   leads_indisponivel | supabase_indisponivel → 502; intervalo_muito_grande → 422.
 // Os demais valores de `simular` vão para a função de mock decidir.
 // ---------------------------------------------------------------------------
 
@@ -20,6 +20,7 @@ const ERROS_502 = new Set([
   "clint_indisponivel",
   "agendamentos_indisponivel",
   "leads_indisponivel",
+  "supabase_indisponivel",
 ]);
 
 export async function proxyEventos(

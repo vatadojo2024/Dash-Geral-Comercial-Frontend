@@ -42,6 +42,7 @@ import { ComissoesPanel } from "./ComissoesPanel";
 import { InsightsPanel } from "./InsightsPanel";
 import { KpiChip } from "./KpiChip";
 import { LevantouMaoPanel } from "./LevantouMaoPanel";
+import { RetencaoPanel } from "./RetencaoPanel";
 import { PerformanceTable } from "./PerformanceTable";
 import { LeadershipPanel } from "./LeadershipPanel";
 
@@ -200,13 +201,20 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
     </div>
   );
 
-  // "Calls por Ciclo" e "Levantou a Mão" são autossuficientes (fontes próprias) —
-  // NÃO dependem do payload do Dashboard SDR. Renderizam antes dos guards dele.
-  if (aba === "agendamentos" || aba === "levantou") {
+  // "Calls por Ciclo", "Oportunidades do Evento" e "Retenção" são autossuficientes
+  // (fontes próprias) — NÃO dependem do payload do Dashboard SDR. Renderizam
+  // antes dos guards dele.
+  if (aba === "agendamentos" || aba === "levantou" || aba === "retencao") {
     return (
       <div className="space-y-4">
         {barraAbas}
-        {aba === "agendamentos" ? <AgendamentosPanel /> : <LevantouMaoPanel recorte={recorte} />}
+        {aba === "agendamentos" ? (
+          <AgendamentosPanel />
+        ) : aba === "levantou" ? (
+          <LevantouMaoPanel recorte={recorte} />
+        ) : (
+          <RetencaoPanel />
+        )}
       </div>
     );
   }

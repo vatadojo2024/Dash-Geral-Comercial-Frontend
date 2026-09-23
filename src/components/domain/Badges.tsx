@@ -1,4 +1,4 @@
-import { AlertTriangle, Lock, Star } from "lucide-react";
+import { AlertTriangle, CalendarCheck2, Lock, Star } from "lucide-react";
 import type { Etapa, Temperatura } from "@/lib/api/contracts";
 import { etapaLabel, TEMPERATURA_CONFIG } from "@/lib/formatters/score";
 import { labelTrava } from "@/lib/formatters/labels";
@@ -71,6 +71,18 @@ export function SeloNinja({ lead }: { lead: Pick<LeadPendente, "tier" | "tier_ra
       className="tag tag-success px-1.5 py-px"
     >
       Ninja
+    </span>
+  );
+}
+
+// Selo "Call agendada": o lead do recorte "Presentes que não aplicaram" já tem
+// call marcada. Só sinaliza — a lista não filtra por isso (decisão do backend).
+export function SeloAgendou({ lead }: { lead: Pick<LeadPendente, "ja_agendou"> }) {
+  if (lead.ja_agendou !== true) return null;
+  return (
+    <span title="Já tem call agendada — não precisa de nova abordagem" className="tag tag-info px-1.5 py-px">
+      <CalendarCheck2 className="h-3 w-3" aria-hidden />
+      Call agendada
     </span>
   );
 }

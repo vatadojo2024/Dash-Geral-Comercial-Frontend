@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  Database,
   Download,
   ExternalLink,
   FileText,
@@ -28,20 +27,15 @@ import {
   MonitorPlay,
   Radio,
   PartyPopper,
-  RefreshCw,
   Search,
   Timer,
   UserRound,
   Users,
   X,
 } from "lucide-react";
-import { fetchNaoAbordados, fetchOportunidades, OportunidadesError } from "@/lib/data/dataClient";
+import { fetchNaoAbordados, fetchOportunidades, fetchPresentes, OportunidadesError } from "@/lib/data/dataClient";
 import {
   rotuloCiclo,
-  rotuloCicloEvento,
-  tagsEventoNoIntervalo,
-  ultimosCiclos,
-  type Ciclo,
 } from "@/lib/sdr/ciclo";
 import {
   agruparPorDono,
@@ -65,14 +59,11 @@ import {
   distribuicaoPorTier,
   filtrarPendentes,
   linkWhatsApp,
-  MAX_DIAS_INTERVALO,
   opcoesDeDono,
   ordenarPendentes,
   TIERS,
   TIERS_ALTO_VALOR,
   todosDesqualificados,
-  traduzirAvisos,
-  validarIntervalo,
   type BlocoFunil,
   type CampoOrdenacao,
   type ContagemOrigem,
@@ -97,16 +88,26 @@ import {
   paradoHaMais,
   type NaoAbordadosResponse,
 } from "@/lib/sdr/naoAbordados";
+import {
+  blocosPresentes,
+  contarAgendaram,
+  contarAteOFim,
+  csvDePresentes,
+  ficouAteOFim,
+  filtrarPresentes,
+  type PresentesResponse,
+} from "@/lib/sdr/presentesSemAplicar";
+import { rotuloMinutos } from "@/lib/sdr/retencao";
 import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
-import { DonoBadge, MqlBadge, OrigemBadge, SeloNinja } from "@/components/domain/Badges";
+import { DonoBadge, MqlBadge, OrigemBadge, SeloAgendou, SeloNinja } from "@/components/domain/Badges";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { EmptyState, ErrorState } from "@/components/ui/States";
+import { EmptyState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
 import { hrefDoRecorte, RECORTES_LEVANTOU } from "./abas";
-import { CicloSelect } from "./CicloSelect";
 import { KpiChip } from "./KpiChip";
+import { Alternador, CarregandoEventos, ErroEventos, FaixaAvisos, RodapeEventos } from "./EventosComuns";
+import { SeletorPeriodo, usePeriodoEvento } from "./PeriodoEvento";
 
 // ---------------------------------------------------------------------------
 // Aba "Oportunidades do Evento": quem aplicou no webinar e NÃO agendou call, com contato
@@ -124,48 +125,20 @@ import { KpiChip } from "./KpiChip";
 // filtros são por recorte (remontados por `key` e restaurados da memória).
 // ---------------------------------------------------------------------------
 
-type ModoPeriodo = "ciclo" | "intervalo";
-// Período escolhido, vivo enquanto a página estiver aberta (some no reload).
-const memoriaPeriodo: {
-  periodo: { modo: ModoPeriodo; inicioSel: string; de: string; ate: string } | null;
-} = { periodo: null };
 type Visao = "lista" | "por_sdr";
 const TAMANHO_PAGINA = 50;
-const CLASSE_INPUT = "h-9 rounded-xl border bg-white/5 px-2 text-sm text-texto";
 
 export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
-  const hojeISO = new Date().toISOString().slice(0, 10);
-  const ciclos = useMemo(() => ultimosCiclos(hojeISO, 12), [hojeISO]);
-  const cicloAtual = ciclos[0];
-
-  // --- Período -------------------------------------------------------------
-  // O período é compartilhado entre os recortes e SOBREVIVE à troca de aba (que
-  // remonta a página): começa do que ficou em memoriaPeriodo.
-  const periodoSalvo = memoriaPeriodo.periodo;
-  const [modo, setModo] = useState<ModoPeriodo>(periodoSalvo?.modo ?? "ciclo");
-  const [inicioSel, setInicioSel] = useState(
-    periodoSalvo && ciclos.some((c) => c.inicio === periodoSalvo.inicioSel)
-      ? periodoSalvo.inicioSel
-      : cicloAtual.inicio,
-  );
-  const cicloSel: Ciclo = ciclos.find((c) => c.inicio === inicioSel) ?? cicloAtual;
-  // Intervalo padrão: os 4 últimos ciclos (consolidar semanas é o uso do modo).
-  const [de, setDe] = useState(periodoSalvo?.de ?? ciclos[3]?.inicio ?? cicloAtual.inicio);
-  const [ate, setAte] = useState(periodoSalvo?.ate ?? cicloAtual.fim);
-  useEffect(() => {
-    memoriaPeriodo.periodo = { modo, inicioSel, de, ate };
-  }, [modo, inicioSel, de, ate]);
-
-  const erroIntervalo = modo === "intervalo" ? validarIntervalo(de, ate) : null;
-  const periodo =
-    modo === "ciclo" ? { de: cicloSel.inicio, ate: cicloSel.fim } : { de, ate };
+  // Período compartilhado com a aba de Retenção; sobrevive à troca de recorte.
+  const periodoEvento = usePeriodoEvento();
+  const { erroIntervalo, periodo } = periodoEvento;
 
   // Duas fontes, uma por vez: só a consulta do recorte aberto roda.
   const ehNaoAbordados = recorte === "nao_abordados";
   const oportunidades = useQuery({
     queryKey: ["oportunidades", periodo.de, periodo.ate],
     queryFn: () => fetchOportunidades(periodo.de, periodo.ate),
-    enabled: !erroIntervalo && !ehNaoAbordados,
+    enabled: !erroIntervalo && recorte !== "nao_abordados" && recorte !== "presentes",
     retry: false,
   });
   const naoAbordados = useQuery({
@@ -174,7 +147,18 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     enabled: !erroIntervalo && ehNaoAbordados,
     retry: false,
   });
-  const { error, isLoading, isFetching, isError, refetch } = ehNaoAbordados ? naoAbordados : oportunidades;
+  const ehPresentes = recorte === "presentes";
+  const presentes = useQuery({
+    queryKey: ["presentes-sem-aplicar", periodo.de, periodo.ate],
+    queryFn: () => fetchPresentes(periodo.de, periodo.ate),
+    enabled: !erroIntervalo && ehPresentes,
+    retry: false,
+  });
+  const { error, isLoading, isFetching, isError, refetch } = ehNaoAbordados
+    ? naoAbordados
+    : ehPresentes
+      ? presentes
+      : oportunidades;
   const data = oportunidades.data;
 
   // Erro 400 do backend: destaca os campos de data (ambos — o backend não diz qual).
@@ -197,71 +181,13 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Alternador<ModoPeriodo>
-            rotulo="Modo do período"
-            valor={modo}
-            onChange={setModo}
-            opcoes={[
-              { valor: "ciclo", label: "Ciclo" },
-              { valor: "intervalo", label: "Intervalo" },
-            ]}
-          />
-
-          {modo === "ciclo" ? (
-            <CicloSelect
-              id="ciclo-levantou"
-              ciclos={ciclos}
-              value={inicioSel}
-              onChange={setInicioSel}
-              rotulo={rotuloCicloEvento}
-              label={null}
-            />
-          ) : (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="date"
-                  aria-label="Data inicial"
-                  aria-invalid={campoInvalido === "de" || campoInvalido === "ambos"}
-                  value={de}
-                  max={ate || undefined}
-                  onChange={(e) => setDe(e.target.value)}
-                  className={cn(
-                    CLASSE_INPUT,
-                    campoInvalido === "de" || campoInvalido === "ambos"
-                      ? "border-erro ring-1 ring-erro/40"
-                      : "border-white/20",
-                  )}
-                />
-                <span className="text-xs text-texto-sec">até</span>
-                <input
-                  type="date"
-                  aria-label="Data final"
-                  aria-invalid={campoInvalido === "ate" || campoInvalido === "ambos"}
-                  value={ate}
-                  min={de || undefined}
-                  onChange={(e) => setAte(e.target.value)}
-                  className={cn(
-                    CLASSE_INPUT,
-                    campoInvalido === "ate" || campoInvalido === "ambos"
-                      ? "border-erro ring-1 ring-erro/40"
-                      : "border-white/20",
-                  )}
-                />
-              </div>
-              <p className={cn("text-[11px]", erroIntervalo ? "text-rosa" : "text-texto-sec")} role="status">
-                {erroIntervalo?.mensagem ?? `Máximo de ${MAX_DIAS_INTERVALO} dias.`}
-              </p>
-            </div>
-          )}
-        </div>
+        <SeletorPeriodo id="ciclo-levantou" periodo={periodoEvento} campoInvalido={campoInvalido} />
       </div>
 
       {erroIntervalo ? null : isLoading ? (
-        <Carregando />
+        <CarregandoEventos rotulo="oportunidades" />
       ) : isError ? (
-        <ErroOportunidades error={error} onRetry={() => refetch()} />
+        <ErroEventos error={error} onRetry={() => refetch()} rotulo="as oportunidades" />
       ) : recorte === "nao_abordados" ? (
         naoAbordados.data && (
           <ConteudoNaoAbordados
@@ -271,8 +197,17 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
             onAtualizar={() => refetch()}
           />
         )
+      ) : recorte === "presentes" ? (
+        presentes.data && (
+          <ConteudoPresentes
+            data={presentes.data}
+            periodo={periodo}
+            atualizando={isFetching}
+            onAtualizar={() => refetch()}
+          />
+        )
       ) : !data ? (
-        <ErroOportunidades error={error} onRetry={() => refetch()} />
+        <ErroEventos error={error} onRetry={() => refetch()} rotulo="as oportunidades" />
       ) : todosDesqualificados(data.totais) ? (
         <Card>
           <EmptyState
@@ -688,7 +623,7 @@ function ConteudoRecorte({
             </>
           )}
 
-          <Rodape data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
+          <RodapeEventos data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
       {selecionado && (
         <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />
       )}
@@ -981,9 +916,336 @@ function ConteudoNaoAbordados({
         </>
       )}
 
-      <Rodape data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
+      <RodapeEventos data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
       {selecionado && <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />}
     </>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Recorte "Presentes que não aplicaram": MQL+ ou acima, inscritos, que ESTIVERAM
+// ao vivo e NÃO aplicaram durante o evento — fonte própria
+// (/api/eventos/presentes-sem-aplicar). Quem aplicou está nos outros recortes.
+// Ordem do backend (tier desc, tempo assistido desc) mantida: quem ficou até o
+// fim e não aplicou é o melhor alvo de ligação. `ja_agendou` só ganha selo.
+// ---------------------------------------------------------------------------
+
+type FiltrosPresentesSalvos = {
+  tiers: TierChave[];
+  donos: string[];
+  soAteOFim: boolean;
+  visao: Visao;
+  busca: string;
+};
+const memoriaFiltrosPresentes: { salvo: FiltrosPresentesSalvos | null } = { salvo: null };
+
+function ConteudoPresentes({
+  data,
+  periodo,
+  atualizando,
+  onAtualizar,
+}: {
+  data: PresentesResponse;
+  periodo: { de: string; ate: string };
+  atualizando: boolean;
+  onAtualizar: () => void;
+}) {
+  const salvo = memoriaFiltrosPresentes.salvo;
+  const [tiersSel, setTiersSel] = useState<TierChave[]>(salvo?.tiers ?? []);
+  const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
+  const [soAteOFim, setSoAteOFim] = useState(salvo?.soAteOFim ?? false);
+  const [visao, setVisao] = useState<Visao>(salvo?.visao ?? "lista");
+  const [busca, setBusca] = useState(salvo?.busca ?? "");
+  const [pagina, setPagina] = useState(1);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    memoriaFiltrosPresentes.salvo = { tiers: tiersSel, donos: donosSel, soAteOFim, visao, busca };
+  }, [tiersSel, donosSel, soAteOFim, visao, busca]);
+
+  const leads = data.leads;
+  const contagem = useMemo(() => contarPorTier(leads), [leads]);
+  const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
+  const ateOFim = useMemo(() => contarAteOFim(leads), [leads]);
+  const agendaram = useMemo(() => contarAgendaram(leads), [leads]);
+  const altoValor = altoValorPendente(leads);
+  const filtrados = useMemo(
+    () => filtrarPresentes(leads, { tiers: tiersSel, donos: donosSel, soAteOFim, busca }),
+    [leads, tiersSel, donosSel, soAteOFim, busca],
+  );
+  const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
+  const multiEvento = data.eventos.length > 1;
+  const selecionado = useMemo(
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
+  useEffect(() => setPagina(1), [tiersSel, donosSel, soAteOFim, busca, data]);
+
+  function alternarTier(chave: TierChave) {
+    setTiersSel((atual) => (atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave]));
+  }
+  function alternarDono(chave: string) {
+    setDonosSel((atual) => (atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave]));
+  }
+  const soAltoValor =
+    tiersSel.length === TIERS_ALTO_VALOR.length && TIERS_ALTO_VALOR.every((t) => tiersSel.includes(t));
+
+  function exportarCsv() {
+    const csv = "\uFEFF" + csvDePresentes(filtrados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `oportunidades_presentes-sem-aplicar_${periodo.de}_${periodo.ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const t = data.totais;
+  const inscritos = t.inscritos ?? 0;
+  const presentes = t.presentes ?? 0;
+  const semAplicar = t.presentes_sem_aplicar ?? 0;
+  const total = t.qualificados_sem_aplicar;
+
+  return (
+    <>
+      <BarraRecortes recorte="presentes" />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <KpiChip icon={Users} rotulo="Inscritos" valor={celulaMatriz(t.inscritos)} detalhe="com a tag do evento" />
+        <KpiChip
+          icon={Radio}
+          rotulo="Presentes ao vivo"
+          valor={celulaMatriz(t.presentes)}
+          detalhe={inscritos > 0 ? `${formatarPct(pct(presentes, inscritos))} dos inscritos` : undefined}
+        />
+        <KpiChip
+          icon={Hand}
+          rotulo="Aplicaram"
+          valor={celulaMatriz(t.aplicaram)}
+          detalhe={presentes > 0 && t.aplicaram != null ? `${formatarPct(pct(t.aplicaram, presentes))} dos presentes` : "durante o evento"}
+        />
+        <KpiChip
+          icon={Hourglass}
+          rotulo="Não aplicaram"
+          valor={celulaMatriz(t.presentes_sem_aplicar)}
+          detalhe={presentes > 0 ? `${formatarPct(pct(semAplicar, presentes))} dos presentes` : undefined}
+        />
+        <KpiChip
+          icon={Gem}
+          rotulo="Qualificados sem aplicar"
+          valor={String(total)}
+          detalhe="MQL+ ou acima · a lista abaixo"
+          destaque
+        />
+      </div>
+
+      <Card>
+        <CardHeader
+          title="Do evento aos qualificados que não aplicaram"
+          subtitle="Inscritos que estiveram ao vivo, não aplicaram durante o evento e são MQL+ ou acima."
+        />
+        <CardContent>
+          <FunilBlocos blocos={blocosPresentes(t)} />
+        </CardContent>
+      </Card>
+
+      {inscritos === 0 && total === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Users}
+            titulo="Nenhum contato com a tag deste ciclo"
+            descricao={
+              data.eventos.length > 0
+                ? `Tag consultada: ${data.eventos.join(", ")}. Confira se ela existe na Clint.`
+                : `Nenhuma terça entre ${rotuloCiclo({ inicio: data.de, fim: data.ate })} — nenhuma tag WG para consultar.`
+            }
+          />
+        </Card>
+      ) : total === 0 || leads.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={PartyPopper}
+            tom="positivo"
+            titulo="Todo qualificado presente aplicou"
+            descricao={`Nenhum MQL+ ou acima esteve ao vivo sem aplicar neste período (${presentes} presentes, ${t.aplicaram ?? 0} aplicaram).`}
+          />
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader
+              title="Qualificados sem aplicar por classificação"
+              subtitle={`${ateOFim} ${ateOFim === 1 ? "ficou" : "ficaram"} até o fim · ${agendaram} já ${agendaram === 1 ? "tem" : "têm"} call agendada (só sinalizado, não filtra). Clique numa barra ou num chip para filtrar.`}
+            />
+            <CardContent className="space-y-4">
+              <FiltroClassificacao
+                contagem={contagem}
+                selecionados={tiersSel}
+                soAltoValor={soAltoValor}
+                onAlternar={alternarTier}
+                onAltoValor={() => setTiersSel(soAltoValor ? [] : [...TIERS_ALTO_VALOR])}
+                onLimpar={() => setTiersSel([])}
+              />
+              <FiltroDono
+                opcoes={opcoesDono}
+                selecionados={donosSel}
+                onAlternar={alternarDono}
+                onLimpar={() => setDonosSel([])}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <Timer className="h-3.5 w-3.5" aria-hidden />
+                  Presença:
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={soAteOFim}
+                  onClick={() => setSoAteOFim((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
+                    soAteOFim
+                      ? "border-verde/60 bg-verde/15 text-verde"
+                      : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
+                    ateOFim === 0 && !soAteOFim && "opacity-50",
+                  )}
+                >
+                  Ficaram até o fim <span className="tabular-nums">({ateOFim})</span>
+                </button>
+                {soAteOFim && (
+                  <button
+                    type="button"
+                    onClick={() => setSoAteOFim(false)}
+                    className="text-xs text-texto-sec underline-offset-2 hover:text-texto hover:underline"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={`Presentes que não aplicaram${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
+              subtitle={`${filtrados.length} de ${leads.length} ${leads.length === 1 ? "qualificado" : "qualificados"} · ${altoValor} alto valor · ordem do backend (classificação, depois tempo assistido)`}
+              action={
+                <Button variant="outline" size="sm" onClick={exportarCsv} disabled={filtrados.length === 0}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Exportar CSV
+                </Button>
+              }
+            />
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="relative w-full max-w-sm">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
+                    aria-hidden
+                  />
+                  <input
+                    type="search"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Buscar por nome, e-mail ou telefone"
+                    aria-label="Buscar presente sem aplicar"
+                    className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
+                  />
+                </div>
+                <Alternador<Visao>
+                  rotulo="Visão da lista"
+                  valor={visao}
+                  onChange={setVisao}
+                  opcoes={[
+                    { valor: "lista", label: "Lista" },
+                    { valor: "por_sdr", label: "Por SDR" },
+                  ]}
+                />
+              </div>
+
+              {filtrados.length === 0 ? (
+                <EmptyState
+                  titulo="Nenhum contato neste recorte"
+                  descricao="Ajuste os chips de classificação, de dono, a presença ou a busca."
+                />
+              ) : visao === "lista" ? (
+                <ListaPendentes
+                  leads={filtrados}
+                  pagina={pagina}
+                  onPagina={setPagina}
+                  multiEvento={multiEvento}
+                  ordenacao={null}
+                  onOrdenar={() => {}}
+                  onAbrir={setSelecionadoId}
+                  ordenavel={false}
+                  comAssistido
+                />
+              ) : (
+                <div className="space-y-5">
+                  {grupos.map((g) => (
+                    <section key={g.chave} aria-label={`Presentes sem aplicar de ${g.nome}`}>
+                      <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borda/60 pb-1.5">
+                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                          <UserRound className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
+                          {g.nome}
+                        </h3>
+                        <span className="text-xs text-texto-sec">
+                          <span className="font-semibold tabular-nums text-texto">{g.leads.length}</span>{" "}
+                          {g.leads.length === 1 ? "qualificado" : "qualificados"}
+                          {" · "}
+                          <span className="font-semibold tabular-nums text-texto">{g.altoValor}</span> alto valor
+                          {" · "}
+                          <span className="font-semibold tabular-nums text-texto">{contarAteOFim(g.leads)}</span> até o fim
+                        </span>
+                      </header>
+                      <ListaPendentes
+                        leads={g.leads}
+                        pagina={1}
+                        onPagina={() => {}}
+                        multiEvento={multiEvento}
+                        ordenacao={null}
+                        onOrdenar={() => {}}
+                        onAbrir={setSelecionadoId}
+                        ordenavel={false}
+                        paginar={false}
+                        semColunaDono
+                        comAssistido
+                      />
+                    </section>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <RodapeEventos data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
+      {selecionado && <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />}
+    </>
+  );
+}
+
+// Tempo assistido ao vivo, em destaque: minutos grandes (verde quando ficou até
+// o fim) e o percentual ao lado.
+function Assistido({ lead }: { lead: LeadPendente }) {
+  if (lead.minutos_assistidos == null && lead.percentual_assistido == null) {
+    return <span className="text-texto-sec/50">—</span>;
+  }
+  const fim = ficouAteOFim(lead);
+  return (
+    <span
+      className={cn("inline-flex items-baseline gap-1 whitespace-nowrap tabular-nums", fim ? "text-verde" : "text-texto")}
+      title={fim ? "Ficou até o fim do evento" : undefined}
+    >
+      <Timer className="h-3 w-3 self-center" aria-hidden />
+      <span className="text-sm font-semibold">{rotuloMinutos(lead.minutos_assistidos)}</span>
+      {lead.percentual_assistido != null && (
+        <span className="text-xs text-texto-sec">· {lead.percentual_assistido}%</span>
+      )}
+    </span>
   );
 }
 
@@ -1146,93 +1408,6 @@ function BarraRecortes({ recorte }: { recorte: RecorteLevantou }) {
 
 // --- Estados ---------------------------------------------------------------
 
-function Carregando() {
-  return (
-    <div className="space-y-4" aria-label="Carregando oportunidades" aria-busy>
-      <Skeleton className="h-36 rounded-xl" />
-      <Skeleton className="h-24 rounded-xl" />
-      <Skeleton className="h-24 rounded-xl" />
-      <Skeleton className="h-40 rounded-xl" />
-      <Skeleton className="h-72 rounded-xl" />
-    </div>
-  );
-}
-
-function ErroOportunidades({ error, onRetry }: { error: unknown; onRetry: () => void }) {
-  const e = error instanceof OportunidadesError ? error : null;
-  const codigo = e?.codigo ?? "desconhecido";
-
-  if (codigo === "clint_auth" || codigo === "clint_indisponivel") {
-    return (
-      <Card>
-        <ErrorState
-          titulo="Integração com a Clint indisponível. Avise o time técnico."
-          descricao={
-            codigo === "clint_auth"
-              ? "A Clint recusou as credenciais da integração (token ausente ou inválido)."
-              : "A Clint não respondeu (limite de requisições, instabilidade ou timeout)."
-          }
-          onRetry={codigo === "clint_indisponivel" ? onRetry : undefined}
-          retryLabel="Tentar de novo"
-        />
-      </Card>
-    );
-  }
-  if (codigo === "agendamentos_indisponivel") {
-    return (
-      <Card>
-        <ErrorState
-          titulo="Base de agendamentos indisponível"
-          descricao="Sem o conjunto de quem agendou, a lista de pendentes não pode ser calculada."
-          onRetry={onRetry}
-          retryLabel="Tentar de novo"
-        />
-      </Card>
-    );
-  }
-  if (codigo === "leads_indisponivel") {
-    return (
-      <Card>
-        <ErrorState
-          titulo="Base de leads indisponível"
-          descricao="O cruzamento com os leads do Mapa de Calor falhou no backend. Tente de novo em instantes."
-          onRetry={onRetry}
-          retryLabel="Tentar de novo"
-        />
-      </Card>
-    );
-  }
-  if (codigo === "intervalo_muito_grande") {
-    return (
-      <Card>
-        <ErrorState
-          titulo="Período muito amplo. Reduza o intervalo."
-          descricao="A consulta à Clint ultrapassou o limite de páginas. Escolha um intervalo menor."
-        />
-      </Card>
-    );
-  }
-  if (codigo === "parametros_invalidos") {
-    return (
-      <Card>
-        <ErrorState
-          titulo="Datas inválidas"
-          descricao={e?.message ?? "Confira as datas do período."}
-        />
-      </Card>
-    );
-  }
-  return (
-    <Card>
-      <ErrorState
-        titulo="Não foi possível carregar as oportunidades"
-        descricao={error instanceof Error ? error.message : "Tente novamente."}
-        onRetry={onRetry}
-      />
-    </Card>
-  );
-}
-
 // --- KPIs e funil ------------------------------------------------------------
 
 // Contingência: resposta SEM `matriz` (backend antigo). Só os números que o
@@ -1278,6 +1453,9 @@ const COR_ETAPA: Record<string, string> = {
   agendaram: "bg-verde/25 text-verde",
   pendentes: "bg-laranja/20 text-laranja",
   nao_abordados: "bg-rosa/20 text-rosa",
+  presentes: "bg-violeta/25 text-violeta",
+  nao_aplicaram: "bg-laranja/20 text-laranja",
+  qualificados: "bg-rosa/20 text-rosa",
 };
 const COR_ETAPA_PADRAO = "bg-painel-claro text-texto";
 
@@ -1374,27 +1552,6 @@ function FunisDoCiclo({ funis }: { funis: NonNullable<OportunidadesResponse["fun
     <div className="space-y-4">
       <FunilAoVivo funis={funis} />
       <FunilReplay funis={funis} />
-    </div>
-  );
-}
-
-// Avisos de sanidade do backend: faixa cinza ACIMA da matriz, em
-// linguagem direta. A chave crua nunca aparece (traduzirAvisos).
-function FaixaAvisos({ avisos }: { avisos: readonly string[] | null | undefined }) {
-  const textos = traduzirAvisos(avisos);
-  if (textos.length === 0) return null;
-  return (
-    <div
-      role="note"
-      aria-label="Avisos sobre os números deste período"
-      className="ds-card px-6 py-4 text-xs opacity-80"
-    >
-      <p className="font-medium text-texto">Atenção aos números deste período</p>
-      <ul className="mt-1 list-disc space-y-0.5 pl-4">
-        {textos.map((t) => (
-          <li key={t}>{t}</li>
-        ))}
-      </ul>
     </div>
   );
 }
@@ -1844,43 +2001,6 @@ function FiltroOrigem({
   );
 }
 
-// Controle segmentado de duas ou mais opções (Ciclo | Intervalo, Lista | Por SDR).
-function Alternador<T extends string>({
-  rotulo,
-  valor,
-  onChange,
-  opcoes,
-}: {
-  rotulo: string;
-  valor: T;
-  onChange: (v: T) => void;
-  opcoes: { valor: T; label: string }[];
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label={rotulo}
-      className="flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1"
-    >
-      {opcoes.map((o) => (
-        <button
-          key={o.valor}
-          type="button"
-          role="radio"
-          aria-checked={valor === o.valor}
-          onClick={() => onChange(o.valor)}
-          className={cn(
-            "nav-link rounded-lg border px-3 py-1 text-xs font-medium transition-all",
-            valor === o.valor ? "border-azul/50 bg-azul/15 text-texto" : "border-transparent text-texto",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 function BarrasPorTier({
   leads,
   selecionados,
@@ -2056,6 +2176,7 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <MqlBadge lead={lead} size="sm" />
               <SeloNinja lead={lead} />
+              <SeloAgendou lead={lead} />
               {lead.origem !== undefined && <OrigemCelula lead={lead} />}
               <DonoBadge dono={lead.dono} size="sm" />
               {lead.evento_tag && <span className="text-xs opacity-70">{lead.evento_tag}</span>}
@@ -2090,6 +2211,18 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
                 {lead.acessou_replay ? " · abriu o replay" : ""}
                 {lead.assistiu_replay ? " · assistiu 30+ min do replay" : ""}
                 {lead.convidado_resgate ? " · convidado da campanha de resgate" : ""}
+              </span>
+            </LinhaDetalhe>
+          )}
+
+          {(lead.minutos_assistidos != null || lead.percentual_assistido != null) && (
+            <LinhaDetalhe rotulo="Presença ao vivo">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Assistido lead={lead} />
+                <span className="text-texto-sec">
+                  {ficouAteOFim(lead) ? "Ficou até o fim e não aplicou durante o evento — melhor alvo de ligação." : "Esteve ao vivo e não aplicou durante o evento."}
+                  {lead.ja_agendou ? " Já tem call agendada." : ""}
+                </span>
               </span>
             </LinhaDetalhe>
           )}
@@ -2314,6 +2447,7 @@ function ListaPendentes({
   comOrigem = false,
   semBadgeOrigem = false,
   comParadoDesde = false,
+  comAssistido = false,
 }: {
   leads: LeadPendente[];
   pagina: number;
@@ -2332,6 +2466,8 @@ function ListaPendentes({
   semBadgeOrigem?: boolean;
   // Recorte "Não abordados": coluna com há quanto tempo o negócio está parado.
   comParadoDesde?: boolean;
+  // Recorte "Presentes que não aplicaram": coluna com o tempo assistido ao vivo.
+  comAssistido?: boolean;
 }) {
   const paginar = permitePaginar && leads.length > TAMANHO_PAGINA;
   const th = (rotulo: string, campo: CampoOrdenacao) =>
@@ -2355,6 +2491,7 @@ function ListaPendentes({
             <tr className="border-b border-borda text-xs text-texto-sec">
               <th className="px-2 py-2 text-left">{th("Nome", "nome")}</th>
               <th className="px-2 py-2 text-left">{th("MQL", "tier")}</th>
+              {comAssistido && <th className="whitespace-nowrap px-2 py-2 text-left font-medium">Assistiu ao vivo</th>}
               {comOrigem && (
                 <th className="px-2 py-2 text-left">
                   {semBadgeOrigem ? <span className="font-medium">Sinais</span> : th("Origem", "origem")}
@@ -2376,11 +2513,17 @@ function ListaPendentes({
                   <NomePendente lead={l} onAbrir={onAbrir} />
                 </td>
                 <td className="px-2 py-2">
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex flex-wrap items-center gap-1">
                     <MqlBadge lead={l} size="sm" />
                     <SeloNinja lead={l} />
+                    <SeloAgendou lead={l} />
                   </span>
                 </td>
+                {comAssistido && (
+                  <td className="whitespace-nowrap px-2 py-2">
+                    <Assistido lead={l} />
+                  </td>
+                )}
                 {comOrigem && (
                   <td className="whitespace-nowrap px-2 py-2">
                     <OrigemCelula lead={l} semBadge={semBadgeOrigem} />
@@ -2449,6 +2592,8 @@ function ListaPendentes({
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   <MqlBadge lead={l} size="sm" />
                   <SeloNinja lead={l} />
+                  <SeloAgendou lead={l} />
+                  {comAssistido && <Assistido lead={l} />}
                   {comOrigem && <OrigemCelula lead={l} semBadge={semBadgeOrigem} />}
                   {!semColunaDono && <DonoBadge dono={l.dono} size="sm" />}
                   {comParadoDesde && <ParadoDesde iso={l.stage_desde} />}
@@ -2510,43 +2655,5 @@ function ListaPendentes({
         </nav>
       )}
     </>
-  );
-}
-
-// --- Rodapé -----------------------------------------------------------------------
-
-function Rodape({
-  data,
-  atualizando,
-  onAtualizar,
-}: {
-  data: Pick<OportunidadesResponse, "de" | "ate" | "eventos" | "gerado_em" | "cache">;
-  atualizando: boolean;
-  onAtualizar: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-texto-sec">
-      <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span>
-          Atualizado em{" "}
-          <time dateTime={data.gerado_em} className="text-texto">
-            {dataHora(data.gerado_em)}
-          </time>
-        </span>
-        {data.cache === "hit" && (
-          <span className="inline-flex items-center gap-1 text-texto-sec/70" title="Resposta servida do cache do backend">
-            <Database className="h-3 w-3" aria-hidden />
-            Dado em cache — pode ter até 5 min.
-          </span>
-        )}
-        <span className="text-texto-sec/70">
-          Tags consultadas: {data.eventos.length > 0 ? data.eventos.join(", ") : tagsEventoNoIntervalo(data.de, data.ate).join(", ") || "nenhuma"}
-        </span>
-      </p>
-      <Button variant="outline" size="sm" onClick={onAtualizar} loading={atualizando}>
-        {!atualizando && <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
-        Atualizar
-      </Button>
-    </div>
   );
 }

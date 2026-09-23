@@ -52,6 +52,11 @@ export const LeadPendenteSchema = z
     // abordados" manda (é o campo que prioriza aquele recorte); aqui é opcional
     // para o MESMO tipo de lead servir às duas fontes.
     stage_desde: z.string().nullish(),
+    // Só o endpoint de "Presentes que não aplicaram" manda: quanto assistiu ao
+    // vivo e se já tem call agendada (sinalizar, nunca filtrar).
+    percentual_assistido: z.number().nullish(),
+    minutos_assistidos: z.number().nullish(),
+    ja_agendou: z.boolean().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
@@ -59,13 +64,14 @@ export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
 // ---------------------------------------------------------------------------
 // Recortes da aba (sub-abas com rota própria). Os quatro primeiros têm funil,
 // filtros e tabela próprios sobre a MESMA resposta de /oportunidades (nada de
-// chamada extra ao trocar). "Não abordados" é OUTRA população, com endpoint
-// próprio (lib/sdr/naoAbordados.ts) — por isso o tipo separado abaixo.
+// chamada extra ao trocar). "Presentes que não aplicaram" e "Não abordados"
+// são OUTRAS populações, com endpoint próprio (lib/sdr/presentesSemAplicar.ts
+// e lib/sdr/naoAbordados.ts) — por isso o tipo separado abaixo.
 // ---------------------------------------------------------------------------
 
-export type RecorteLevantou = "geral" | "ao_vivo" | "replay" | "resgate" | "nao_abordados";
+export type RecorteLevantou = "geral" | "ao_vivo" | "replay" | "presentes" | "resgate" | "nao_abordados";
 // Recortes que derivam da resposta de /oportunidades.
-export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados">;
+export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados" | "presentes">;
 
 // Base de cada recorte, ANTES dos chips: os filtros da tela aplicam em série
 // sobre esta lista.
@@ -260,6 +266,9 @@ const TEXTO_AVISO: Record<string, string> = {
   aplicaram_acima_de_assistiram:
     "Aplicaram supera assistiram — inconsistência de cálculo, avise o time técnico.",
   taxa_acima_de_100: "Há taxa acima de 100% — verificar base.",
+  // Retenção da audiência
+  sem_medicao_alta: "Medição indisponível para este evento (mais de 90% dos inscritos sem tag de percentual).",
+  atribuicao_ambigua: "Intervalo com vários eventos: as tags de percentual não têm data, então os números podem se repetir.",
 };
 const TEXTO_AVISO_GENERICO =
   "O backend sinalizou uma inconsistência na base deste período. Avise o time técnico.";
@@ -277,6 +286,7 @@ export type CodigoErroOportunidades =
   | "clint_indisponivel"
   | "agendamentos_indisponivel"
   | "leads_indisponivel"
+  | "supabase_indisponivel"
   | "intervalo_muito_grande"
   | "parametros_invalidos"
   | "desconhecido";
