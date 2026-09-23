@@ -141,9 +141,11 @@ export type Resgate = z.infer<typeof ResgateSchema>;
 
 // Bloco `resumo` (backend 23/09): os cinco números do topo da aba, cada um com
 // o filtro explícito — inscritos e presentes SEM filtro (base bruta, antes de
-// tirar QC e desqualificados); `aplicaram` = tag Pós WG + tag do evento (sem
-// filtro de classificação); `qualificados_aplicaram` = tag Levantou a Mão (só
-// qualificados a recebem); `qualificados_sem_aplicar` = MQL+ ou acima. `fora_dos_qualificados`
+// tirar QC e desqualificados); `aplicaram` = tag Pós WG do evento (aplicou
+// durante a transmissão; QC e desqualificados contam); `qualificados_aplicaram`
+// = tag Levantou a Mão do evento, sem corte de tier (só quem se qualifica a
+// recebe); `qualificados_sem_aplicar` = MQL+ ou acima = tamanho da lista de
+// /presentes-sem-aplicar. aplicaram − qualificados_aplicaram é só informativo. `fora_dos_qualificados`
 // explica a conta: inscritos − qc − desqualificados = totais.inscritos.
 // `qualificados_sem_aplicar` é, por garantia do backend, o tamanho da lista de
 // /presentes-sem-aplicar.

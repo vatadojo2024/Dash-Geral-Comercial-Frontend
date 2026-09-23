@@ -1274,10 +1274,14 @@ function ParadoDesde({ iso, completo = false }: { iso: string | null | undefined
 
 
 // Os cinco números do topo da aba (bloco `resumo` do backend), na ordem pedida,
-// cada um com o filtro escrito no próprio card. Definições (Vata, 23/09):
-// "Aplicaram" = tag Pós WG + tag do evento, sem filtro de classificação;
-// "Qualificados que aplicaram" = tag Levantou a Mão (só qualificados a recebem);
-// "Qualificados que não aplicaram" = MQL+ ou acima, presentes, sem Pós WG. O último abre a lista de
+// cada um com o filtro escrito no próprio card. Definições (backend, 23/09):
+// "Aplicaram" = tag Pós WG do evento (aplicou durante a transmissão), sem
+// filtro — QC e desqualificados contam; "Qualificados que aplicaram" = tag
+// Levantou a Mão do evento, sem corte de tier (na Clint só quem se qualifica a
+// recebe); "Qualificados que não aplicaram" = MQL+ ou acima, presentes, sem
+// Pós WG. aplicaram − qualificados_aplicaram é informativo (quem aplicou ao vivo
+// sem se qualificar) — os dois crus não excluem QC/desqualificado, o outro
+// exclui; por isso a diferença só é mostrada quando não é negativa. O último abre a lista de
 // /presentes-sem-aplicar (o número é, por garantia do backend, o tamanho dela).
 // Abaixo, a conta que liga a base bruta à base de pendentes.
 function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: TotaisOportunidades }) {
@@ -1286,6 +1290,12 @@ function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: Tota
   const bruto = resumo.inscritos;
   const presentes = resumo.presentes_ao_vivo;
   const aplicaram = resumo.aplicaram;
+  // Quem aplicou ao vivo mas não se qualificou (informativo; null se faltar
+  // número ou se der negativo, porque as bases dos dois cards não são as mesmas).
+  const semQualificar =
+    aplicaram != null && resumo.qualificados_aplicaram != null && aplicaram - resumo.qualificados_aplicaram >= 0
+      ? aplicaram - resumo.qualificados_aplicaram
+      : null;
   const pctDe = (parte: number | null | undefined, todo: number | null | undefined) =>
     parte != null && todo ? `${formatarPct(pct(parte, todo))}` : null;
   return (
@@ -1310,14 +1320,14 @@ function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: Tota
           rotulo="Aplicaram"
           valor={celulaMatriz(aplicaram)}
           detalhe={pctDe(aplicaram, presentes) ? `${pctDe(aplicaram, presentes)} dos presentes` : "durante o evento"}
-          filtro="tag Pós WG + tag do evento · sem filtro"
+          filtro="aplicaram durante o evento · sem filtro"
         />
         <KpiChip
           icon={CalendarCheck2}
           rotulo="Qualificados que aplicaram"
           valor={celulaMatriz(resumo.qualificados_aplicaram)}
-          detalhe={pctDe(resumo.qualificados_aplicaram, aplicaram) ? `${pctDe(resumo.qualificados_aplicaram, aplicaram)} dos que aplicaram` : undefined}
-          filtro="tag Levantou a Mão · só qualificados"
+          detalhe="tag Levantou a Mão do evento"
+          filtro="levantaram a mão"
         />
         <KpiChip
           icon={Gem}
@@ -1351,6 +1361,12 @@ function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: Tota
           {fecha === false && (
             <span className="tag tag-warning" title="inscritos − qc − desqualificados deveria dar a base de pendentes">
               verificar base
+            </span>
+          )}
+          {semQualificar != null && (
+            <span className="basis-full tabular-nums">
+              {aplicaram} aplicaram − {resumo.qualificados_aplicaram} levantaram a mão ={" "}
+              <span className="font-semibold text-texto">{semQualificar}</span> aplicaram ao vivo sem se qualificar.
             </span>
           )}
         </p>

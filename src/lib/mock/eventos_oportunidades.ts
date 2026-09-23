@@ -278,8 +278,9 @@ export function mockOportunidades(
       resumo: {
         inscritos: inscritos + desqualificados + qc,
         presentes_ao_vivo: aoVivo.assistiram,
-        aplicaram: aoVivo.aplicaram,
-        qualificados_aplicaram: Math.round(aoVivo.aplicaram * 0.7),
+        // Pós WG (aplicou na transmissão, sem filtro) é mais que Levantou a Mão.
+        aplicaram: aoVivo.aplicaram + 20 * n,
+        qualificados_aplicaram: aoVivo.aplicaram,
         qualificados_sem_aplicar: ativo ? 28 * n : 0,
         fora_dos_qualificados: { qc, desqualificados },
       },

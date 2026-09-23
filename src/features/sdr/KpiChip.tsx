@@ -59,7 +59,8 @@ export function KpiChip({
         {filtro && (
           <span
             className={cn(
-              "tag mt-1.5 px-1.5 py-px normal-case tracking-normal",
+              // Cabe no card: quebra linha em vez de estourar a borda (a .tag é nowrap).
+              "tag mt-1.5 max-w-full whitespace-normal px-1.5 py-px text-left normal-case leading-snug tracking-normal",
               destaque ? "border-laranja/40 bg-laranja/15 text-laranja" : "opacity-70",
             )}
           >
