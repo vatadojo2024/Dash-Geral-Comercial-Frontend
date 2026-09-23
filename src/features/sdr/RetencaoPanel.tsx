@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
+  Download,
   Eye,
   EyeOff,
   FileText,
@@ -31,6 +32,7 @@ import {
   curvaInconsistente,
   filtrarMedidos,
   formatarPctOuTravessao,
+  linhasXlsxRetencao,
   pontosDaCurva,
   rotuloMinutos,
   type LeadRetencao,
@@ -39,6 +41,7 @@ import {
 } from "@/lib/sdr/retencao";
 import { rgb, useThemeColors } from "@/features/theme/useThemeColors";
 import { MqlBadge, SeloNinja } from "@/components/domain/Badges";
+import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
@@ -178,7 +181,9 @@ function ConteudoRetencao({
         </CardContent>
       </Card>
 
-      {leads.length > 0 && <ListaMedidos leads={leads} pontos={pontos} multiEvento={data.eventos.length > 1} />}
+      {leads.length > 0 && (
+        <ListaMedidos leads={leads} pontos={pontos} multiEvento={data.eventos.length > 1} periodo={{ de: data.de, ate: data.ate }} />
+      )}
 
       <RodapeEventos data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
     </>
@@ -301,25 +306,62 @@ function ListaMedidos({
   leads,
   pontos,
   multiEvento,
+  periodo,
 }: {
   leads: LeadRetencao[];
   pontos: PontoRetencao[];
   multiEvento: boolean;
+  periodo: { de: string; ate: string };
 }) {
   const [busca, setBusca] = useState("");
   const [minimo, setMinimo] = useState<number | null>(null);
+  const [exportando, setExportando] = useState(false);
   const filtrados = useMemo(
     () => filtrarMedidos(leads, { busca, percentualMinimo: minimo }),
     [leads, busca, minimo],
   );
+
+  // XLSX do recorte filtrado. A biblioteca (SheetJS) só é baixada no clique —
+  // não pesa o carregamento da página.
+  async function exportarXlsx() {
+    setExportando(true);
+    try {
+      const XLSX = await import("xlsx");
+      const linhas = linhasXlsxRetencao(filtrados);
+      const planilha = XLSX.utils.json_to_sheet(linhas);
+      planilha["!cols"] = [
+        { wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 9 }, { wch: 16 },
+        { wch: 18 }, { wch: 30 }, { wch: 22 }, { wch: 14 }, { wch: 40 },
+      ];
+      const livro = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(livro, planilha, "Leads medidos");
+      XLSX.writeFile(livro, `retencao_${periodo.de}_${periodo.ate}.xlsx`);
+    } finally {
+      setExportando(false);
+    }
+  }
 
   return (
     <Card>
       <CardHeader
         title="Leads medidos"
         subtitle={`${filtrados.length} de ${leads.length} ${leads.length === 1 ? "inscrito" : "inscritos"} com tag de percentual · ordem do backend`}
+        action={
+          <Button variant="outline" size="sm" onClick={exportarXlsx} disabled={filtrados.length === 0} loading={exportando}>
+            {!exportando && <Download className="h-3.5 w-3.5" aria-hidden />}
+            Exportar XLSX
+          </Button>
+        }
       />
       <CardContent className="space-y-3">
+        {/* As tags "Assistiu N%" da Clint não têm data: o backend lê o maior
+            degrau do contato e o atribui a TODO evento em que ele se inscreveu.
+            Por isso o mesmo contato pode aparecer, com o mesmo percentual, em
+            ciclos diferentes — não é falha do filtro. */}
+        <p className="text-xs text-texto-sec">
+          As tags de percentual não têm data: um contato inscrito em mais de um evento aparece com o
+          mesmo percentual em cada ciclo em que se inscreveu.
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative w-full max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec" aria-hidden />

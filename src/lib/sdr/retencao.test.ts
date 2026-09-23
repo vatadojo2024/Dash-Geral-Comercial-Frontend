@@ -3,6 +3,7 @@ import {
   alcancaramNoDegrau,
   curvaInconsistente,
   filtrarMedidos,
+  linhasXlsxRetencao,
   pontosDaCurva,
   RetencaoResponseSchema,
   rotuloMinutos,
@@ -107,6 +108,15 @@ describe("lista de medidos", () => {
     ...extra,
   });
   const leads = [l("Ana", 90, { telefone: "+5548998350001" }), l("Bia", 50, { email: "bia@x.com" }), l("Caio", 3)];
+
+  it("planilha: cabeçalhos em português, uma linha por lead, vazio em vez de null", () => {
+    const linhas = linhasXlsxRetencao([leads[0], l("Dudu", 10, { lead_id: "ld_1", tags: ["WG", "Assistiu 10%"] })]);
+    expect(Object.keys(linhas[0])).toEqual([
+      "Nome", "Classificação", "Assistiu até (%)", "Minutos", "Evento", "Telefone", "E-mail", "Entrou em", "Ficha no Mapa", "Tags",
+    ]);
+    expect(linhas[0]).toMatchObject({ Nome: "Ana", "Classificação": "Sem classificação", "Assistiu até (%)": 90, Minutos: "", Telefone: "+5548998350001", "Ficha no Mapa": "" });
+    expect(linhas[1]).toMatchObject({ "Ficha no Mapa": "ld_1", Tags: "WG, Assistiu 10%" });
+  });
 
   it("filtra por percentual mínimo e busca, mantendo a ordem do backend", () => {
     const nomes = (x: LeadRetencao[]) => x.map((y) => y.nome);

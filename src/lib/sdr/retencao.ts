@@ -148,6 +148,25 @@ export function filtrarMedidos(
   });
 }
 
+// Linhas da planilha XLSX dos medidos (cabeçalhos em português, uma linha por
+// lead, ordem do backend). Pura: o RetencaoPanel só converte em arquivo.
+export type LinhaXlsxRetencao = Record<string, string | number>;
+
+export function linhasXlsxRetencao(leads: readonly LeadRetencao[]): LinhaXlsxRetencao[] {
+  return leads.map((l) => ({
+    Nome: l.nome,
+    "Classificação": tierDoMedido(l).label,
+    "Assistiu até (%)": l.percentual_maximo ?? "",
+    Minutos: l.minutos ?? "",
+    Evento: l.evento_tag ?? "",
+    Telefone: l.telefone ?? "",
+    "E-mail": l.email ?? "",
+    "Entrou em": l.created_at ?? "",
+    "Ficha no Mapa": l.lead_id ?? "",
+    Tags: (l.tags ?? []).join(", "),
+  }));
+}
+
 // Classificação do lead medido (mesma régua da aba de oportunidades).
 export function tierDoMedido(l: LeadRetencao) {
   return tierDoLead({ tier: l.tier, tier_rank: l.tier_rank } as Pick<LeadPendente, "tier" | "tier_rank">);

@@ -90,7 +90,9 @@ export type RetencaoMock = {
 };
 
 function lead(i: number, evento: string, degrau: (typeof DEGRAUS)[number]): LeadRetencaoMock {
-  const nome = NOMES[i % NOMES.length];
+  // Nomes deslocados pela data do evento: ciclos diferentes mostram contatos
+  // diferentes (senão a troca de ciclo pareceria não fazer nada no mock).
+  const nome = NOMES[(i + (chaveTag(evento) % 11) * 3) % NOMES.length];
   const tier = TIERS[(i * 5) % TIERS.length];
   return {
     clint_contact_id: `clint-ret-${String(i + 1).padStart(4, "0")}`,
