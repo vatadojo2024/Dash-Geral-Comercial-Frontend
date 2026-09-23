@@ -83,17 +83,23 @@ export function RetencaoPanel() {
       ) : isError || !data ? (
         <ErroEventos error={error} onRetry={() => refetch()} rotulo="a retenção" />
       ) : (data.totais.inscritos ?? 0) === 0 && data.totais.assistiram === 0 ? (
-        <Card>
-          <EmptyState
-            icon={Users}
-            titulo="Nenhum contato com a tag deste ciclo"
-            descricao={
-              data.eventos.length > 0
-                ? `Tag consultada: ${data.eventos.join(", ")}. Confira se ela existe na Clint.`
-                : `Nenhuma terça entre ${rotuloCiclo({ inicio: data.de, fim: data.ate })} — nenhuma tag WG para consultar.`
-            }
-          />
-        </Card>
+        <>
+          <Card>
+            <EmptyState
+              icon={Users}
+              titulo="Nenhum contato com a tag deste ciclo"
+              descricao={
+                data.eventos.length === 0
+                  ? `Nenhuma terça entre ${rotuloCiclo({ inicio: data.de, fim: data.ate })} — nenhuma tag WG para consultar.`
+                  : data.cache === "hit"
+                    ? `Tag consultada: ${data.eventos.join(", ")}. Esta resposta veio do cache do backend (até 5 min): se a mesma tag mostra inscritos na aba Oportunidades do Evento, aguarde e clique em Atualizar.`
+                    : `Tag consultada: ${data.eventos.join(", ")}. Confira se ela existe na Clint.`
+              }
+            />
+          </Card>
+          {/* Rodapé também no vazio: mostra se veio do cache e dá o botão Atualizar. */}
+          <RodapeEventos data={data} atualizando={isFetching} onAtualizar={() => refetch()} />
+        </>
       ) : (
         <ConteudoRetencao data={data} atualizando={isFetching} onAtualizar={() => refetch()} />
       )}
