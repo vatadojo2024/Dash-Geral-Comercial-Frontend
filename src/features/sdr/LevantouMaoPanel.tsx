@@ -106,6 +106,7 @@ import {
   csvDePresentes,
   ficouAteOFim,
   filtrarPresentes,
+  type FiltroAgendou,
   type PresentesResponse,
 } from "@/lib/sdr/presentesSemAplicar";
 import { rotuloMinutos } from "@/lib/sdr/retencao";
@@ -405,6 +406,12 @@ function ConteudoRecorte({
   // Nos recortes Ao vivo/Replay a origem é constante: a coluna vira "Sinais" e
   // mostra só os marcadores (resgate, viu o replay / esteve ao vivo).
   const origemConstante = recorte === "ao_vivo" || recorte === "replay";
+  // "Ao vivo — Qualificados": coluna com o % assistido por lead, quando o
+  // backend mandar percentual_assistido/minutos_assistidos em /oportunidades.
+  const temAssistido = useMemo(
+    () => recorte === "ao_vivo" && base.some((l) => l.percentual_assistido != null || l.minutos_assistidos != null),
+    [recorte, base],
+  );
   const selecionado = useMemo(
     () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
     [leads, selecionadoId],
@@ -583,7 +590,9 @@ function ConteudoRecorte({
               <Card>
                 <CardHeader
                   title={`${TITULO_TABELA[recorte]}${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
-                  subtitle={`${filtrados.length} de ${base.length} ${base.length === 1 ? "pendente" : "pendentes"} no recorte`}
+                  subtitle={`${filtrados.length} de ${base.length} ${base.length === 1 ? "pendente" : "pendentes"} no recorte${
+                    recorte === "ao_vivo" && !temAssistido ? " · % assistido por lead: aguardando o backend" : ""
+                  }`}
                   action={
                     <Button
                       variant="outline"
@@ -639,6 +648,7 @@ function ConteudoRecorte({
                       onAbrir={setSelecionadoId}
                       comOrigem={temOrigem}
                       semBadgeOrigem={origemConstante}
+                      comAssistido={temAssistido}
                     />
                   ) : (
                     <div className="space-y-5">
@@ -670,6 +680,7 @@ function ConteudoRecorte({
                             semColunaDono
                             comOrigem={temOrigem}
                             semBadgeOrigem={origemConstante}
+                            comAssistido={temAssistido}
                           />
                         </section>
                       ))}
@@ -994,6 +1005,7 @@ type FiltrosPresentesSalvos = {
   tiers: TierChave[];
   donos: string[];
   soAteOFim: boolean;
+  agendou: FiltroAgendou;
   visao: Visao;
   busca: string;
 };
@@ -1014,14 +1026,15 @@ function ConteudoPresentes({
   const [tiersSel, setTiersSel] = useState<TierChave[]>(salvo?.tiers ?? []);
   const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
   const [soAteOFim, setSoAteOFim] = useState(salvo?.soAteOFim ?? false);
+  const [agendou, setAgendou] = useState<FiltroAgendou>(salvo?.agendou ?? "todos");
   const [visao, setVisao] = useState<Visao>(salvo?.visao ?? "lista");
   const [busca, setBusca] = useState(salvo?.busca ?? "");
   const [pagina, setPagina] = useState(1);
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
 
   useEffect(() => {
-    memoriaFiltrosPresentes.salvo = { tiers: tiersSel, donos: donosSel, soAteOFim, visao, busca };
-  }, [tiersSel, donosSel, soAteOFim, visao, busca]);
+    memoriaFiltrosPresentes.salvo = { tiers: tiersSel, donos: donosSel, soAteOFim, agendou, visao, busca };
+  }, [tiersSel, donosSel, soAteOFim, agendou, visao, busca]);
 
   const leads = data.leads;
   const contagem = useMemo(() => contarPorTier(leads), [leads]);
@@ -1030,8 +1043,8 @@ function ConteudoPresentes({
   const agendaram = useMemo(() => contarAgendaram(leads), [leads]);
   const altoValor = altoValorPendente(leads);
   const filtrados = useMemo(
-    () => filtrarPresentes(leads, { tiers: tiersSel, donos: donosSel, soAteOFim, busca }),
-    [leads, tiersSel, donosSel, soAteOFim, busca],
+    () => filtrarPresentes(leads, { tiers: tiersSel, donos: donosSel, soAteOFim, agendou, busca }),
+    [leads, tiersSel, donosSel, soAteOFim, agendou, busca],
   );
   const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
   const multiEvento = data.eventos.length > 1;
@@ -1039,7 +1052,7 @@ function ConteudoPresentes({
     () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
     [leads, selecionadoId],
   );
-  useEffect(() => setPagina(1), [tiersSel, donosSel, soAteOFim, busca, data]);
+  useEffect(() => setPagina(1), [tiersSel, donosSel, soAteOFim, agendou, busca, data]);
 
   function alternarTier(chave: TierChave) {
     setTiersSel((atual) => (atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave]));
@@ -1136,7 +1149,7 @@ function ConteudoPresentes({
           <Card>
             <CardHeader
               title="Qualificados sem aplicar por classificação"
-              subtitle={`${ateOFim} ${ateOFim === 1 ? "ficou" : "ficaram"} até o fim · ${agendaram} já ${agendaram === 1 ? "tem" : "têm"} call agendada (só sinalizado, não filtra). Clique numa barra ou num chip para filtrar.`}
+              subtitle={`${ateOFim} ${ateOFim === 1 ? "ficou" : "ficaram"} até o fim · ${agendaram} já ${agendaram === 1 ? "tem" : "têm"} call agendada. Clique numa barra ou num chip para filtrar.`}
             />
             <CardContent className="space-y-4">
               <FiltroClassificacao
@@ -1181,6 +1194,24 @@ function ConteudoPresentes({
                     Limpar
                   </button>
                 )}
+              </div>
+              {/* Seletor de call agendada (pedido 24/09): o selo continua na
+                  lista; aqui dá para ver só quem falta ligar ou só quem já marcou. */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden />
+                  Call agendada:
+                </span>
+                <Alternador<FiltroAgendou>
+                  rotulo="Filtrar por call agendada"
+                  valor={agendou}
+                  onChange={setAgendou}
+                  opcoes={[
+                    { valor: "todos", label: `Todos (${leads.length})` },
+                    { valor: "nao", label: `Ainda não agendaram (${leads.length - agendaram})` },
+                    { valor: "sim", label: `Já agendaram (${agendaram})` },
+                  ]}
+                />
               </div>
               <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
             </CardContent>

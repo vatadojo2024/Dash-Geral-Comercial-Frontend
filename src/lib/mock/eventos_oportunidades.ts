@@ -101,7 +101,13 @@ export type LeadPendenteMock = {
   assistiu_replay: boolean;
   convidado_resgate: boolean;
   possivel_ninja: boolean;
+  // Quanto assistiu ao vivo (tags "Assistiu N%"); null para quem só viu o replay.
+  percentual_assistido: number | null;
+  minutos_assistidos: number | null;
 };
+
+// Degraus de presença da Clint (percentual → minutos), do maior ao menor.
+const DEGRAUS_PRESENCA: [number, number][] = [[90, 135], [70, 105], [50, 75], [30, 45], [20, 30], [10, 15]];
 
 // Donos (SDRs) do mock. null = negócio sem dono.
 const DONOS: (LeadPendenteMock["dono"] | null)[] = [
@@ -215,6 +221,8 @@ function linhaDoContato(i: number, tier: Tier, evento: string, semReplay: boolea
     origem,
     // Levantar a mão prova presença ao vivo; 1 em 10 do replay também esteve ao vivo.
     assistiu_ao_vivo: origem === "ao_vivo" || i % 10 === 9,
+    percentual_assistido: origem === "ao_vivo" || i % 10 === 9 ? DEGRAUS_PRESENCA[(i * 5) % DEGRAUS_PRESENCA.length][0] : null,
+    minutos_assistidos: origem === "ao_vivo" || i % 10 === 9 ? DEGRAUS_PRESENCA[(i * 5) % DEGRAUS_PRESENCA.length][1] : null,
     acessou_replay: assistiuReplay || (!semReplay && i % 6 === 0),
     assistiu_replay: assistiuReplay,
     convidado_resgate: !semResgate && i % 4 === 2,

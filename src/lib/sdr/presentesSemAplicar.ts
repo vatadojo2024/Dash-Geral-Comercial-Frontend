@@ -18,7 +18,8 @@ import {
 // está na aba de Oportunidades). Quem ficou até o fim e não aplicou é o melhor
 // alvo de ligação: a lista vem ordenada por tier desc e tempo assistido desc,
 // e a ordem NÃO é alterada aqui.
-//   - `ja_agendou` true: só sinalizar (selo), nunca filtrar.
+//   - `ja_agendou`: selo na lista e, a pedido do Vata (24/09), um seletor
+//     Todos | Já agendaram | Ainda não agendaram — o padrão é "todos".
 //   - `por_dono[].pendentes` é a contagem de leads (nome herdado).
 //   - `lead_id` costuma ser null; `url_clint` vem pronta.
 // ---------------------------------------------------------------------------
@@ -96,14 +97,20 @@ export function contarAteOFim(
 }
 
 // ---------------------------------------------------------------------------
-// Filtro client-side (preserva a ordem do backend). `ja_agendou` NÃO filtra.
+// Filtro client-side (preserva a ordem do backend). `ja_agendou` só filtra
+// quando o seletor está em "sim" ou "nao".
 // ---------------------------------------------------------------------------
+
+// Seletor de call agendada: "todos" (padrão) não filtra.
+export type FiltroAgendou = "todos" | "sim" | "nao";
 
 export type FiltroPresentes = {
   tiers: readonly TierChave[];
   donos?: readonly string[];
   // Só quem ficou até o fim (percentual ≥ 70% ou MINUTOS_DESTAQUE minutos).
   soAteOFim?: boolean;
+  // "sim" = só quem já tem call; "nao" = só quem ainda não tem.
+  agendou?: FiltroAgendou;
   busca: string;
 };
 
@@ -127,6 +134,8 @@ export function filtrarPresentes(leads: LeadPresente[], f: FiltroPresentes): Lea
     if (tiers.size > 0 && !tiers.has(tierDoLead(l).chave)) return false;
     if (donos.size > 0 && !donos.has(chaveDono(l.dono))) return false;
     if (f.soAteOFim && !ficouAteOFim(l)) return false;
+    if (f.agendou === "sim" && l.ja_agendou !== true) return false;
+    if (f.agendou === "nao" && l.ja_agendou === true) return false;
     if (!termo) return true;
     if (normalizar(l.nome).includes(termo)) return true;
     if (normalizar(l.email).includes(termo)) return true;

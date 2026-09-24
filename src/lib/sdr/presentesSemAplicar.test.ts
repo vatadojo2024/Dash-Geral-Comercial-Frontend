@@ -114,9 +114,13 @@ describe("funil, presença e filtro", () => {
   ];
   const nomes = (x: LeadPresente[]) => x.map((l) => l.nome);
 
-  it("filtra por tier, dono, 'até o fim' e busca; ja_agendou NUNCA filtra, só conta", () => {
+  it("filtra por tier, dono, 'até o fim', call agendada e busca; o padrão não filtra por call", () => {
     const f = (x: Parameters<typeof filtrarPresentes>[1]) => nomes(filtrarPresentes(leads, x));
     expect(f({ tiers: [], busca: "" })).toEqual(["Ane", "Bia", "Cauã", "Dalila"]);
+    expect(f({ tiers: [], agendou: "todos", busca: "" })).toEqual(["Ane", "Bia", "Cauã", "Dalila"]);
+    expect(f({ tiers: [], agendou: "sim", busca: "" })).toEqual(["Bia", "Dalila"]);
+    expect(f({ tiers: [], agendou: "nao", busca: "" })).toEqual(["Ane", "Cauã"]);
+    expect(f({ tiers: [], agendou: "nao", soAteOFim: true, busca: "" })).toEqual(["Ane", "Cauã"]);
     expect(f({ tiers: ["HMQL"], busca: "" })).toEqual(["Ane"]);
     expect(f({ tiers: [], donos: ["u2"], busca: "" })).toEqual(["Bia"]);
     expect(f({ tiers: [], donos: ["sem"], busca: "" })).toEqual(["Dalila"]);
