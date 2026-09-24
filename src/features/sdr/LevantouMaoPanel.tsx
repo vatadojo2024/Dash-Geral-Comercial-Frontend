@@ -376,25 +376,33 @@ function ConteudoRecorte({
   const leads = data.leads;
   // Base do recorte: os chips aplicam em série sobre ELA, não sobre a resposta toda.
   const base = useMemo(() => leadsDoRecorte(leads, recorte), [leads, recorte]);
-  const contagem = useMemo(() => contarPorTier(base), [base]);
-  // por_dono do backend só vale para a resposta inteira; nos recortes deriva da base.
-  const opcoesDono = useMemo(
-    () => opcoesDeDono(base, recorte === "geral" ? data.por_dono : null),
-    [base, recorte, data.por_dono],
-  );
-  const contagemOrigem = useMemo(() => contarPorOrigem(base), [base]);
-  // MQL → dono → origem → resgate → marcadores → busca, em série.
-  const recortado = useMemo(
+  // Base para as BARRAS e os CHIPS de classificação: todos os filtros menos o
+  // próprio filtro de classificação (senão clicar numa barra zeraria as outras
+  // e não daria para escolher outra — a barra é o botão do filtro).
+  const baseSemClassificacao = useMemo(
     () =>
       filtrarPendentes(base, {
-        tiers: tiersSel,
+        tiers: [],
         donos: donosSel,
         origens: origensSel,
         soResgate,
         marcadores: marcadoresSel,
         busca,
       }),
-    [base, tiersSel, donosSel, origensSel, soResgate, marcadoresSel, busca],
+    [base, donosSel, origensSel, soResgate, marcadoresSel, busca],
+  );
+  const contagem = useMemo(() => contarPorTier(baseSemClassificacao), [baseSemClassificacao]);
+  // por_dono do backend só vale para a resposta inteira; nos recortes deriva da base.
+  const opcoesDono = useMemo(
+    () => opcoesDeDono(base, recorte === "geral" ? data.por_dono : null),
+    [base, recorte, data.por_dono],
+  );
+  const contagemOrigem = useMemo(() => contarPorOrigem(base), [base]);
+  // MQL → dono → origem → resgate → marcadores → busca, em série (a
+  // classificação entra por último, sobre a base acima).
+  const recortado = useMemo(
+    () => filtrarPendentes(baseSemClassificacao, { tiers: tiersSel, busca: "" }),
+    [baseSemClassificacao, tiersSel],
   );
   const filtrados = useMemo(() => ordenarPendentes(recortado, ordenacao), [recortado, ordenacao]);
   // "Por SDR": seções a partir do MESMO recorte filtrado, na ordem do backend
@@ -406,6 +414,10 @@ function ConteudoRecorte({
   // Nos recortes Ao vivo/Replay a origem é constante: a coluna vira "Sinais" e
   // mostra só os marcadores (resgate, viu o replay / esteve ao vivo).
   const origemConstante = recorte === "ao_vivo" || recorte === "replay";
+  // Coluna de origem/"Sinais": some no Ao vivo (origem constante; o marcador
+  // "viu o replay também" já é filtro). No Replay fica, porque "esteve ao vivo
+  // também" diferencia as linhas.
+  const comColunaOrigem = temOrigem && recorte !== "ao_vivo";
   // "Ao vivo — Qualificados": coluna com o % assistido por lead, quando o
   // backend mandar percentual_assistido/minutos_assistidos em /oportunidades.
   const temAssistido = useMemo(
@@ -583,7 +595,7 @@ function ConteudoRecorte({
                       }}
                     />
                   )}
-                  <BarrasPorTier leads={base} selecionados={tiersSel} onAlternar={alternarTier} />
+                  <BarrasPorTier leads={baseSemClassificacao} selecionados={tiersSel} onAlternar={alternarTier} />
                 </CardContent>
               </Card>
 
@@ -646,7 +658,7 @@ function ConteudoRecorte({
                       ordenacao={ordenacao}
                       onOrdenar={alternarOrdenacao}
                       onAbrir={setSelecionadoId}
-                      comOrigem={temOrigem}
+                      comOrigem={comColunaOrigem}
                       semBadgeOrigem={origemConstante}
                       comAssistido={temAssistido}
                     />
@@ -678,7 +690,7 @@ function ConteudoRecorte({
                             ordenavel={false}
                             paginar={false}
                             semColunaDono
-                            comOrigem={temOrigem}
+                            comOrigem={comColunaOrigem}
                             semBadgeOrigem={origemConstante}
                             comAssistido={temAssistido}
                           />
@@ -743,14 +755,19 @@ function ConteudoNaoAbordados({
   }, [tiersSel, donosSel, soParados, visao, busca]);
 
   const leads = data.leads;
-  const contagem = useMemo(() => contarPorTier(leads), [leads]);
+  // Barras e chips de classificação seguem os outros filtros (menos o próprio).
+  const baseSemClassificacao = useMemo(
+    () => filtrarNaoAbordados(leads, { tiers: [], donos: donosSel, soParados, busca }),
+    [leads, donosSel, soParados, busca],
+  );
+  const contagem = useMemo(() => contarPorTier(baseSemClassificacao), [baseSemClassificacao]);
   // por_dono vale para a resposta inteira (a mesma população da lista).
   const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
   const parados = useMemo(() => contarParados(leads), [leads]);
   const altoValor = altoValorPendente(leads);
   const filtrados = useMemo(
-    () => filtrarNaoAbordados(leads, { tiers: tiersSel, donos: donosSel, soParados, busca }),
-    [leads, tiersSel, donosSel, soParados, busca],
+    () => filtrarNaoAbordados(baseSemClassificacao, { tiers: tiersSel, busca: "" }),
+    [baseSemClassificacao, tiersSel],
   );
   const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
   const multiEvento = data.eventos.length > 1;
@@ -888,7 +905,7 @@ function ConteudoNaoAbordados({
                   </button>
                 )}
               </div>
-              <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
+              <BarrasPorTier leads={baseSemClassificacao} selecionados={tiersSel} onAlternar={alternarTier} />
             </CardContent>
           </Card>
 
@@ -1037,14 +1054,19 @@ function ConteudoPresentes({
   }, [tiersSel, donosSel, soAteOFim, agendou, visao, busca]);
 
   const leads = data.leads;
-  const contagem = useMemo(() => contarPorTier(leads), [leads]);
+  // Barras e chips de classificação seguem os outros filtros (menos o próprio).
+  const baseSemClassificacao = useMemo(
+    () => filtrarPresentes(leads, { tiers: [], donos: donosSel, soAteOFim, agendou, busca }),
+    [leads, donosSel, soAteOFim, agendou, busca],
+  );
+  const contagem = useMemo(() => contarPorTier(baseSemClassificacao), [baseSemClassificacao]);
   const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
   const ateOFim = useMemo(() => contarAteOFim(leads), [leads]);
   const agendaram = useMemo(() => contarAgendaram(leads), [leads]);
   const altoValor = altoValorPendente(leads);
   const filtrados = useMemo(
-    () => filtrarPresentes(leads, { tiers: tiersSel, donos: donosSel, soAteOFim, agendou, busca }),
-    [leads, tiersSel, donosSel, soAteOFim, agendou, busca],
+    () => filtrarPresentes(baseSemClassificacao, { tiers: tiersSel, busca: "" }),
+    [baseSemClassificacao, tiersSel],
   );
   const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
   const multiEvento = data.eventos.length > 1;
@@ -1213,7 +1235,7 @@ function ConteudoPresentes({
                   ]}
                 />
               </div>
-              <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
+              <BarrasPorTier leads={baseSemClassificacao} selecionados={tiersSel} onAlternar={alternarTier} />
             </CardContent>
           </Card>
 
@@ -1493,12 +1515,23 @@ function ListaInscritos({ data, periodo }: { data: InscritosResponse; periodo: {
   }, [tiersSel, donosSel, sinaisSel, visao, busca]);
 
   const leads = data.leads;
-  const contagem = useMemo(() => contarPorTier(leads), [leads]);
+  // Barras e chips de classificação seguem os outros filtros (menos o próprio).
+  const baseSemClassificacao = useMemo(
+    () => filtrarInscritos(leads, { tiers: [], donos: donosSel, sinais: sinaisSel, busca }),
+    [leads, donosSel, sinaisSel, busca],
+  );
+  const contagem = useMemo(() => contarPorTier(baseSemClassificacao), [baseSemClassificacao]);
   const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
   const contagemSinais = useMemo(() => contarSinais(leads), [leads]);
   const filtrados = useMemo(
-    () => filtrarInscritos(leads, { tiers: tiersSel, donos: donosSel, sinais: sinaisSel, busca }),
-    [leads, tiersSel, donosSel, sinaisSel, busca],
+    () => filtrarInscritos(baseSemClassificacao, { tiers: tiersSel, busca: "" }),
+    [baseSemClassificacao, tiersSel],
+  );
+  // Coluna "Assistiu ao vivo" só quando a resposta traz a medição de alguém
+  // (num ciclo sem tag de tempo seria uma coluna de traços).
+  const temAssistido = useMemo(
+    () => leads.some((l) => l.percentual_assistido != null || l.minutos_assistidos != null),
+    [leads],
   );
   const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
   const multiEvento = data.eventos.length > 1;
@@ -1582,7 +1615,7 @@ function ListaInscritos({ data, periodo }: { data: InscritosResponse; periodo: {
               )}
             </Chips>
           </div>
-          <BarrasPorTier leads={leads} selecionados={tiersSel} onAlternar={alternarTier} />
+          <BarrasPorTier leads={baseSemClassificacao} selecionados={tiersSel} onAlternar={alternarTier} />
         </CardContent>
       </Card>
 
@@ -1634,6 +1667,7 @@ function ListaInscritos({ data, periodo }: { data: InscritosResponse; periodo: {
               onAbrir={setSelecionadoId}
               ordenavel={false}
               comSinais
+              comAssistido={temAssistido}
             />
           ) : (
             <div className="space-y-5">
@@ -1663,6 +1697,7 @@ function ListaInscritos({ data, periodo }: { data: InscritosResponse; periodo: {
                     paginar={false}
                     semColunaDono
                     comSinais
+                    comAssistido={temAssistido}
                   />
                 </section>
               ))}
