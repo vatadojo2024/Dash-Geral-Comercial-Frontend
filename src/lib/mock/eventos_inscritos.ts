@@ -1,4 +1,5 @@
 import { tagsEventoNoIntervalo } from "@/lib/sdr/ciclo";
+import { RANK_ALTO_VALOR_MIN } from "@/lib/sdr/oportunidades";
 
 // ---------------------------------------------------------------------------
 // Mock de GET /api/eventos/inscritos (LEADS_MODE=mock, CONTRATO PROVISÓRIO).
@@ -184,7 +185,7 @@ export function mockInscritos(de: string, ate: string, simular?: string | null):
     const chave = l.dono?.id ?? "sem";
     const atual = porDono.get(chave) ?? { dono_id: l.dono?.id ?? null, dono_nome: l.dono?.nome ?? "Sem dono", pendentes: 0, alto_valor: 0 };
     atual.pendentes += 1;
-    if (l.tier_rank >= 4) atual.alto_valor += 1;
+    if (l.tier_rank >= RANK_ALTO_VALOR_MIN) atual.alto_valor += 1;
     porDono.set(chave, atual);
   }
   const por_dono = [...porDono.values()].sort((a, b) => {

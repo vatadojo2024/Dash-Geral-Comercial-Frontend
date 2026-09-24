@@ -158,8 +158,12 @@ describe("contagens", () => {
       sem: 1,
     });
   });
-  it("alto valor = UMQL+/UMQL/HMQL", () => {
+  it("alto valor = SMQL para cima (UMQL+, UMQL, HMQL, SMQL); MQL+ e abaixo não", () => {
     expect(altoValorPendente(leads)).toBe(3);
+    expect(TIERS_ALTO_VALOR).toEqual(["UMQL+", "UMQL", "HMQL", "SMQL"]);
+    expect(ehAltoValor({ tier: "SMQL", tier_rank: 3 })).toBe(true);
+    expect(ehAltoValor({ tier: "MQL+", tier_rank: 2 })).toBe(false);
+    expect(ehAltoValor({ tier: null, tier_rank: 3 })).toBe(true); // só o rank (backend sem tag)
   });
   it("distribuição em posição FIXA (ordem da hierarquia), incluindo zerados", () => {
     expect(distribuicaoPorTier(leads).map((d) => [d.tier.chave, d.total])).toEqual([
@@ -350,17 +354,21 @@ describe("dono (V2)", () => {
     expect(chaveDono(undefined)).toBe("sem");
   });
 
-  it("opcoesDeDono usa totais.por_dono quando vem, com 'Sem dono' por último", () => {
-    const op = opcoesDeDono(leads, [
+  it("opcoesDeDono usa as contagens de totais.por_dono, mas RECONTA o alto valor dos leads (SMQL+)", () => {
+    const porDono = [
       { dono_id: null, dono_nome: "Sem dono", pendentes: 2, alto_valor: 0 },
       { dono_id: "u-benhur", dono_nome: "Benhur Ramos", pendentes: 2, alto_valor: 1 },
       { dono_id: "u-glaucio", dono_nome: "Glaucio Portela", pendentes: 1, alto_valor: 1 },
-    ]);
+    ];
+    const op = opcoesDeDono(leads, porDono);
+    // Eva é SMQL sem dono: o backend (corte antigo) diz 0, o front conta 1.
     expect(op.map((o) => [o.chave, o.pendentes, o.altoValor])).toEqual([
       ["u-benhur", 2, 1],
       ["u-glaucio", 1, 1],
-      ["sem", 2, 0],
+      ["sem", 2, 1],
     ]);
+    // Sem lista, vale o número do backend.
+    expect(opcoesDeDono([], porDono).map((o) => o.altoValor)).toEqual([1, 1, 0]);
   });
 
   it("opcoesDeDono deriva dos leads sem por_dono (backend V1)", () => {
@@ -368,7 +376,7 @@ describe("dono (V2)", () => {
     expect(op.map((o) => [o.chave, o.nome, o.pendentes, o.altoValor])).toEqual([
       ["u-benhur", "Benhur Ramos", 2, 1],
       ["u-glaucio", "Glaucio Portela", 1, 1],
-      ["sem", "Sem dono", 2, 0],
+      ["sem", "Sem dono", 2, 1],
     ]);
   });
 
@@ -389,7 +397,7 @@ describe("dono (V2)", () => {
     expect(g.map((x) => [x.nome, x.leads.map((l) => l.nome), x.altoValor])).toEqual([
       ["Benhur Ramos", ["Caio", "Dudu"], 1],
       ["Glaucio Portela", ["Ana"], 1],
-      ["Sem dono", ["Bia", "Eva"], 0],
+      ["Sem dono", ["Bia", "Eva"], 1],
     ]);
   });
 

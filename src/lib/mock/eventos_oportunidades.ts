@@ -1,4 +1,5 @@
 import { tagsEventoNoIntervalo } from "@/lib/sdr/ciclo";
+import { RANK_ALTO_VALOR_MIN } from "@/lib/sdr/oportunidades";
 
 // ---------------------------------------------------------------------------
 // Mock da aba "Levantou a Mão" (LEADS_MODE=mock) no contrato V4 de
@@ -31,7 +32,7 @@ const TIERS: Tier[] = [
 ];
 
 // Distribuição dos 40 pendentes: 3 UMQL+, 5 UMQL, 8 HMQL, 6 SMQL, 5 MQL+, 6 MQL,
-// 4 Ninja, 3 sem classificação. Alto valor (UMQL+/UMQL/HMQL) segue 16.
+// 4 Ninja, 3 sem classificação. Alto valor (SMQL para cima) = 22.
 const DISTRIBUICAO = [3, 5, 8, 6, 5, 6, 4, 3];
 
 const NOMES = [
@@ -168,7 +169,7 @@ function linhaMatriz(
     agendaram,
     taxa_agendamento: taxa(agendaram, aplicaram),
     pendentes: pendentes.length,
-    alto_valor_pendente: pendentes.filter((l) => l.tier_rank >= 4).length,
+    alto_valor_pendente: pendentes.filter((l) => l.tier_rank >= RANK_ALTO_VALOR_MIN).length,
   };
 }
 
@@ -267,7 +268,7 @@ export function mockOportunidades(
       agendaram: agAoVivo + agReplay,
       taxa_agendamento: taxa(agAoVivo + agReplay, aoVivo.aplicaram + replay.aplicaram),
       pendentes: leads.length,
-      alto_valor_pendente: leads.filter((l) => l.tier_rank >= 4).length,
+      alto_valor_pendente: leads.filter((l) => l.tier_rank >= RANK_ALTO_VALOR_MIN).length,
     };
     return {
       totais: { inscritos, desqualificados, qc, pendentes: leads.length },
@@ -342,7 +343,7 @@ export function mockOportunidades(
       alto_valor: 0,
     };
     atual.pendentes += 1;
-    if (l.tier_rank >= 4) atual.alto_valor += 1;
+    if (l.tier_rank >= RANK_ALTO_VALOR_MIN) atual.alto_valor += 1;
     porDono.set(chave, atual);
   }
   const por_dono = [...porDono.values()].sort((a, b) => {

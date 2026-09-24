@@ -510,9 +510,16 @@ export const TIERS: readonly TierConfig[] = [
   },
 ] as const;
 
-// Atalho "Só alto valor" = UMQL+, UMQL e HMQL. Ninja NÃO entra: é outra trilha.
-export const TIERS_ALTO_VALOR: readonly TierChave[] = ["UMQL+", "UMQL", "HMQL"];
-export const RANK_ALTO_VALOR_MIN = 4;
+// "Alto valor" = SMQL para cima (UMQL+, UMQL, HMQL, SMQL) — decisão Vata 24/09
+// (antes era HMQL para cima). Ninja NÃO entra: é outra trilha. O front calcula
+// alto valor SEMPRE a partir dos leads (ehAltoValor); os números prontos do
+// backend (`alto_valor_pendente`, `por_dono[].alto_valor`) ficam de reserva
+// para quando não há lista — assim a régua é uma só, mesmo que o backend
+// ainda esteja no corte antigo.
+export const TIERS_ALTO_VALOR: readonly TierChave[] = ["UMQL+", "UMQL", "HMQL", "SMQL"];
+export const RANK_ALTO_VALOR_MIN = 3;
+// Legenda dos cards/etiquetas de alto valor, sempre derivada da lista acima.
+export const ROTULO_ALTO_VALOR = TIERS_ALTO_VALOR.join(" · ");
 
 const TIER_POR_CHAVE = new Map<string, TierConfig>(
   TIERS.map((t) => [t.chave.toUpperCase(), t]),
@@ -531,7 +538,7 @@ export function tierDoLead(lead: Pick<LeadPendente, "tier" | "tier_rank">): Tier
   return TIER_POR_RANK.get(lead.tier_rank ?? 0) ?? TIER_SEM;
 }
 
-// Alto valor = UMQL+, UMQL, HMQL. Ninja tem rank 0, então nunca entra aqui.
+// Alto valor = SMQL para cima (rank ≥ 3). Ninja tem rank 0, então nunca entra aqui.
 export function ehAltoValor(lead: Pick<LeadPendente, "tier" | "tier_rank">): boolean {
   return tierDoLead(lead).rank >= RANK_ALTO_VALOR_MIN;
 }
@@ -585,21 +592,27 @@ export function nomeDono(dono: LeadPendente["dono"]): string {
 
 export type OpcaoDono = { chave: string; nome: string; pendentes: number; altoValor: number };
 
-// Chips de dono. Fonte preferida: totais.por_dono (contagens do backend). Sem
-// ele (backend V1), deriva dos próprios leads. Sempre pendentes desc, "Sem dono"
-// por último.
+// Chips de dono. Fonte preferida das CONTAGENS: totais.por_dono (backend). Sem
+// ele (backend V1), deriva dos próprios leads. O alto valor de cada dono é
+// sempre recontado dos leads (régua do front, SMQL+); o do backend só vale
+// quando a lista está vazia. Sempre pendentes desc, "Sem dono" por último.
 export function opcoesDeDono(
   leads: LeadPendente[],
   porDono?: DonoAgregado[] | null,
 ): OpcaoDono[] {
   const opcoes: OpcaoDono[] = [];
   if (porDono && porDono.length > 0) {
+    const altoPorDono = new Map<string, number>();
+    for (const l of leads) {
+      if (ehAltoValor(l)) altoPorDono.set(chaveDono(l.dono), (altoPorDono.get(chaveDono(l.dono)) ?? 0) + 1);
+    }
     for (const d of porDono) {
+      const chave = d.dono_id ?? (d.dono_nome === SEM_DONO_LABEL ? SEM_DONO_CHAVE : `nome:${d.dono_nome}`);
       opcoes.push({
-        chave: d.dono_id ?? (d.dono_nome === SEM_DONO_LABEL ? SEM_DONO_CHAVE : `nome:${d.dono_nome}`),
+        chave,
         nome: d.dono_id || d.dono_nome !== SEM_DONO_LABEL ? d.dono_nome : SEM_DONO_LABEL,
         pendentes: d.pendentes,
-        altoValor: d.alto_valor,
+        altoValor: leads.length > 0 ? (altoPorDono.get(chave) ?? 0) : d.alto_valor,
       });
     }
   } else {

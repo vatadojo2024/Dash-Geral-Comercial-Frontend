@@ -1,4 +1,5 @@
 import { tagsEventoNoIntervalo } from "@/lib/sdr/ciclo";
+import { RANK_ALTO_VALOR_MIN } from "@/lib/sdr/oportunidades";
 
 // ---------------------------------------------------------------------------
 // Mock de GET /api/eventos/nao-abordados (LEADS_MODE=mock). Determinístico.
@@ -144,7 +145,7 @@ export function mockNaoAbordados(de: string, ate: string, simular?: string | nul
   for (const l of leads) {
     const atual = porDono.get(l.dono.id) ?? { dono_id: l.dono.id, dono_nome: l.dono.nome, pendentes: 0, alto_valor: 0 };
     atual.pendentes += 1;
-    if (l.tier_rank >= 4) atual.alto_valor += 1;
+    if (l.tier_rank >= RANK_ALTO_VALOR_MIN) atual.alto_valor += 1;
     porDono.set(l.dono.id, atual);
   }
   const por_dono = [...porDono.values()].sort(

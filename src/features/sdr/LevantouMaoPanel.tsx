@@ -70,6 +70,7 @@ import {
   ordenarPendentes,
   TIERS,
   TIERS_ALTO_VALOR,
+  ROTULO_ALTO_VALOR,
   todosDesqualificados,
   type BlocoFunil,
   type CampoOrdenacao,
@@ -790,7 +791,7 @@ function ConteudoNaoAbordados({
           valor={String(parados)}
           detalhe={total > 0 ? `${formatarPct(pct(parados, total))} dos não abordados` : undefined}
         />
-        <KpiChip icon={Gem} rotulo="Alto valor" valor={String(altoValor)} detalhe="UMQL+ · UMQL · HMQL" />
+        <KpiChip icon={Gem} rotulo="Alto valor" valor={String(altoValor)} detalhe={ROTULO_ALTO_VALOR} />
         <KpiChip icon={Ban} rotulo="QC (fora do recorte)" valor={celulaMatriz(data.totais.qc)} detalhe="outra trilha" tom="neutro" />
       </div>
 
@@ -1751,9 +1752,9 @@ function CardsDoRecorte({
           <KpiChip
             icon={Gem}
             rotulo="Alto valor pendente"
-            valor={celulaMatriz(l.alto_valor_pendente ?? altoValor)}
+            valor={String(altoValor)}
             detalhe="entre os pendentes"
-            filtro="UMQL+ · UMQL · HMQL"
+            filtro={ROTULO_ALTO_VALOR}
           />
         </FileiraCards>
       </div>
@@ -1791,8 +1792,8 @@ function CardsDoRecorte({
         <KpiChip
           icon={Gem}
           rotulo="Alto valor pendente"
-          valor={celulaMatriz(l.alto_valor_pendente ?? altoValor)}
-          detalhe="UMQL+ · UMQL · HMQL"
+          valor={String(altoValor)}
+          detalhe={ROTULO_ALTO_VALOR}
         />
       </div>
     );
@@ -1824,7 +1825,7 @@ function CardsDoRecorte({
           detalhe={`${formatarPct(pct(r.agendaram, r.aplicaram))} de conversão`}
         />
         <KpiChip icon={Hourglass} rotulo="Pendentes" valor={String(r.pendentes)} destaque />
-        <KpiChip icon={Gem} rotulo="Alto valor pendente" valor={String(altoValor)} detalhe="UMQL+ · UMQL · HMQL" />
+        <KpiChip icon={Gem} rotulo="Alto valor pendente" valor={String(altoValor)} detalhe={ROTULO_ALTO_VALOR} />
       </div>
     );
   }
@@ -1914,7 +1915,7 @@ function Kpis({ data }: { data: OportunidadesResponse }) {
         icon={Gem}
         rotulo="Alto valor pendente"
         valor={String(altoValorPendente(data.leads))}
-        detalhe="UMQL+ · UMQL · HMQL"
+        detalhe={ROTULO_ALTO_VALOR}
       />
     </div>
   );
@@ -2086,7 +2087,9 @@ const COLUNAS_MATRIZ = ["Acessaram", "Assistiram", "Levantaram a mão", "Agendar
 // Valores de exibição de uma linha. Travessão só onde o dado NÃO SE APLICA por
 // definição: "Acessaram" no ao vivo (null) e a % quando taxa_agendamento é null.
 // Zero é zero — ciclo sem replay mostra a linha Replay com zeros.
-function valoresDaLinha(l: LinhaMatriz) {
+// `altoValor` vem recontado dos leads da linha (régua do front, SMQL+); o
+// `alto_valor_pendente` do backend só entra se a lista não vier.
+function valoresDaLinha(l: LinhaMatriz, altoValor: number | null) {
   return {
     acessaram: celulaMatriz(l.acessaram),
     assistiram: celulaMatriz(l.assistiram),
@@ -2094,7 +2097,7 @@ function valoresDaLinha(l: LinhaMatriz) {
     agendaram: celulaMatriz(l.agendaram),
     taxa: formatarTaxa(l.taxa_agendamento),
     pendentes: celulaMatriz(l.pendentes),
-    altoValor: l.alto_valor_pendente ?? null,
+    altoValor: altoValor ?? l.alto_valor_pendente ?? null,
   };
 }
 
@@ -2108,10 +2111,13 @@ function MatrizOrigem({
   onLinha: (o: OrigemChave) => void;
 }) {
   const m = data.matriz!;
+  const temLista = data.leads.length > 0;
+  const alto = (recorte: RecorteOportunidades) =>
+    temLista ? altoValorPendente(leadsDoRecorte(data.leads, recorte)) : null;
   const linhas = [
-    { chave: "ao_vivo" as const, rotulo: "Ao vivo", valores: valoresDaLinha(m.ao_vivo) },
-    { chave: "replay" as const, rotulo: "Replay", valores: valoresDaLinha(m.replay) },
-    { chave: "total" as const, rotulo: "Total", valores: valoresDaLinha(m.total) },
+    { chave: "ao_vivo" as const, rotulo: "Ao vivo", valores: valoresDaLinha(m.ao_vivo, alto("ao_vivo")) },
+    { chave: "replay" as const, rotulo: "Replay", valores: valoresDaLinha(m.replay, alto("replay")) },
+    { chave: "total" as const, rotulo: "Total", valores: valoresDaLinha(m.total, alto("geral")) },
   ];
   const t = data.totais;
 
@@ -2179,7 +2185,7 @@ function MatrizOrigem({
                     <td className="px-3 py-2 text-right">
                       <span className={cn(total && "text-laranja")}>{l.valores.pendentes}</span>
                       {l.valores.altoValor != null && (
-                        <span className="ml-1 text-xs font-normal text-texto-sec" title="Pendentes de alto valor (UMQL+, UMQL, HMQL)">
+                        <span className="ml-1 text-xs font-normal text-texto-sec" title={`Pendentes de alto valor (${ROTULO_ALTO_VALOR})`}>
                           · {l.valores.altoValor} alto valor
                         </span>
                       )}
