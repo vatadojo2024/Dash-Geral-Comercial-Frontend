@@ -38,7 +38,7 @@ export const LeadPendenteSchema = z
     dono: z
       .object({ id: z.string().nullish(), nome: z.string(), email: z.string().nullish() })
       .nullish(),
-    // "ao_vivo" (levantou a mão) | "replay" (aplicou só pelo replay). String
+    // "ao_vivo" (aplicou na transmissão) | "replay" (aplicou pela gravação). String
     // livre de propósito: valor inesperado não derruba a aba, só fica sem badge.
     origem: z.string().nullish(),
     assistiu_ao_vivo: z.boolean().nullish(),
@@ -57,10 +57,16 @@ export const LeadPendenteSchema = z
     percentual_assistido: z.number().nullish(),
     minutos_assistidos: z.number().nullish(),
     ja_agendou: z.boolean().nullish(),
-    // Só o endpoint de inscritos (lista completa da Visão geral) manda:
-    // aplicou durante o evento (tag Pós WG) e levantou a mão (tag Levantou a Mão).
+    // Endpoint de inscritos (lista completa da Visão geral): `aplicou` = tag
+    // Pós WG por qualquer caminho; `aplicou_ao_vivo` = Pós sem tag de replay
+    // (durante a transmissão); `aplicou_replay` = pela gravação;
+    // `levantou_mao` = tag Levantou a Mão (só os qualificados a recebem).
+    aplicou: z.boolean().nullish(),
     aplicou_ao_vivo: z.boolean().nullish(),
+    aplicou_replay: z.boolean().nullish(),
     levantou_mao: z.boolean().nullish(),
+    // Endpoint de ausentes: viu o replay (acessou OU assistiu), pronto do backend.
+    viu_replay: z.boolean().nullish(),
   })
   .passthrough();
 export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
@@ -73,9 +79,16 @@ export type LeadPendente = z.infer<typeof LeadPendenteSchema>;
 // e lib/sdr/naoAbordados.ts) — por isso o tipo separado abaixo.
 // ---------------------------------------------------------------------------
 
-export type RecorteLevantou = "geral" | "ao_vivo" | "replay" | "presentes" | "resgate" | "nao_abordados";
+export type RecorteLevantou =
+  | "geral"
+  | "ao_vivo"
+  | "replay"
+  | "presentes"
+  | "ausentes"
+  | "resgate"
+  | "nao_abordados";
 // Recortes que derivam da resposta de /oportunidades.
-export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados" | "presentes">;
+export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados" | "presentes" | "ausentes">;
 
 // Base de cada recorte, ANTES dos chips: os filtros da tela aplicam em série
 // sobre esta lista.
@@ -246,11 +259,13 @@ const ROTULO_DEGRAU: Record<string, string> = {
   nao_abordados: "Não abordados",
 };
 
-// `nome` do degrau → rótulo. "aplicaram" muda por recorte: no ao vivo (e no
-// resgate) é "Levantaram a mão"; no replay é "Aplicaram". Nome desconhecido vira
-// texto legível, nunca a chave crua com underscore.
+// `nome` do degrau → rótulo. Regra do backend (24/09): "aplicaram" é a tag Pós
+// WG — ao vivo quando não há tag de replay, senão replay — em QUALQUER
+// classificação; "Levantou a Mão" (só qualificados) ficou restrita ao card
+// resumo.qualificados_aplicaram. No ao vivo o rótulo é "Aplicaram ao vivo".
+// Nome desconhecido vira texto legível, nunca a chave crua com underscore.
 export function rotuloDoDegrau(nome: string, recorte: RecorteFunil): string {
-  if (nome === "aplicaram") return recorte === "replay" ? "Aplicaram" : "Levantaram a mão";
+  if (nome === "aplicaram") return recorte === "ao_vivo" ? "Aplicaram ao vivo" : "Aplicaram";
   const conhecido = ROTULO_DEGRAU[nome];
   if (conhecido) return conhecido;
   const limpo = nome.replace(/_/g, " ").trim();
@@ -278,7 +293,7 @@ export function blocosDoFunil(degraus: readonly Degrau[], recorte: RecorteFunil)
       return {
         ...bloco,
         passagem: passagemCalculada(d.valor, aplicaram.valor),
-        baseDaPassagem: recorte === "replay" ? "de quem aplicou" : "de quem levantou a mão",
+        baseDaPassagem: "de quem aplicou",
       };
     }
     return { ...bloco, passagem: passagemCalculada(d.valor, degraus[i - 1].valor) };
@@ -306,11 +321,12 @@ export function blocosDoResgate(r: Resgate): BlocoFunil[] {
 }
 
 // Funil ao vivo COMPLETO (com o bloco `resumo`): começa em todos que assistiram
-// (sem filtro), passa pelos MQL+ que assistiram (quando o backend manda) e daí
-// segue só com os qualificados: levantaram a mão → agendaram → pendentes (os
-// três últimos vêm dos degraus de `funis.ao_vivo`). Sem `resumo`, é o funil de
-// degraus de sempre. "Pendentes" é medido contra "levantaram a mão" (ver
-// blocosDoFunil).
+// (base bruta, sem filtro) e daí segue com quem aplicou durante a transmissão
+// (tag Pós WG sem tag de replay, QUALQUER classificação) → agendaram →
+// pendentes (os três últimos vêm dos degraus de `funis.ao_vivo`). Sem `resumo`,
+// é o funil de degraus de sempre. "Pendentes" é medido contra "aplicaram ao
+// vivo" (ver blocosDoFunil). Os MQL+ que assistiram ficam no card, não no
+// funil: com a regra nova quem aplica não é só qualificado.
 export function blocosFunilAoVivo(
   degraus: readonly Degrau[],
   resumo: ResumoEvento | null | undefined,
@@ -319,11 +335,10 @@ export function blocosFunilAoVivo(
   const valorDe = (nome: string) => degraus.find((d) => d.nome === nome)?.valor ?? 0;
   const inscritos = resumo.inscritos ?? valorDe("inscritos");
   const assistiram = resumo.presentes_ao_vivo;
-  const mql = resumo.qualificados_presentes ?? null;
-  const levantaram = valorDe("aplicaram");
+  const aplicaram = valorDe("aplicaram");
   const agendaram = valorDe("agendaram");
   const pendentes = valorDe("pendentes");
-  const blocos: BlocoFunil[] = [
+  return [
     { chave: "inscritos", rotulo: "Inscritos", valor: inscritos, passagem: null },
     {
       chave: "assistiram",
@@ -331,35 +346,22 @@ export function blocosFunilAoVivo(
       valor: assistiram,
       passagem: passagemCalculada(assistiram, inscritos),
     },
-  ];
-  if (mql != null) {
-    blocos.push({
-      chave: "assistiram_mql",
-      rotulo: "Assistiram · MQL+ ou acima",
-      valor: mql,
-      passagem: passagemCalculada(mql, assistiram),
-      baseDaPassagem: "dos que assistiram",
-    });
-  }
-  const baseLevantaram = mql ?? assistiram;
-  blocos.push(
     {
       chave: "aplicaram",
-      rotulo: "Levantaram a mão",
-      valor: levantaram,
-      passagem: passagemCalculada(levantaram, baseLevantaram),
-      baseDaPassagem: mql != null ? "dos MQL+ que assistiram" : "dos que assistiram",
+      rotulo: "Aplicaram ao vivo",
+      valor: aplicaram,
+      passagem: passagemCalculada(aplicaram, assistiram),
+      baseDaPassagem: "dos que assistiram",
     },
-    { chave: "agendaram", rotulo: "Agendaram", valor: agendaram, passagem: passagemCalculada(agendaram, levantaram) },
+    { chave: "agendaram", rotulo: "Agendaram", valor: agendaram, passagem: passagemCalculada(agendaram, aplicaram) },
     {
       chave: "pendentes",
       rotulo: "Pendentes",
       valor: pendentes,
-      passagem: passagemCalculada(pendentes, levantaram),
-      baseDaPassagem: "de quem levantou a mão",
+      passagem: passagemCalculada(pendentes, aplicaram),
+      baseDaPassagem: "de quem aplicou ao vivo",
     },
-  );
-  return blocos;
+  ];
 }
 
 // Avisos de sanidade do backend → linguagem direta. A chave crua NUNCA vai para
@@ -657,7 +659,7 @@ export function agruparPorDono(leads: LeadPendente[]): GrupoDono[] {
 }
 
 // ---------------------------------------------------------------------------
-// Origem: "ao_vivo" (levantou a mão) | "replay" (aplicou só pelo replay). Não
+// Origem: "ao_vivo" (aplicou durante a transmissão) | "replay" (aplicou pela gravação). Não
 // existe terceiro valor. Cores por token do tema.
 // ---------------------------------------------------------------------------
 

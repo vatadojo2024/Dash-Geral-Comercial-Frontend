@@ -482,9 +482,9 @@ describe("funis (V4): degraus prontos, taxas no front", () => {
   ];
 
   it("rótulos: 'aplicaram' muda por recorte; nome desconhecido nunca sai cru", () => {
-    expect(rotuloDoDegrau("aplicaram", "ao_vivo")).toBe("Levantaram a mão");
+    expect(rotuloDoDegrau("aplicaram", "ao_vivo")).toBe("Aplicaram ao vivo");
     expect(rotuloDoDegrau("aplicaram", "replay")).toBe("Aplicaram");
-    expect(rotuloDoDegrau("aplicaram", "resgate")).toBe("Levantaram a mão");
+    expect(rotuloDoDegrau("aplicaram", "resgate")).toBe("Aplicaram");
     expect(rotuloDoDegrau("acessaram", "replay")).toBe("Acessaram");
     expect(rotuloDoDegrau("degrau_novo", "ao_vivo")).toBe("Degrau novo");
   });
@@ -497,16 +497,16 @@ describe("funis (V4): degraus prontos, taxas no front", () => {
     expect(passagemCalculada(171, 171)).toEqual({ tipo: "pct", texto: "100%" });
   });
 
-  it("funil ao vivo: taxas consecutivas e Pendentes medido contra quem levantou a mão", () => {
+  it("funil ao vivo: taxas consecutivas e Pendentes medido contra quem aplicou", () => {
     const b = blocosDoFunil(aoVivo, "ao_vivo");
     expect(b.map((x) => [x.rotulo, x.valor, x.passagem])).toEqual([
       ["Inscritos", 171, null],
       ["Assistiram", 58, { tipo: "pct", texto: "34%" }],
-      ["Levantaram a mão", 20, { tipo: "pct", texto: "34%" }],
+      ["Aplicaram ao vivo", 20, { tipo: "pct", texto: "34%" }],
       ["Agendaram", 11, { tipo: "pct", texto: "55%" }],
       ["Pendentes", 9, { tipo: "pct", texto: "45%" }],
     ]);
-    expect(b[4].baseDaPassagem).toBe("de quem levantou a mão");
+    expect(b[4].baseDaPassagem).toBe("de quem aplicou");
   });
 
   it("funil do replay: menos da metade agendou NÃO vira 'verificar base' em Pendentes", () => {
@@ -540,7 +540,7 @@ describe("funis (V4): degraus prontos, taxas no front", () => {
     expect(b.map((x) => [x.rotulo, x.valor, x.passagem?.tipo === "pct" ? x.passagem.texto : x.passagem])).toEqual([
       ["Convidados", 2600, null],
       ["Assistiram", 180, "6,9%"],
-      ["Levantaram a mão", 42, "23%"],
+      ["Aplicaram", 42, "23%"],
       ["Agendaram", 15, "36%"],
       ["Pendentes", 27, "64%"],
     ]);
@@ -582,7 +582,7 @@ describe("bloco resumo (cards do topo)", () => {
     expect(r.success && r.data.resumo?.qualificados_sem_aplicar).toBe(28);
   });
 
-  it("funil ao vivo completo: todos que assistiram → MQL+ que assistiram → qualificados; sem o degrau MQL+ quando falta", () => {
+  it("funil ao vivo completo: todos que assistiram → aplicaram ao vivo (qualquer classificação) → agendaram → pendentes", () => {
     const degraus = [
       { nome: "inscritos", valor: 438 },
       { nome: "assistiram", valor: 120 },
@@ -590,22 +590,20 @@ describe("bloco resumo (cards do topo)", () => {
       { nome: "agendaram", valor: 12 },
       { nome: "pendentes", valor: 22 },
     ];
+    // qualificados_presentes NÃO entra no funil (fica no card): quem aplica não é só qualificado.
     const b = blocosFunilAoVivo(degraus, { ...resumo, qualificados_presentes: 62 });
     expect(b.map((x) => [x.chave, x.valor])).toEqual([
       ["inscritos", 485],
       ["assistiram", 162],
-      ["assistiram_mql", 62],
       ["aplicaram", 34],
       ["agendaram", 12],
       ["pendentes", 22],
     ]);
-    expect(b[2]).toMatchObject({ passagem: { tipo: "pct", texto: "38%" }, baseDaPassagem: "dos que assistiram" });
-    expect(b[3]).toMatchObject({ passagem: { tipo: "pct", texto: "55%" }, baseDaPassagem: "dos MQL+ que assistiram" });
-    expect(b[5]).toMatchObject({ passagem: { tipo: "pct", texto: "65%" }, baseDaPassagem: "de quem levantou a mão" });
+    expect(b[2]).toMatchObject({ rotulo: "Aplicaram ao vivo", passagem: { tipo: "pct", texto: "21%" }, baseDaPassagem: "dos que assistiram" });
+    expect(b[4]).toMatchObject({ passagem: { tipo: "pct", texto: "65%" }, baseDaPassagem: "de quem aplicou ao vivo" });
 
     const semMql = blocosFunilAoVivo(degraus, resumo);
     expect(semMql.map((x) => x.chave)).toEqual(["inscritos", "assistiram", "aplicaram", "agendaram", "pendentes"]);
-    expect(semMql[2]).toMatchObject({ passagem: { tipo: "pct", texto: "21%" }, baseDaPassagem: "dos que assistiram" });
     // Sem resumo: o funil de degraus de sempre.
     expect(blocosFunilAoVivo(degraus, null).map((x) => x.valor)).toEqual([438, 120, 34, 12, 22]);
   });

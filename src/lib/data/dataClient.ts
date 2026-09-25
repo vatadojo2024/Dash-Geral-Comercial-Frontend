@@ -22,6 +22,7 @@ import { NaoAbordadosResponseSchema, type NaoAbordadosResponse } from "@/lib/sdr
 import { RetencaoResponseSchema, type RetencaoResponse } from "@/lib/sdr/retencao";
 import { PresentesResponseSchema, type PresentesResponse } from "@/lib/sdr/presentesSemAplicar";
 import { InscritosResponseSchema, type InscritosResponse } from "@/lib/sdr/inscritos";
+import { AusentesResponseSchema, type AusentesResponse } from "@/lib/sdr/ausentes";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de acesso a dados de leads no client. Os componentes só
@@ -200,6 +201,11 @@ export function fetchNaoAbordados(de: string, ate: string): Promise<NaoAbordados
 // Recorte "Presentes que não aplicaram" (GET /api/eventos/presentes-sem-aplicar?de&ate).
 export function fetchPresentes(de: string, ate: string): Promise<PresentesResponse> {
   return fetchEndpointEventos("/api/eventos/presentes-sem-aplicar", "presentes sem aplicar", PresentesResponseSchema, de, ate);
+}
+
+// Recorte "Não participaram — Qualificados" (GET /api/eventos/ausentes?de&ate).
+export function fetchAusentes(de: string, ate: string): Promise<AusentesResponse> {
+  return fetchEndpointEventos("/api/eventos/ausentes", "ausentes", AusentesResponseSchema, de, ate);
 }
 
 // Lista completa dos inscritos (GET /api/eventos/inscritos?de&ate) — CONTRATO

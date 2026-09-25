@@ -18,6 +18,7 @@ import {
   ExternalLink,
   FileText,
   Eye,
+  EyeOff,
   Gem,
   Hand,
   Hourglass,
@@ -34,6 +35,7 @@ import {
   X,
 } from "lucide-react";
 import {
+  fetchAusentes,
   fetchInscritos,
   fetchNaoAbordados,
   fetchOportunidades,
@@ -111,6 +113,14 @@ import {
 } from "@/lib/sdr/presentesSemAplicar";
 import { rotuloMinutos } from "@/lib/sdr/retencao";
 import {
+  blocosAusentes,
+  contarViramReplay,
+  csvDeAusentes,
+  filtrarAusentes,
+  viuReplay,
+  type AusentesResponse,
+} from "@/lib/sdr/ausentes";
+import {
   contarSinais,
   csvDeInscritos,
   filtrarInscritos,
@@ -160,7 +170,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const oportunidades = useQuery({
     queryKey: ["oportunidades", periodo.de, periodo.ate],
     queryFn: () => fetchOportunidades(periodo.de, periodo.ate),
-    enabled: !erroIntervalo && recorte !== "nao_abordados" && recorte !== "presentes",
+    enabled: !erroIntervalo && recorte !== "nao_abordados" && recorte !== "presentes" && recorte !== "ausentes",
     retry: false,
   });
   const naoAbordados = useQuery({
@@ -170,6 +180,13 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     retry: false,
   });
   const ehPresentes = recorte === "presentes";
+  const ehAusentes = recorte === "ausentes";
+  const ausentes = useQuery({
+    queryKey: ["ausentes", periodo.de, periodo.ate],
+    queryFn: () => fetchAusentes(periodo.de, periodo.ate),
+    enabled: !erroIntervalo && ehAusentes,
+    retry: false,
+  });
   const presentes = useQuery({
     queryKey: ["presentes-sem-aplicar", periodo.de, periodo.ate],
     queryFn: () => fetchPresentes(periodo.de, periodo.ate),
@@ -190,7 +207,9 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     ? naoAbordados
     : ehPresentes
       ? presentes
-      : oportunidades;
+      : ehAusentes
+        ? ausentes
+        : oportunidades;
   const data = oportunidades.data;
 
   // Erro 400 do backend: destaca os campos de data (ambos — o backend não diz qual).
@@ -207,8 +226,8 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
             Oportunidades do evento
           </h2>
           <p className="mt-0.5 text-xs text-texto-sec">
-            Contatos com a tag do evento (WG) que marcaram &ldquo;Levantou a Mão&rdquo; na Clint e
-            ainda não têm call agendada (em nenhum estágio). Métrica de time — sem escopo por
+            Contatos com a tag do evento (WG) que aplicaram (tag &ldquo;Pós WG&rdquo; na Clint, ao vivo ou
+            pelo replay, qualquer classificação) e ainda não têm call agendada (em nenhum estágio). Métrica de time — sem escopo por
             papel. Nome com ícone de ficha abre o lead no Mapa de Calor.
           </p>
         </div>
@@ -233,6 +252,15 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
         presentes.data && (
           <ConteudoPresentes
             data={presentes.data}
+            periodo={periodo}
+            atualizando={isFetching}
+            onAtualizar={() => refetch()}
+          />
+        )
+      ) : recorte === "ausentes" ? (
+        ausentes.data && (
+          <ConteudoAusentes
+            data={ausentes.data}
             periodo={periodo}
             atualizando={isFetching}
             onAtualizar={() => refetch()}
@@ -311,7 +339,7 @@ const VAZIO_RECORTE: Record<RecorteOportunidades, { titulo: string; descricao: s
   geral: { titulo: "Nenhum pendente neste período", descricao: "" },
   ao_vivo: {
     titulo: "Nenhum pendente do ao vivo",
-    descricao: "Todos que levantaram a mão ao vivo já agendaram neste período.",
+    descricao: "Todos que aplicaram ao vivo já agendaram neste período.",
   },
   replay: {
     titulo: "Nenhum pendente do replay",
@@ -531,7 +559,7 @@ function ConteudoRecorte({
               {recorte === "geral" && inscritosIndisponivel && (
                 <p className="ds-card px-6 py-3 text-xs text-texto-sec" role="note">
                   A lista completa dos inscritos ainda não está disponível no backend (rota
-                  /api/eventos/inscritos). Abaixo, só os pendentes: quem levantou a mão e não agendou.
+                  /api/eventos/inscritos). Abaixo, só os pendentes: quem aplicou e não agendou.
                 </p>
               )}
           {data.totais.pendentes === 0 || leads.length === 0 ? (
@@ -539,10 +567,10 @@ function ConteudoRecorte({
               <EmptyState
                 icon={PartyPopper}
                 tom="positivo"
-                titulo="Todos que levantaram a mão já agendaram"
+                titulo="Todos que aplicaram já agendaram"
                 descricao={
                   data.matriz
-                    ? `${celulaMatriz(data.matriz.total.aplicaram)} levantaram a mão e ${celulaMatriz(data.matriz.total.agendaram)} agendaram neste período.`
+                    ? `${celulaMatriz(data.matriz.total.aplicaram)} aplicaram e ${celulaMatriz(data.matriz.total.agendaram)} agendaram neste período.`
                     : "Nenhum pendente neste período."
                 }
               />
@@ -1427,8 +1455,8 @@ function ResumoDoEvento({ resumo, totais }: { resumo: ResumoEvento; totais: Tota
           icon={Hand}
           rotulo="Aplicaram"
           valor={celulaMatriz(aplicaram)}
-          detalhe={pctDe(aplicaram, presentes) ? `${pctDe(aplicaram, presentes)} dos presentes` : "durante o evento"}
-          filtro="aplicaram durante o evento · sem filtro"
+          detalhe={pctDe(aplicaram, bruto) ? `${pctDe(aplicaram, bruto)} dos inscritos` : "tag Pós WG"}
+          filtro="ao vivo ou pelo replay · sem filtro"
         />
         <KpiChip
           icon={CalendarCheck2}
@@ -1725,6 +1753,362 @@ function SinaisCelula({ lead, vazio = "—" }: { lead: LeadPendente; vazio?: str
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Recorte "Não participaram — Qualificados": MQL+ ou acima, inscritos, SEM
+// nenhum sinal de presença ao vivo — fonte própria (/api/eventos/ausentes),
+// espelho de "Presentes que não aplicaram". Ordem do backend (tier desc, quem
+// viu o replay primeiro): o ausente que voltou pela gravação é o de interesse
+// comprovado, e ganha destaque na coluna "Recuperação".
+// ---------------------------------------------------------------------------
+
+type FiltrosAusentesSalvos = {
+  tiers: TierChave[];
+  donos: string[];
+  soViuReplay: boolean;
+  agendou: FiltroAgendou;
+  visao: Visao;
+  busca: string;
+};
+const memoriaFiltrosAusentes: { salvo: FiltrosAusentesSalvos | null } = { salvo: null };
+
+function ConteudoAusentes({
+  data,
+  periodo,
+  atualizando,
+  onAtualizar,
+}: {
+  data: AusentesResponse;
+  periodo: { de: string; ate: string };
+  atualizando: boolean;
+  onAtualizar: () => void;
+}) {
+  const salvo = memoriaFiltrosAusentes.salvo;
+  const [tiersSel, setTiersSel] = useState<TierChave[]>(salvo?.tiers ?? []);
+  const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
+  const [soViuReplay, setSoViuReplay] = useState(salvo?.soViuReplay ?? false);
+  const [agendou, setAgendou] = useState<FiltroAgendou>(salvo?.agendou ?? "todos");
+  const [visao, setVisao] = useState<Visao>(salvo?.visao ?? "lista");
+  const [busca, setBusca] = useState(salvo?.busca ?? "");
+  const [pagina, setPagina] = useState(1);
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    memoriaFiltrosAusentes.salvo = { tiers: tiersSel, donos: donosSel, soViuReplay, agendou, visao, busca };
+  }, [tiersSel, donosSel, soViuReplay, agendou, visao, busca]);
+
+  const leads = data.leads;
+  // Barras e chips de classificação seguem os outros filtros (menos o próprio).
+  const baseSemClassificacao = useMemo(
+    () => filtrarAusentes(leads, { tiers: [], donos: donosSel, soViuReplay, agendou, busca }),
+    [leads, donosSel, soViuReplay, agendou, busca],
+  );
+  const contagem = useMemo(() => contarPorTier(baseSemClassificacao), [baseSemClassificacao]);
+  const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
+  const viramReplay = useMemo(() => contarViramReplay(leads), [leads]);
+  const agendaram = useMemo(() => contarAgendaram(leads), [leads]);
+  const altoValor = altoValorPendente(leads);
+  const filtrados = useMemo(
+    () => filtrarAusentes(baseSemClassificacao, { tiers: tiersSel, busca: "" }),
+    [baseSemClassificacao, tiersSel],
+  );
+  const grupos = useMemo(() => agruparPorDono(filtrados), [filtrados]);
+  const multiEvento = data.eventos.length > 1;
+  const selecionado = useMemo(
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
+  useEffect(() => setPagina(1), [tiersSel, donosSel, soViuReplay, agendou, busca, data]);
+
+  function alternarTier(chave: TierChave) {
+    setTiersSel((atual) => (atual.includes(chave) ? atual.filter((t) => t !== chave) : [...atual, chave]));
+  }
+  function alternarDono(chave: string) {
+    setDonosSel((atual) => (atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave]));
+  }
+  const soAltoValor =
+    tiersSel.length === TIERS_ALTO_VALOR.length && TIERS_ALTO_VALOR.every((t) => tiersSel.includes(t));
+
+  function exportarCsv() {
+    const csv = "\uFEFF" + csvDeAusentes(filtrados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `oportunidades_nao-participaram_${periodo.de}_${periodo.ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const t = data.totais;
+  const inscritos = t.inscritos ?? 0;
+  const ausentesTotal = t.ausentes ?? 0;
+  const total = t.qualificados_ausentes;
+
+  return (
+    <>
+      <BarraRecortes recorte="ausentes" />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        <KpiChip icon={Users} rotulo="Inscritos" valor={celulaMatriz(t.inscritos)} detalhe="já sem QC e desqualificados" />
+        <KpiChip
+          icon={Radio}
+          rotulo="Presentes ao vivo"
+          valor={celulaMatriz(t.presentes)}
+          detalhe={inscritos > 0 && t.presentes != null ? `${formatarPct(pct(t.presentes, inscritos))} dos inscritos` : undefined}
+        />
+        <KpiChip
+          icon={EyeOff}
+          rotulo="Não participaram"
+          valor={celulaMatriz(t.ausentes)}
+          detalhe={inscritos > 0 ? `${formatarPct(pct(ausentesTotal, inscritos))} dos inscritos` : "sem sinal de presença"}
+        />
+        <KpiChip
+          icon={Gem}
+          rotulo="Qualificados ausentes"
+          valor={String(total)}
+          detalhe="MQL+ ou acima · a lista abaixo"
+          destaque
+        />
+        <KpiChip
+          icon={MonitorPlay}
+          rotulo="Viram o replay"
+          valor={celulaMatriz(t.viram_replay ?? viramReplay)}
+          detalhe={total > 0 ? `${formatarPct(pct(t.viram_replay ?? viramReplay, total))} dos qualificados ausentes` : "interesse comprovado"}
+        />
+        <KpiChip
+          icon={CalendarCheck2}
+          rotulo="Já agendaram"
+          valor={celulaMatriz(t.ja_agendaram ?? agendaram)}
+          detalhe="mesmo sem ter assistido"
+          tom="neutro"
+        />
+      </div>
+
+      <Card>
+        <CardHeader
+          title="Do evento aos qualificados que não participaram"
+          subtitle="Inscritos sem nenhum sinal de presença ao vivo e, entre eles, os MQL+ ou acima — e quantos voltaram pela gravação."
+        />
+        <CardContent>
+          <FunilBlocos blocos={blocosAusentes(t)} />
+        </CardContent>
+      </Card>
+
+      {inscritos === 0 && total === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Users}
+            titulo="Nenhum contato com a tag deste ciclo"
+            descricao={
+              data.eventos.length > 0
+                ? `Tag consultada: ${data.eventos.join(", ")}. Confira se ela existe na Clint.`
+                : `Nenhuma terça entre ${rotuloCiclo({ inicio: data.de, fim: data.ate })} — nenhuma tag WG para consultar.`
+            }
+          />
+        </Card>
+      ) : total === 0 || leads.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={PartyPopper}
+            tom="positivo"
+            titulo="Todo qualificado inscrito esteve ao vivo"
+            descricao={`Nenhum MQL+ ou acima ficou sem sinal de presença neste período (${ausentesTotal} não participaram, nenhum qualificado).`}
+          />
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader
+              title="Qualificados ausentes por classificação"
+              subtitle={`${viramReplay} ${viramReplay === 1 ? "viu" : "viram"} o replay · ${agendaram} já ${agendaram === 1 ? "tem" : "têm"} call agendada. Clique numa barra ou num chip para filtrar.`}
+            />
+            <CardContent className="space-y-4">
+              <FiltroClassificacao
+                contagem={contagem}
+                selecionados={tiersSel}
+                soAltoValor={soAltoValor}
+                onAlternar={alternarTier}
+                onAltoValor={() => setTiersSel(soAltoValor ? [] : [...TIERS_ALTO_VALOR])}
+                onLimpar={() => setTiersSel([])}
+              />
+              <FiltroDono
+                opcoes={opcoesDono}
+                selecionados={donosSel}
+                onAlternar={alternarDono}
+                onLimpar={() => setDonosSel([])}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <MonitorPlay className="h-3.5 w-3.5" aria-hidden />
+                  Recuperação:
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={soViuReplay}
+                  onClick={() => setSoViuReplay((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
+                    soViuReplay
+                      ? "border-info-forte/60 bg-info-forte/15 text-info"
+                      : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
+                    viramReplay === 0 && !soViuReplay && "opacity-50",
+                  )}
+                >
+                  Viram o replay <span className="tabular-nums">({viramReplay})</span>
+                </button>
+                {soViuReplay && (
+                  <button
+                    type="button"
+                    onClick={() => setSoViuReplay(false)}
+                    className="text-xs text-texto-sec underline-offset-2 hover:text-texto hover:underline"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden />
+                  Call agendada:
+                </span>
+                <Alternador<FiltroAgendou>
+                  rotulo="Filtrar por call agendada"
+                  valor={agendou}
+                  onChange={setAgendou}
+                  opcoes={[
+                    { valor: "todos", label: `Todos (${leads.length})` },
+                    { valor: "nao", label: `Ainda não agendaram (${leads.length - agendaram})` },
+                    { valor: "sim", label: `Já agendaram (${agendaram})` },
+                  ]}
+                />
+              </div>
+              <BarrasPorTier leads={baseSemClassificacao} selecionados={tiersSel} onAlternar={alternarTier} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={`Não participaram — Qualificados${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
+              subtitle={`${filtrados.length} de ${leads.length} ${leads.length === 1 ? "qualificado" : "qualificados"} · ${altoValor} alto valor · ordem do backend (classificação, depois quem viu o replay)`}
+              action={
+                <Button variant="outline" size="sm" onClick={exportarCsv} disabled={filtrados.length === 0}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Exportar CSV
+                </Button>
+              }
+            />
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="relative w-full max-w-sm">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
+                    aria-hidden
+                  />
+                  <input
+                    type="search"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Buscar por nome, e-mail ou telefone"
+                    aria-label="Buscar ausente"
+                    className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
+                  />
+                </div>
+                <Alternador<Visao>
+                  rotulo="Visão da lista"
+                  valor={visao}
+                  onChange={setVisao}
+                  opcoes={[
+                    { valor: "lista", label: "Lista" },
+                    { valor: "por_sdr", label: "Por SDR" },
+                  ]}
+                />
+              </div>
+
+              {filtrados.length === 0 ? (
+                <EmptyState
+                  titulo="Nenhum contato neste recorte"
+                  descricao="Ajuste os chips de classificação, de dono, a recuperação, a call agendada ou a busca."
+                />
+              ) : visao === "lista" ? (
+                <ListaPendentes
+                  leads={filtrados}
+                  pagina={pagina}
+                  onPagina={setPagina}
+                  multiEvento={multiEvento}
+                  ordenacao={null}
+                  onOrdenar={() => {}}
+                  onAbrir={setSelecionadoId}
+                  ordenavel={false}
+                  comRecuperacao
+                />
+              ) : (
+                <div className="space-y-5">
+                  {grupos.map((g) => (
+                    <section key={g.chave} aria-label={`Ausentes de ${g.nome}`}>
+                      <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borda/60 pb-1.5">
+                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                          <UserRound className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
+                          {g.nome}
+                        </h3>
+                        <span className="text-xs text-texto-sec">
+                          <span className="font-semibold tabular-nums text-texto">{g.leads.length}</span>{" "}
+                          {g.leads.length === 1 ? "qualificado" : "qualificados"}
+                          {" · "}
+                          <span className="font-semibold tabular-nums text-texto">{g.altoValor}</span> alto valor
+                          {" · "}
+                          <span className="font-semibold tabular-nums text-texto">{contarViramReplay(g.leads)}</span> viram o replay
+                        </span>
+                      </header>
+                      <ListaPendentes
+                        leads={g.leads}
+                        pagina={1}
+                        onPagina={() => {}}
+                        multiEvento={multiEvento}
+                        ordenacao={null}
+                        onOrdenar={() => {}}
+                        onAbrir={setSelecionadoId}
+                        ordenavel={false}
+                        paginar={false}
+                        semColunaDono
+                        comRecuperacao
+                      />
+                    </section>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <RodapeEventos data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
+      {selecionado && <DetalhePendente lead={selecionado} onClose={() => setSelecionadoId(null)} />}
+    </>
+  );
+}
+
+// Sinais de recuperação do ausente: "Viu o replay" em destaque (interesse
+// comprovado), mais "Aplicou pelo replay" e "Resgate" quando houver.
+function RecuperacaoCelula({ lead }: { lead: LeadPendente }) {
+  const viu = viuReplay(lead);
+  if (!viu && !lead.aplicou_replay && !lead.convidado_resgate) {
+    return <span className="text-xs text-texto-sec/60">—</span>;
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {viu && (
+        <span className="inline-flex items-center gap-1 text-sm font-medium text-info" title="Perdeu o ao vivo e voltou pela gravação">
+          <MonitorPlay className="h-3.5 w-3.5" aria-hidden />
+          Viu o replay
+        </span>
+      )}
+      {lead.aplicou_replay && <span className="tag tag-info px-1.5 py-px">Aplicou pelo replay</span>}
+      {lead.convidado_resgate && <span className="tag tag-warning px-1.5 py-px">Resgate</span>}
+    </span>
+  );
+}
+
 // Fileira de cards com um rótulo curto à esquerda ("Sem filtro", "Qualificados"):
 // deixa claro de que base cada grupo de números vem.
 function FileiraCards({
@@ -1786,8 +2170,8 @@ function CardsDoRecorte({
             icon={Hand}
             rotulo="Aplicaram"
             valor={celulaMatriz(r.aplicaram)}
-            detalhe={pctDe(r.aplicaram, presentes) ? `${pctDe(r.aplicaram, presentes)} dos que assistiram` : "durante o evento"}
-            filtro="aplicaram durante o evento · sem filtro"
+            detalhe={pctDe(r.aplicaram, bruto) ? `${pctDe(r.aplicaram, bruto)} dos inscritos` : "tag Pós WG"}
+            filtro="ao vivo ou pelo replay · sem filtro"
           />
           {r.qualificados_presentes != null && (
             <KpiChip
@@ -1799,22 +2183,22 @@ function CardsDoRecorte({
             />
           )}
         </FileiraCards>
-        <FileiraCards rotulo="Qualificados" descricao="quem levantou a mão — só quem se qualifica recebe a tag">
+        <FileiraCards rotulo="Aplicaram ao vivo" descricao="tag Pós WG sem tag de replay — qualquer classificação, já sem QC e desqualificados">
           <KpiChip
             icon={Hand}
-            rotulo="Levantaram a mão"
+            rotulo="Aplicaram ao vivo"
             valor={celulaMatriz(l.aplicaram)}
-            detalhe={pctDe(l.aplicaram, r.qualificados_presentes ?? presentes) ? `${pctDe(l.aplicaram, r.qualificados_presentes ?? presentes)} ${r.qualificados_presentes != null ? "dos MQL+ que assistiram" : "dos que assistiram"}` : undefined}
-            filtro="levantaram a mão"
+            detalhe={pctDe(l.aplicaram, presentes) ? `${pctDe(l.aplicaram, presentes)} dos que assistiram` : undefined}
+            filtro="aplicaram ao vivo"
           />
           <KpiChip
             icon={CalendarCheck2}
             rotulo="Agendaram"
             valor={celulaMatriz(l.agendaram)}
             detalhe={`${formatarTaxa(l.taxa_agendamento)} de conversão`}
-            filtro="qualificados"
+            filtro="de quem aplicou ao vivo"
           />
-          <KpiChip icon={Hourglass} rotulo="Pendentes" valor={celulaMatriz(l.pendentes)} detalhe="levantaram a mão e não agendaram" filtro="qualificados" destaque />
+          <KpiChip icon={Hourglass} rotulo="Pendentes" valor={celulaMatriz(l.pendentes)} detalhe="aplicaram ao vivo e não agendaram" filtro="de quem aplicou ao vivo" destaque />
           <KpiChip
             icon={Gem}
             rotulo="Alto valor pendente"
@@ -1830,7 +2214,7 @@ function CardsDoRecorte({
   if (recorte === "ao_vivo" || recorte === "replay") {
     const l = recorte === "ao_vivo" ? data.matriz?.ao_vivo : data.matriz?.replay;
     if (!l) return null;
-    const rotuloAplicaram = recorte === "ao_vivo" ? "Levantaram a mão" : "Aplicaram";
+    const rotuloAplicaram = recorte === "ao_vivo" ? "Aplicaram ao vivo" : "Aplicaram";
     return (
       <div className={cn(grade, recorte === "replay" && "xl:grid-cols-6")}>
         {recorte === "replay" && (
@@ -1880,7 +2264,7 @@ function CardsDoRecorte({
         />
         <KpiChip
           icon={Hand}
-          rotulo="Levantaram a mão"
+          rotulo="Aplicaram"
           valor={String(r.aplicaram)}
           detalhe={`${formatarPct(pct(r.aplicaram, r.assistiram))} dos que assistiram`}
         />
@@ -2001,6 +2385,9 @@ const COR_ETAPA: Record<string, string> = {
   presentes: "bg-violeta/25 text-violeta",
   nao_aplicaram: "bg-laranja/20 text-laranja",
   qualificados: "bg-rosa/20 text-rosa",
+  ausentes: "bg-laranja/20 text-laranja",
+  qualificados_ausentes: "bg-rosa/20 text-rosa",
+  viram_replay: "bg-info-forte/25 text-info",
 };
 const COR_ETAPA_PADRAO = "bg-painel-claro text-texto";
 
@@ -2072,24 +2459,18 @@ function FunilAoVivo({
   resumo?: ResumoEvento | null;
 }) {
   const completo = resumo?.presentes_ao_vivo != null;
-  const temMql = completo && resumo?.qualificados_presentes != null;
   return (
     <Card>
       <CardHeader
-        title="Funil ao vivo — Qualificados"
+        title="Funil ao vivo"
         subtitle={
           completo
-            ? `Todos que assistiram ao vivo${temMql ? ", os MQL+ ou acima entre eles" : ""} e, daí, só os qualificados: “Levantaram a mão” é a tag Levantou a Mão, que só quem se qualifica recebe.`
-            : "Quem se inscreveu e participou ao vivo; “Levantaram a mão” é a tag Levantou a Mão, que só os qualificados recebem."
+            ? "Todos que assistiram ao vivo e, entre eles, quem aplicou durante a transmissão (tag Pós WG sem tag de replay, qualquer classificação), agendou ou ainda está pendente."
+            : "Quem se inscreveu e participou ao vivo; “Aplicaram ao vivo” é a tag Pós WG sem tag de replay, em qualquer classificação."
         }
       />
-      <CardContent className="space-y-2">
+      <CardContent>
         <FunilBlocos blocos={blocosFunilAoVivo(funis.ao_vivo.degraus, resumo)} />
-        {completo && !temMql && (
-          <p className="text-[11px] text-texto-sec/80" role="note">
-            O degrau “MQL+ ou acima que assistiram” entra quando o backend enviar resumo.qualificados_presentes.
-          </p>
-        )}
       </CardContent>
     </Card>
   );
@@ -2148,7 +2529,7 @@ function FunilResgate({ resgate }: { resgate: NonNullable<OportunidadesResponse[
 
 // --- Matriz ao vivo / replay / total ------------------------------------------------
 
-const COLUNAS_MATRIZ = ["Acessaram", "Assistiram", "Levantaram a mão", "Agendaram", "Pendentes"] as const;
+const COLUNAS_MATRIZ = ["Acessaram", "Assistiram", "Aplicaram", "Agendaram", "Pendentes"] as const;
 
 // Valores de exibição de uma linha. Travessão só onde o dado NÃO SE APLICA por
 // definição: "Acessaram" no ao vivo (null) e a % quando taxa_agendamento é null.
@@ -3031,6 +3412,7 @@ function ListaPendentes({
   comParadoDesde = false,
   comAssistido = false,
   comSinais = false,
+  comRecuperacao = false,
 }: {
   leads: LeadPendente[];
   pagina: number;
@@ -3053,6 +3435,8 @@ function ListaPendentes({
   comAssistido?: boolean;
   // Lista completa dos inscritos: coluna com os sinais do ciclo (chips).
   comSinais?: boolean;
+  // Recorte "Não participaram": coluna com os sinais de recuperação (replay, resgate).
+  comRecuperacao?: boolean;
 }) {
   const paginar = permitePaginar && leads.length > TAMANHO_PAGINA;
   const th = (rotulo: string, campo: CampoOrdenacao) =>
@@ -3078,6 +3462,7 @@ function ListaPendentes({
               <th className="px-2 py-2 text-left">{th("MQL", "tier")}</th>
               {comAssistido && <th className="whitespace-nowrap px-2 py-2 text-left font-medium">Assistiu ao vivo</th>}
               {comSinais && <th className="min-w-[200px] px-2 py-2 text-left font-medium">Sinais do ciclo</th>}
+              {comRecuperacao && <th className="min-w-[160px] px-2 py-2 text-left font-medium">Recuperação</th>}
               {comOrigem && (
                 <th className="px-2 py-2 text-left">
                   {semBadgeOrigem ? <span className="font-medium">Sinais</span> : th("Origem", "origem")}
@@ -3113,6 +3498,11 @@ function ListaPendentes({
                 {comSinais && (
                   <td className="px-2 py-2">
                     <SinaisCelula lead={l} />
+                  </td>
+                )}
+                {comRecuperacao && (
+                  <td className="px-2 py-2">
+                    <RecuperacaoCelula lead={l} />
                   </td>
                 )}
                 {comOrigem && (
@@ -3186,6 +3576,7 @@ function ListaPendentes({
                   {!comSinais && <SeloAgendou lead={l} />}
                   {comAssistido && <Assistido lead={l} />}
                   {comSinais && <SinaisCelula lead={l} />}
+                  {comRecuperacao && <RecuperacaoCelula lead={l} />}
                   {comOrigem && <OrigemCelula lead={l} semBadge={semBadgeOrigem} />}
                   {!semColunaDono && <DonoBadge dono={l.dono} size="sm" />}
                   {comParadoDesde && <ParadoDesde iso={l.stage_desde} />}

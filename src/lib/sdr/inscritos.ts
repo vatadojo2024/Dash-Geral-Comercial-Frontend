@@ -16,8 +16,9 @@ import {
 // a mão), e os sinais do ciclo como booleanos. O que o backend ainda não manda
 // simplesmente não aparece: todo sinal é opcional.
 //
-//   sinais por lead: assistiu_ao_vivo · aplicou_ao_vivo (tag Pós WG) ·
-//   levantou_mao (tag Levantou a Mão) · ja_agendou · acessou_replay ·
+//   sinais por lead: assistiu_ao_vivo · aplicou (tag Pós WG, qualquer caminho)
+//   · aplicou_ao_vivo (Pós sem tag de replay) · aplicou_replay (pela gravação)
+//   · levantou_mao (tag Levantou a Mão) · ja_agendou · acessou_replay ·
 //   assistiu_replay · convidado_resgate · etapa ("Sem atendimento" = ninguém
 //   abordou) · percentual_assistido / minutos_assistidos.
 // Ordem do backend mantida (sugestão: tier desc, presença desc, nome asc).
@@ -54,6 +55,8 @@ export type InscritosResponse = z.infer<typeof InscritosResponseSchema>;
 export type SinalChave =
   | "presente"
   | "aplicou"
+  | "aplicou_ao_vivo"
+  | "aplicou_replay"
   | "levantou"
   | "agendou"
   | "replay"
@@ -65,7 +68,9 @@ export type SinalConfig = { chave: SinalChave; label: string; curto: string; cla
 // Ordem = ordem do funil. Classes por token do tema (nenhuma cor solta).
 export const SINAIS: readonly SinalConfig[] = [
   { chave: "presente", label: "Presente ao vivo", curto: "Ao vivo", classe: "border-violeta/60 bg-violeta/15 text-violeta" },
-  { chave: "aplicou", label: "Aplicou durante o evento", curto: "Aplicou", classe: "border-teal/60 bg-teal/15 text-teal" },
+  { chave: "aplicou", label: "Aplicou (qualquer caminho)", curto: "Aplicou", classe: "border-teal/60 bg-teal/15 text-teal" },
+  { chave: "aplicou_ao_vivo", label: "Aplicou ao vivo", curto: "Aplicou ao vivo", classe: "border-teal/60 bg-teal/25 text-teal" },
+  { chave: "aplicou_replay", label: "Aplicou pelo replay", curto: "Aplicou pelo replay", classe: "border-info-forte/60 bg-info-forte/25 text-info" },
   { chave: "levantou", label: "Levantou a mão", curto: "Levantou a mão", classe: "border-azul/60 bg-azul/15 text-azul-claro" },
   { chave: "agendou", label: "Agendou call", curto: "Agendou", classe: "border-verde/60 bg-verde/15 text-verde" },
   { chave: "replay", label: "Acessou o replay", curto: "Replay", classe: "border-info-forte/60 bg-info-forte/15 text-info" },
@@ -78,7 +83,12 @@ export function temSinal(lead: LeadInscrito, sinal: SinalChave): boolean {
     case "presente":
       return lead.assistiu_ao_vivo === true;
     case "aplicou":
+      // `aplicou` pronto do backend; sem ele, qualquer um dos dois caminhos.
+      return lead.aplicou ?? (lead.aplicou_ao_vivo === true || lead.aplicou_replay === true);
+    case "aplicou_ao_vivo":
       return lead.aplicou_ao_vivo === true;
+    case "aplicou_replay":
+      return lead.aplicou_replay === true;
     case "levantou":
       return lead.levantou_mao === true;
     case "agendou":
@@ -144,7 +154,7 @@ export function filtrarInscritos(leads: LeadInscrito[], f: FiltroInscritos): Lea
   });
 }
 
-// CSV — separador ";" com aspas escapadas; um "sim" por sinal.
+// CSV — separador ";" com aspas escapadas; um "sim" por sinal (19 colunas).
 export function csvDeInscritos(leads: LeadInscrito[]): string {
   const cabecalho = [
     "nome",
@@ -153,6 +163,8 @@ export function csvDeInscritos(leads: LeadInscrito[]): string {
     "etapa",
     "presente_ao_vivo",
     "aplicou",
+    "aplicou_ao_vivo",
+    "aplicou_replay",
     "levantou_mao",
     "agendou",
     "replay",
@@ -175,6 +187,8 @@ export function csvDeInscritos(leads: LeadInscrito[]): string {
       l.etapa ?? "",
       sim(l, "presente"),
       sim(l, "aplicou"),
+      sim(l, "aplicou_ao_vivo"),
+      sim(l, "aplicou_replay"),
       sim(l, "levantou"),
       sim(l, "agendou"),
       sim(l, "replay"),

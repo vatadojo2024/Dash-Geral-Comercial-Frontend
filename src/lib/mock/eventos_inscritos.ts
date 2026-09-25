@@ -60,7 +60,9 @@ export type LeadInscritoMock = {
   etapa: string | null;
   dono: { id: string; nome: string; email: string } | null;
   assistiu_ao_vivo: boolean;
+  aplicou: boolean;
   aplicou_ao_vivo: boolean;
+  aplicou_replay: boolean;
   levantou_mao: boolean;
   ja_agendou: boolean;
   acessou_replay: boolean;
@@ -118,6 +120,8 @@ function lead(i: number, tier: (typeof TIERS)[number], evento: string): LeadInsc
   const levantou = qualificado && (aplicou || i % 7 === 3);
   const agendou = levantou && i % 3 === 0;
   const replay = !presente && i % 4 === 1;
+  // Pela gravação: quem viu o replay e preencheu a aplicação lá (1 em 3).
+  const aplicouReplay = replay && i % 3 === 0;
   const etapa = i % 4 === 0 ? "Sem atendimento" : ETAPAS[1 + (i % 3)];
   const comNegocio = i % 6 !== 5;
   const [pctv, min] = presente ? DEGRAUS[i % DEGRAUS.length] : [null, null];
@@ -138,7 +142,9 @@ function lead(i: number, tier: (typeof TIERS)[number], evento: string): LeadInsc
     etapa: comNegocio ? etapa : null,
     dono,
     assistiu_ao_vivo: presente,
+    aplicou: aplicou || aplicouReplay,
     aplicou_ao_vivo: aplicou,
+    aplicou_replay: aplicouReplay,
     levantou_mao: levantou,
     ja_agendou: agendou,
     acessou_replay: replay,
@@ -149,7 +155,8 @@ function lead(i: number, tier: (typeof TIERS)[number], evento: string): LeadInsc
     tags: [
       evento,
       ...(presente ? ["Participou", `Assistiu ${pctv}%`] : []),
-      ...(aplicou ? [`Pós WG-${evento.replace("WG - ", "")}`] : []),
+      ...(aplicou || aplicouReplay ? [`Pós WG-${evento.replace("WG - ", "")}`] : []),
+      ...(aplicouReplay ? ["Preencheu Aplicação - Replay"] : []),
       ...(levantou ? ["Levantou a Mão"] : []),
       ...(tier.tag && tier.tag !== "Ninja" ? [tier.tag] : []),
       ...(tier.tag === "Ninja" ? ["Possível Ninja"] : []),
@@ -199,7 +206,7 @@ export function mockInscritos(de: string, ate: string, simular?: string | null):
     totais: {
       inscritos: leads.length,
       presentes: leads.filter((l) => l.assistiu_ao_vivo).length,
-      aplicaram: leads.filter((l) => l.aplicou_ao_vivo).length,
+      aplicaram: leads.filter((l) => l.aplicou).length,
       levantaram_mao: leads.filter((l) => l.levantou_mao).length,
       agendaram: leads.filter((l) => l.ja_agendou).length,
       sem_atendimento: leads.filter((l) => l.etapa === "Sem atendimento").length,

@@ -31,18 +31,21 @@ describe("sinais do inscrito", () => {
   const leads = [
     lead({ nome: "Ana", tier: "HMQL", tier_rank: 4, assistiu_ao_vivo: true, aplicou_ao_vivo: true, levantou_mao: true, ja_agendou: true, etapa: "Qualificação" }),
     lead({ nome: "Bia", assistiu_ao_vivo: true, etapa: "Sem atendimento", dono: { id: "u2", nome: "Benhur Ramos", email: null } }),
-    lead({ nome: "Caio", acessou_replay: true, convidado_resgate: true, etapa: "sem Atendimento " }),
+    lead({ nome: "Caio", acessou_replay: true, aplicou_replay: true, convidado_resgate: true, etapa: "sem Atendimento " }),
     lead({ nome: "Dudu", telefone: "+5548998350001" }),
   ];
   const nomes = (x: LeadInscrito[]) => x.map((l) => l.nome);
 
   it("lê cada sinal do campo certo; 'Sem atendimento' ignora caixa e espaços", () => {
-    expect(sinaisDoInscrito(leads[0]).map((s) => s.chave)).toEqual(["presente", "aplicou", "levantou", "agendou"]);
+    // "aplicou" sem o campo pronto = qualquer um dos dois caminhos.
+    expect(sinaisDoInscrito(leads[0]).map((s) => s.chave)).toEqual(["presente", "aplicou", "aplicou_ao_vivo", "levantou", "agendou"]);
     expect(sinaisDoInscrito(leads[1]).map((s) => s.chave)).toEqual(["presente", "sem_atendimento"]);
-    expect(sinaisDoInscrito(leads[2]).map((s) => s.chave)).toEqual(["replay", "resgate", "sem_atendimento"]);
+    expect(sinaisDoInscrito(leads[2]).map((s) => s.chave)).toEqual(["aplicou", "aplicou_replay", "replay", "resgate", "sem_atendimento"]);
     expect(sinaisDoInscrito(leads[3])).toEqual([]);
-    expect(contarSinais(leads)).toMatchObject({ presente: 2, aplicou: 1, levantou: 1, agendou: 1, replay: 1, resgate: 1, sem_atendimento: 2 });
-    expect(SINAIS.map((s) => s.chave)).toEqual(["presente", "aplicou", "levantou", "agendou", "replay", "resgate", "sem_atendimento"]);
+    // Com `aplicou` pronto do backend, ele manda.
+    expect(sinaisDoInscrito(lead({ nome: "X", aplicou: false, aplicou_ao_vivo: true })).map((s) => s.chave)).toEqual(["aplicou_ao_vivo"]);
+    expect(contarSinais(leads)).toMatchObject({ presente: 2, aplicou: 2, aplicou_ao_vivo: 1, aplicou_replay: 1, levantou: 1, agendou: 1, replay: 1, resgate: 1, sem_atendimento: 2 });
+    expect(SINAIS.map((s) => s.chave)).toEqual(["presente", "aplicou", "aplicou_ao_vivo", "aplicou_replay", "levantou", "agendou", "replay", "resgate", "sem_atendimento"]);
   });
 
   it("filtra por tier, dono, sinais (todos exigidos) e busca, mantendo a ordem", () => {
@@ -55,11 +58,11 @@ describe("sinais do inscrito", () => {
     expect(f({ tiers: [], busca: "48 9983" })).toEqual(["Dudu"]);
   });
 
-  it("CSV: 17 colunas com um 'sim' por sinal", () => {
+  it("CSV: 19 colunas com um 'sim' por sinal", () => {
     const linhas = csvDeInscritos([leads[0]]).split("\r\n");
-    expect(linhas[0].split(";")).toHaveLength(17);
+    expect(linhas[0].split(";")).toHaveLength(19);
     expect(linhas[1]).toBe(
-      '"Ana";"HMQL";"Sem dono";"Qualificação";"sim";"sim";"sim";"sim";"";"";"";"";"";"WG - 22.09.26";"";"";""',
+      '"Ana";"HMQL";"Sem dono";"Qualificação";"sim";"sim";"sim";"";"sim";"sim";"";"";"";"";"";"WG - 22.09.26";"";"";""',
     );
   });
 });
