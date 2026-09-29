@@ -17,6 +17,8 @@ const nextConfig = {
       { source: "/produtividade-sdr/levantou-a-mao/:recorte", destination: "/produtividade-sdr/oportunidades/:recorte", permanent: false },
       // "Retenção da audiência" saiu da Produtividade SDR e virou item do menu (23/09).
       { source: "/produtividade-sdr/retencao", destination: "/retencao", permanent: false },
+      // "Descartes" virou recorte de Oportunidades do Evento (29/09).
+      { source: "/produtividade-sdr/descartes", destination: "/produtividade-sdr/oportunidades/descartes", permanent: false },
     ];
   },
 };

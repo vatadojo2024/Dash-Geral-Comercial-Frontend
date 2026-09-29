@@ -23,6 +23,7 @@ import { RetencaoResponseSchema, type RetencaoResponse } from "@/lib/sdr/retenca
 import { PresentesResponseSchema, type PresentesResponse } from "@/lib/sdr/presentesSemAplicar";
 import { InscritosResponseSchema, type InscritosResponse } from "@/lib/sdr/inscritos";
 import { AusentesResponseSchema, type AusentesResponse } from "@/lib/sdr/ausentes";
+import { DescartesResponseSchema, type DescartesResponse } from "@/lib/sdr/descartes";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de acesso a dados de leads no client. Os componentes só
@@ -143,6 +144,7 @@ function codigoDoCorpo(status: number, corpo: unknown): CodigoErroOportunidades 
     erro === "agendamentos_indisponivel" ||
     erro === "leads_indisponivel" ||
     erro === "supabase_indisponivel" ||
+    erro === "usuarios_indisponivel" ||
     erro === "intervalo_muito_grande"
   ) {
     return erro;
@@ -201,6 +203,12 @@ export function fetchNaoAbordados(de: string, ate: string): Promise<NaoAbordados
 // Recorte "Presentes que não aplicaram" (GET /api/eventos/presentes-sem-aplicar?de&ate).
 export function fetchPresentes(de: string, ate: string): Promise<PresentesResponse> {
   return fetchEndpointEventos("/api/eventos/presentes-sem-aplicar", "presentes sem aplicar", PresentesResponseSchema, de, ate);
+}
+
+// Sub-aba "Descartes" (GET /api/sdr/descartes?de&ate): desqualificou / perdeu /
+// nutrição por pessoa, pipeline Pré Vendas. Mesmo protocolo das rotas de evento.
+export function fetchDescartes(de: string, ate: string): Promise<DescartesResponse> {
+  return fetchEndpointEventos("/api/sdr/descartes", "descartes", DescartesResponseSchema, de, ate);
 }
 
 // Recorte "Não participaram — Qualificados" (GET /api/eventos/ausentes?de&ate).

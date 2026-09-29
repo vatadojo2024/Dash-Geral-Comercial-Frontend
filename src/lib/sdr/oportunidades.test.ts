@@ -10,6 +10,8 @@ import {
   blocosDoFunil,
   blocosDoResgate,
   blocosFunilAoVivo,
+  comDegrauMqlMais,
+  ehMqlMais,
   celulaMatriz,
   chaveDaLinha,
   chaveDono,
@@ -562,6 +564,44 @@ describe("avisos (V4)", () => {
     expect(textos[1]).toBe("Aplicaram supera assistiram — inconsistência de cálculo, avise o time técnico.");
     expect(textos[2]).toBe("Há taxa acima de 100% — verificar base.");
     expect(traduzirAvisos(null)).toEqual([]);
+  });
+});
+
+describe("degrau final MQL+ ou acima (funis ao vivo, replay e resgate)", () => {
+  const leads = [
+    lead({ clint_contact_id: "1", origem: "ao_vivo", tier: "UMQL+", tier_rank: 6 }),
+    lead({ clint_contact_id: "2", origem: "ao_vivo", tier: "MQL+", tier_rank: 2 }),
+    lead({ clint_contact_id: "3", origem: "ao_vivo", tier: "MQL", tier_rank: 1 }),
+    lead({ clint_contact_id: "4", origem: "ao_vivo", tier: "Ninja", tier_rank: 0 }),
+    lead({ clint_contact_id: "5", origem: "ao_vivo", tier: null, tier_rank: 0 }),
+    lead({ clint_contact_id: "6", origem: "replay", tier: "SMQL", tier_rank: 3 }),
+    lead({ clint_contact_id: "7", origem: "replay", tier: "MQL", tier_rank: 1 }),
+    lead({ clint_contact_id: "8", origem: "ao_vivo", tier: "HMQL", tier_rank: 4, convidado_resgate: true }),
+    lead({ clint_contact_id: "9", origem: "replay", tier: "MQL", tier_rank: 1, convidado_resgate: true }),
+  ];
+  const funil = (pendentes: number) => [
+    { chave: "inscritos", rotulo: "Inscritos", valor: 100, passagem: null },
+    { chave: "pendentes", rotulo: "Pendentes", valor: pendentes, passagem: null },
+  ];
+
+  it("MQL+ ou acima = escala MQL com rank >= 2; MQL, Ninja e sem classificação ficam de fora", () => {
+    expect(leads.map(ehMqlMais)).toEqual([true, true, false, false, false, true, false, true, false]);
+  });
+
+  it("conta por origem, depois de 'Pendentes', com a passagem 'dos pendentes'", () => {
+    const vivo = comDegrauMqlMais(funil(6), leads, "ao_vivo");
+    expect(vivo.map((b) => [b.chave, b.valor])).toEqual([["inscritos", 100], ["pendentes", 6], ["pendentes_mql", 3]]);
+    expect(vivo[2]).toMatchObject({ rotulo: "MQL+ ou acima", passagem: { tipo: "pct", texto: "50%" }, baseDaPassagem: "dos pendentes" });
+    // Resgate: só os convidados da campanha, de qualquer origem.
+    expect(comDegrauMqlMais(funil(2), leads, "resgate")[2]).toMatchObject({ valor: 1, passagem: { tipo: "pct", texto: "50%" } });
+    expect(comDegrauMqlMais(funil(3), leads, "replay")[2]).toMatchObject({ valor: 1, passagem: { tipo: "pct", texto: "33%" } });
+  });
+
+  it("sem lista de leads ou funil que não termina em Pendentes: não mexe", () => {
+    expect(comDegrauMqlMais(funil(5), null, "ao_vivo")).toHaveLength(2);
+    expect(comDegrauMqlMais([funil(5)[0]], leads, "ao_vivo")).toHaveLength(1);
+    // Replay zerado: o degrau entra com zero e travessão, sem NaN.
+    expect(comDegrauMqlMais(funil(0), [], "replay")[2]).toMatchObject({ valor: 0, passagem: { tipo: "pct", texto: "—" } });
   });
 });
 

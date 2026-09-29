@@ -9,7 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
-import { cn } from "@/lib/utils/cn";
+
+// O controle segmentado virou componente de UI compartilhado
+// (components/ui/Alternador); reexportado para os imports existentes.
+export { Alternador } from "@/components/ui/Alternador";
 
 // ---------------------------------------------------------------------------
 // Peças COMPARTILHADAS pelas abas que consultam os endpoints de evento
@@ -17,43 +20,6 @@ import { cn } from "@/lib/utils/cn";
 // erro, mesmo rodapé (gerado_em, cache, tags consultadas), mesma faixa de
 // avisos e o controle segmentado usado nos filtros.
 // ---------------------------------------------------------------------------
-
-// Controle segmentado de duas ou mais opções (Ciclo | Intervalo, Lista | Por SDR).
-export function Alternador<T extends string>({
-  rotulo,
-  valor,
-  onChange,
-  opcoes,
-}: {
-  rotulo: string;
-  valor: T;
-  onChange: (v: T) => void;
-  opcoes: { valor: T; label: string }[];
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label={rotulo}
-      className="flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1"
-    >
-      {opcoes.map((o) => (
-        <button
-          key={o.valor}
-          type="button"
-          role="radio"
-          aria-checked={valor === o.valor}
-          onClick={() => onChange(o.valor)}
-          className={cn(
-            "nav-link rounded-lg border px-3 py-1 text-xs font-medium transition-all",
-            valor === o.valor ? "border-azul/50 bg-azul/15 text-texto" : "border-transparent text-texto",
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export function CarregandoEventos({ rotulo }: { rotulo: string }) {
   return (
@@ -104,6 +70,18 @@ export function ErroEventos({
         <ErrorState
           titulo="Base de agendamentos indisponível"
           descricao="Sem o conjunto de quem agendou, a lista de pendentes não pode ser calculada."
+          onRetry={onRetry}
+          retryLabel="Tentar de novo"
+        />
+      </Card>
+    );
+  }
+  if (codigo === "usuarios_indisponivel") {
+    return (
+      <Card>
+        <ErrorState
+          titulo={`Não foi possível carregar ${rotulo}`}
+          descricao="A base de usuários do Mapa de Calor não respondeu. Tente de novo em instantes."
           onRetry={onRetry}
           retryLabel="Tentar de novo"
         />

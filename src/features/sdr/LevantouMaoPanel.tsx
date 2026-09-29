@@ -13,7 +13,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Download,
   ExternalLink,
   FileText,
@@ -36,6 +35,7 @@ import {
 } from "lucide-react";
 import {
   fetchAusentes,
+  fetchDescartes,
   fetchInscritos,
   fetchNaoAbordados,
   fetchOportunidades,
@@ -51,6 +51,7 @@ import {
   blocosDoFunil,
   blocosDoResgate,
   blocosFunilAoVivo,
+  comDegrauMqlMais,
   leadsDoRecorte,
   celulaMatriz,
   chaveDaLinha,
@@ -131,12 +132,14 @@ import {
 } from "@/lib/sdr/inscritos";
 import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
 import { DonoBadge, MqlBadge, OrigemBadge, SeloAgendou, SeloNinja } from "@/components/domain/Badges";
+import { BotaoCopiar } from "@/components/ui/BotaoCopiar";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils/cn";
 import { hrefDoRecorte, RECORTES_LEVANTOU } from "./abas";
+import { ConteudoDescartes } from "./DescartesPanel";
 import { KpiChip } from "./KpiChip";
 import { Alternador, CarregandoEventos, ErroEventos, FaixaAvisos, RodapeEventos } from "./EventosComuns";
 import { SeletorPeriodo, usePeriodoEvento } from "./PeriodoEvento";
@@ -170,7 +173,12 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const oportunidades = useQuery({
     queryKey: ["oportunidades", periodo.de, periodo.ate],
     queryFn: () => fetchOportunidades(periodo.de, periodo.ate),
-    enabled: !erroIntervalo && recorte !== "nao_abordados" && recorte !== "presentes" && recorte !== "ausentes",
+    enabled:
+      !erroIntervalo &&
+      recorte !== "nao_abordados" &&
+      recorte !== "presentes" &&
+      recorte !== "ausentes" &&
+      recorte !== "descartes",
     retry: false,
   });
   const naoAbordados = useQuery({
@@ -181,6 +189,15 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   });
   const ehPresentes = recorte === "presentes";
   const ehAusentes = recorte === "ausentes";
+  const ehDescartes = recorte === "descartes";
+  // Descartes: ~2 s por evento a frio no backend (busca os contatos de cada
+  // evento) — um ciclo por vez é o padrão; o mês inteiro leva ~11 s.
+  const descartes = useQuery({
+    queryKey: ["sdr-descartes", periodo.de, periodo.ate],
+    queryFn: () => fetchDescartes(periodo.de, periodo.ate),
+    enabled: !erroIntervalo && ehDescartes,
+    retry: false,
+  });
   const ausentes = useQuery({
     queryKey: ["ausentes", periodo.de, periodo.ate],
     queryFn: () => fetchAusentes(periodo.de, periodo.ate),
@@ -209,7 +226,9 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
       ? presentes
       : ehAusentes
         ? ausentes
-        : oportunidades;
+        : ehDescartes
+          ? descartes
+          : oportunidades;
   const data = oportunidades.data;
 
   // Erro 400 do backend: destaca os campos de data (ambos — o backend não diz qual).
@@ -236,9 +255,19 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
       </div>
 
       {erroIntervalo ? null : isLoading ? (
-        <CarregandoEventos rotulo="oportunidades" />
+        <>
+          {ehDescartes && (
+            <p className="text-xs text-texto-sec" role="status">
+              Contando os descartes de cada evento na Clint — cerca de 2 segundos por evento; um mês inteiro leva uns 10.
+            </p>
+          )}
+          <CarregandoEventos rotulo={ehDescartes ? "descartes" : "oportunidades"} />
+        </>
       ) : isError ? (
-        <ErroEventos error={error} onRetry={() => refetch()} rotulo="as oportunidades" />
+        <>
+          {ehDescartes && <BarraRecortes recorte="descartes" />}
+          <ErroEventos error={error} onRetry={() => refetch()} rotulo={ehDescartes ? "os descartes" : "as oportunidades"} />
+        </>
       ) : recorte === "nao_abordados" ? (
         naoAbordados.data && (
           <ConteudoNaoAbordados
@@ -256,6 +285,13 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
             atualizando={isFetching}
             onAtualizar={() => refetch()}
           />
+        )
+      ) : recorte === "descartes" ? (
+        descartes.data && (
+          <>
+            <BarraRecortes recorte="descartes" />
+            <ConteudoDescartes data={descartes.data} atualizando={isFetching} onAtualizar={() => refetch()} />
+          </>
         )
       ) : recorte === "ausentes" ? (
         ausentes.data && (
@@ -539,8 +575,8 @@ function ConteudoRecorte({
               ) : (
                 <Kpis data={data} />
               )}
-              {data.funis && <FunisDoCiclo funis={data.funis} resumo={data.resumo} />}
-              {data.resgate && <FunilResgate resgate={data.resgate} />}
+              {data.funis && <FunisDoCiclo funis={data.funis} resumo={data.resumo} leads={data.leads} />}
+              {data.resgate && <FunilResgate resgate={data.resgate} leads={data.leads} />}
             </>
           ) : (
             <>
@@ -2285,12 +2321,12 @@ function CardsDoRecorte({
 function FunilDoRecorte({ recorte, data }: { recorte: RecorteOportunidades; data: OportunidadesResponse }) {
   switch (recorte) {
     case "ao_vivo":
-      return data.funis ? <FunilAoVivo funis={data.funis} resumo={data.resumo} /> : null;
+      return data.funis ? <FunilAoVivo funis={data.funis} resumo={data.resumo} leads={data.leads} /> : null;
     case "replay":
-      return data.funis ? <FunilReplay funis={data.funis} /> : null;
+      return data.funis ? <FunilReplay funis={data.funis} leads={data.leads} /> : null;
     case "resgate":
       return data.resgate ? (
-        <FunilResgate resgate={data.resgate} />
+        <FunilResgate resgate={data.resgate} leads={data.leads} />
       ) : (
         <Card>
           <EmptyState
@@ -2311,7 +2347,7 @@ function BarraRecortes({ recorte }: { recorte: RecorteLevantou }) {
     <div
       role="tablist"
       aria-label="Recortes das oportunidades"
-      className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/5 p-1"
+      className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/5 p-1 md:flex-wrap md:overflow-visible"
     >
       {RECORTES_LEVANTOU.map((r) => {
         const ativo = r.recorte === recorte;
@@ -2381,6 +2417,7 @@ const COR_ETAPA: Record<string, string> = {
   aplicaram: "bg-teal/25 text-teal",
   agendaram: "bg-verde/25 text-verde",
   pendentes: "bg-laranja/20 text-laranja",
+  pendentes_mql: "bg-rosa/20 text-rosa",
   nao_abordados: "bg-rosa/20 text-rosa",
   presentes: "bg-violeta/25 text-violeta",
   nao_aplicaram: "bg-laranja/20 text-laranja",
@@ -2454,9 +2491,12 @@ function FunilBlocos({ blocos }: { blocos: BlocoFunil[] }) {
 function FunilAoVivo({
   funis,
   resumo,
+  leads,
 }: {
   funis: NonNullable<OportunidadesResponse["funis"]>;
   resumo?: ResumoEvento | null;
+  // Pendentes da resposta: alimentam o degrau final "MQL+ ou acima".
+  leads?: LeadPendente[];
 }) {
   const completo = resumo?.presentes_ao_vivo != null;
   return (
@@ -2465,24 +2505,30 @@ function FunilAoVivo({
         title="Funil ao vivo"
         subtitle={
           completo
-            ? "Todos que assistiram ao vivo e, entre eles, quem aplicou durante a transmissão (tag Pós WG sem tag de replay, qualquer classificação), agendou ou ainda está pendente."
-            : "Quem se inscreveu e participou ao vivo; “Aplicaram ao vivo” é a tag Pós WG sem tag de replay, em qualquer classificação."
+            ? "Todos que assistiram ao vivo e, entre eles, quem aplicou durante a transmissão (tag Pós WG sem tag de replay, qualquer classificação), agendou ou ainda está pendente — e, no fim, os pendentes MQL+ ou acima."
+            : "Quem se inscreveu e participou ao vivo; “Aplicaram ao vivo” é a tag Pós WG sem tag de replay, em qualquer classificação. No fim, os pendentes MQL+ ou acima."
         }
       />
       <CardContent>
-        <FunilBlocos blocos={blocosFunilAoVivo(funis.ao_vivo.degraus, resumo)} />
+        <FunilBlocos blocos={comDegrauMqlMais(blocosFunilAoVivo(funis.ao_vivo.degraus, resumo), leads, "ao_vivo")} />
       </CardContent>
     </Card>
   );
 }
 
-function FunilReplay({ funis }: { funis: NonNullable<OportunidadesResponse["funis"]> }) {
+function FunilReplay({
+  funis,
+  leads,
+}: {
+  funis: NonNullable<OportunidadesResponse["funis"]>;
+  leads?: LeadPendente[];
+}) {
   const semReplay = funilZerado(funis.replay.degraus);
   return (
     <Card>
-      <CardHeader title="Funil do replay" subtitle="Quem abriu a gravação e aplicou só por ela." />
+      <CardHeader title="Funil do replay" subtitle="Quem abriu a gravação e aplicou só por ela — e, no fim, os pendentes MQL+ ou acima." />
       <CardContent className="space-y-2">
-        <FunilBlocos blocos={blocosDoFunil(funis.replay.degraus, "replay")} />
+        <FunilBlocos blocos={comDegrauMqlMais(blocosDoFunil(funis.replay.degraus, "replay"), leads, "replay")} />
         {semReplay && (
           <p className="text-[11px] text-texto-sec/80" role="note">
             Sem replay neste ciclo
@@ -2496,29 +2542,38 @@ function FunilReplay({ funis }: { funis: NonNullable<OportunidadesResponse["funi
 function FunisDoCiclo({
   funis,
   resumo,
+  leads,
 }: {
   funis: NonNullable<OportunidadesResponse["funis"]>;
   resumo?: ResumoEvento | null;
+  leads?: LeadPendente[];
 }) {
   return (
     <div className="space-y-4">
-      <FunilAoVivo funis={funis} resumo={resumo} />
-      <FunilReplay funis={funis} />
+      <FunilAoVivo funis={funis} resumo={resumo} leads={leads} />
+      <FunilReplay funis={funis} leads={leads} />
     </div>
   );
 }
 
 // Funil da CAMPANHA DE RESGATE: bloco separado abaixo dos dois funis, escala
 // própria (base = convidados) e taxas calculadas no front.
-function FunilResgate({ resgate }: { resgate: NonNullable<OportunidadesResponse["resgate"]> }) {
+function FunilResgate({
+  resgate,
+  leads,
+}: {
+  resgate: NonNullable<OportunidadesResponse["resgate"]>;
+  // Pendentes da resposta: alimentam o degrau final "MQL+ ou acima".
+  leads?: LeadPendente[];
+}) {
   return (
     <Card className="border-dashed">
       <CardHeader
         title="Campanha de resgate"
-        subtitle="Base convidada a voltar — escala própria, denominador = convidados."
+        subtitle="Base convidada a voltar — escala própria, denominador = convidados. No fim, os pendentes MQL+ ou acima."
       />
       <CardContent className="space-y-3">
-        <FunilBlocos blocos={blocosDoResgate(resgate)} />
+        <FunilBlocos blocos={comDegrauMqlMais(blocosDoResgate(resgate), leads, "resgate")} />
         <p className="text-[11px] text-texto-sec/80">
           Convidados que voltaram aparecem também nas métricas do ciclo acima.
         </p>
@@ -3016,32 +3071,6 @@ function BarrasPorTier({
 }
 
 // --- Tabela / cards ----------------------------------------------------------
-
-function BotaoCopiar({ valor, rotulo }: { valor: string; rotulo: string }) {
-  const [copiado, setCopiado] = useState(false);
-  useEffect(() => {
-    if (!copiado) return;
-    const t = setTimeout(() => setCopiado(false), 1500);
-    return () => clearTimeout(t);
-  }, [copiado]);
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        navigator.clipboard?.writeText(valor).then(() => setCopiado(true)).catch(() => {});
-      }}
-      aria-label={copiado ? `${rotulo} copiado` : `Copiar ${rotulo}`}
-      title={copiado ? "Copiado!" : `Copiar ${rotulo}`}
-      className="icon-button h-7 w-7"
-    >
-      {copiado ? (
-        <Check className="h-3.5 w-3.5 text-verde" aria-hidden />
-      ) : (
-        <Copy className="h-3.5 w-3.5" aria-hidden />
-      )}
-    </button>
-  );
-}
 
 function LinkWhatsApp({ telefone, destaque = false }: { telefone: string | null | undefined; destaque?: boolean }) {
   const href = linkWhatsApp(telefone);

@@ -86,9 +86,10 @@ export type RecorteLevantou =
   | "presentes"
   | "ausentes"
   | "resgate"
-  | "nao_abordados";
+  | "nao_abordados"
+  | "descartes";
 // Recortes que derivam da resposta de /oportunidades.
-export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados" | "presentes" | "ausentes">;
+export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados" | "presentes" | "ausentes" | "descartes">;
 
 // Base de cada recorte, ANTES dos chips: os filtros da tela aplicam em série
 // sobre esta lista.
@@ -300,6 +301,52 @@ export function blocosDoFunil(degraus: readonly Degrau[], recorte: RecorteFunil)
   });
 }
 
+// Degrau final dos funis ao vivo, replay e campanha de resgate (pedido Vata
+// 29/09): os pendentes daquele funil que são MQL+ ou acima (escala MQL, rank >= 2 — Ninja e sem
+// classificação ficam de fora). Contado da lista de leads da própria resposta,
+// então bate com a tabela; a passagem é "dos pendentes".
+export const RANK_MQL_MAIS = 2;
+
+export function ehMqlMais(lead: Pick<LeadPendente, "tier" | "tier_rank">): boolean {
+  const t = tierDoLead(lead);
+  return t.mql && t.rank >= RANK_MQL_MAIS;
+}
+
+// Funil que recebe o degrau: ao vivo e replay filtram pela origem; resgate
+// pelos convidados da campanha (mesma base de `leadsDoRecorte(…, "resgate")`).
+export type FunilComMqlMais = OrigemChave | "resgate";
+
+function doFunil(lead: LeadPendente, funil: FunilComMqlMais): boolean {
+  return funil === "resgate" ? lead.convidado_resgate === true : origemDoLead(lead)?.chave === funil;
+}
+
+export function blocoPendentesMqlMais(
+  leads: readonly LeadPendente[],
+  funil: FunilComMqlMais,
+  pendentes: number,
+): BlocoFunil {
+  const valor = leads.filter((l) => doFunil(l, funil) && ehMqlMais(l)).length;
+  return {
+    chave: "pendentes_mql",
+    rotulo: "MQL+ ou acima",
+    valor,
+    passagem: passagemCalculada(valor, pendentes),
+    baseDaPassagem: "dos pendentes",
+  };
+}
+
+// Acrescenta o degrau MQL+ ao fim de um funil que termina em "Pendentes".
+// Sem lista de leads (backend antigo), o funil fica como está.
+export function comDegrauMqlMais(
+  blocos: BlocoFunil[],
+  leads: readonly LeadPendente[] | null | undefined,
+  funil: FunilComMqlMais,
+): BlocoFunil[] {
+  const ultimo = blocos[blocos.length - 1];
+  if (!leads || !ultimo || ultimo.chave !== "pendentes") return blocos;
+  return [...blocos, blocoPendentesMqlMais(leads, funil, ultimo.valor)];
+}
+
 // Funil sem nenhum dado (todos os degraus zero) — ex.: ciclo sem replay. O
 // bloco é renderizado com zeros + nota, nunca escondido.
 export function funilZerado(degraus: readonly Degrau[]): boolean {
@@ -393,6 +440,7 @@ export type CodigoErroOportunidades =
   | "agendamentos_indisponivel"
   | "leads_indisponivel"
   | "supabase_indisponivel"
+  | "usuarios_indisponivel"
   | "intervalo_muito_grande"
   | "parametros_invalidos"
   | "desconhecido";

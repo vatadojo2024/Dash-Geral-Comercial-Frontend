@@ -45,6 +45,15 @@ import { LevantouMaoPanel } from "./LevantouMaoPanel";
 import { PerformanceTable } from "./PerformanceTable";
 import { LeadershipPanel } from "./LeadershipPanel";
 
+// Grade dos cards por SDR: tantas colunas quantos cards (até 4), para a linha
+// ocupar a largura toda. Classes fixas — o Tailwind não enxerga classe montada.
+function colunasDosCards(n: number): string {
+  if (n <= 1) return "grid-cols-1";
+  if (n === 2) return "lg:grid-cols-2";
+  if (n === 3) return "lg:grid-cols-3";
+  return "lg:grid-cols-2 xl:grid-cols-4";
+}
+
 const COR_STATUS = {
   verde: "text-verde",
   amarelo: "text-amarelo",
@@ -202,7 +211,8 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
 
   // "Calls por Ciclo" e "Oportunidades do Evento" são autossuficientes (fontes
   // próprias) — NÃO dependem do payload do Dashboard SDR. Renderizam antes dos
-  // guards dele. ("Retenção da audiência" tem página própria: /retencao.)
+  // guards dele. ("Retenção da audiência" tem página própria: /retencao;
+  // "Descartes" é recorte de Oportunidades do Evento.)
   if (aba === "agendamentos" || aba === "levantou") {
     return (
       <div className="space-y-4">
@@ -221,8 +231,8 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
             <Skeleton key={i} className="h-16 rounded-xl" />
           ))}
         </div>
-        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className={cn("grid gap-3", colunasDosCards(3))}>
+          {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-72 rounded-xl" />
           ))}
         </div>
@@ -309,8 +319,9 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
             <KpiChip icon={Percent} rotulo="Taxa de qualificação" valor={pctBR(taxaQualificacao)} />
           </div>
 
-          {/* 6.4a — cards por SDR (destaque no SDR logado) */}
-          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+          {/* 6.4a — cards por SDR (destaque no SDR logado). As colunas acompanham
+              o número de SDRs exibidos (a Hana saiu): sem coluna vazia à direita. */}
+          <div className={cn("grid gap-3", colunasDosCards(sdrs.length))}>
             {sdrs.map((m) => (
               <SdrCard key={m.sdr} m={m} destaque={meuSdr === m.sdr} />
             ))}

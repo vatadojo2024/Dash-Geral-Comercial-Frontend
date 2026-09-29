@@ -62,6 +62,10 @@
   --c-frio: 96 165 250;
   --c-congelado: 148 163 184;
 
+  /* Blur do vidro nas superfícies translúcidas (TESTE de aparência, 28/09).
+     8px = o blur leve do DS (.glass-button). 0px desliga o teste inteiro. */
+  --vidro-blur: 8px;
+
   /* Brilho da marca (glow) — sombras e scrollbar */
   --c-glow: 196 60 68;
 }
@@ -231,6 +235,57 @@ h2,
     font-weight: 600;
     line-height: 1;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   TESTE DE APARÊNCIA (28/09) — blur leve em TODA superfície translúcida.
+   Antes, só card, modal, menu e botão desfocavam o fundo; cards de KPI, itens
+   de fila, trilhos de abas e campos eram translúcidos SEM blur, então a logo
+   aparecia nítida através deles.
+
+   Regra: desfoca a superfície translúcida de PRIMEIRO NÍVEL — a que fica direto
+   sobre o fundo da página. Quem está DENTRO de outra superfície de vidro (card,
+   modal, menu, item de fila, trilho) não ganha blur próprio: o vidro de trás já
+   desfoca o fundo, e empilhar backdrop-filter custa GPU sem mudar a imagem
+   (referências: blur entre 8 e 16px, poucos elementos desfocados por tela,
+   nunca vidro sobre vidro). Tabelas ficam de fora pelo mesmo motivo.
+
+   :where() mantém especificidade ZERO: o blur próprio de cada componente do DS
+   (.ds-card, .modal-surface, .ds-nav, .glass-button) continua mandando.
+   Fora de @layer de propósito, para o Tailwind não descartar a regra.
+   Calibrar ou desligar: --vidro-blur no :root.
+--------------------------------------------------------------------------- */
+:where(
+  .card-interactive,
+  .icon-circle,
+  [class~="bg-white/5"],
+  [class~="bg-white/10"],
+  [class~="bg-white/[0.04]"],
+  [class~="bg-white/[0.08]"],
+  [class~="bg-laranja/10"],
+  [class~="bg-noite/30"],
+  [class~="bg-noite/40"],
+  [class~="bg-noite/60"],
+  [class~="bg-noite/75"],
+  [class~="bg-painel-claro/40"],
+  [class~="bg-painel-claro/50"]
+):not(
+  :where(
+      .ds-card,
+      .modal-surface,
+      .ds-nav,
+      .glass-effect,
+      .card-interactive,
+      [class~="bg-white/5"],
+      [class~="bg-white/10"],
+      [class~="bg-white/[0.08]"],
+      [class~="bg-laranja/10"],
+      table
+    )
+    *
+) {
+  -webkit-backdrop-filter: blur(var(--vidro-blur));
+  backdrop-filter: blur(var(--vidro-blur));
 }
 
 /* Scrollbar fina e roxa (.scrollable-content do DS, aplicada globalmente) */

@@ -28,6 +28,7 @@ export const RECORTES_LEVANTOU: { recorte: RecorteLevantou; slug: string; label:
   { recorte: "ausentes", slug: "nao-participaram", label: "Não participaram — Qualificados" },
   { recorte: "resgate", slug: "resgate", label: "Campanha de resgate" },
   { recorte: "nao_abordados", slug: "nao-abordados", label: "Não abordados" },
+  { recorte: "descartes", slug: "descartes", label: "Descartes" },
 ];
 
 export function hrefDoRecorte(recorte: RecorteLevantou): string {
