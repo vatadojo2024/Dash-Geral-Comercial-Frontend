@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  CalendarClock,
   Flame,
   Gauge,
   LayoutDashboard,
@@ -27,6 +28,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/visao-geral", label: "Visão Geral", icon: Gauge, roles: ["admin"] },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: TODOS },
   { href: "/leads", label: "Leads", icon: Users, roles: TODOS },
+  // Primeiras calls do closer (a API filtra por closer; SDR não tem essa fila).
+  { href: "/agendamentos", label: "Agendamentos", icon: CalendarClock, roles: TODOS },
   { href: "/chat", label: "Chat IA", icon: MessageSquare, roles: TODOS },
   { href: "/salesops", label: "Sales Ops", icon: Wallet, roles: ["closer", "admin"] },
   { href: "/produtividade-sdr", label: "Produtividade SDR", icon: PhoneCall, roles: ["sdr", "admin"] },

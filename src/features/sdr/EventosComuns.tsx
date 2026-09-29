@@ -10,8 +10,8 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
 
-// O controle segmentado virou componente de UI compartilhado
-// (components/ui/Alternador); reexportado para os imports existentes.
+// O controle segmentado virou componente de UI compartilhado (a tela de
+// Agendamentos também usa); reexportado para os imports existentes.
 export { Alternador } from "@/components/ui/Alternador";
 
 // ---------------------------------------------------------------------------

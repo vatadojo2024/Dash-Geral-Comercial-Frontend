@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils/cn";
 
 // Controle segmentado de duas ou mais opções (Ciclo | Intervalo, Lista | Por SDR,
-// Mês | Intervalo). Padrão do design system: trilho white/5 com borda white/10,
+// Fila | Calendário). Padrão do design system: trilho white/5 com borda white/10,
 // opção ativa em azul/15 com borda azul/50, inativa a 70% (.nav-link).
 export function Alternador<T extends string>({
   rotulo,

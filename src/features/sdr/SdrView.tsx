@@ -196,7 +196,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
             id="mes-sdr"
             value={mes}
             onChange={(e) => setMesSelecionado(e.target.value)}
-            className="h-9 rounded-xl border border-white/20 bg-white/5 px-2 text-sm text-texto"
+            className="h-9 rounded-lg border border-borda bg-painel-claro px-2 text-sm text-texto"
           >
             {meses.map((m) => (
               <option key={m} value={m}>

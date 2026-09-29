@@ -24,6 +24,10 @@ import { PresentesResponseSchema, type PresentesResponse } from "@/lib/sdr/prese
 import { InscritosResponseSchema, type InscritosResponse } from "@/lib/sdr/inscritos";
 import { AusentesResponseSchema, type AusentesResponse } from "@/lib/sdr/ausentes";
 import { DescartesResponseSchema, type DescartesResponse } from "@/lib/sdr/descartes";
+import {
+  AgendamentosPrimeiraCallResponseSchema,
+  type AgendamentosPrimeiraCallResponse,
+} from "@/lib/agendamentos/primeiraCall";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de acesso a dados de leads no client. Os componentes só
@@ -88,6 +92,29 @@ export async function fetchLeads(_user: SessionUser): Promise<LeadListItem[]> {
     );
   }
   return parsed.data.items;
+}
+
+// Tela "Agendamentos — Primeira Call" (GET /api/agendamentos/primeira-call).
+// Sem de/ate: de hoje em diante (a fila). Com de/ate: a janela do calendário.
+// O escopo por closer é do backend; o route handler já entrega o contrato do
+// app (adapter item a item).
+export async function fetchAgendamentosPrimeiraCall(
+  params: { de?: string; ate?: string; closerId?: string } = {},
+): Promise<AgendamentosPrimeiraCallResponse> {
+  const qs = new URLSearchParams();
+  if (params.de) qs.set("de", params.de);
+  if (params.ate) qs.set("ate", params.ate);
+  if (params.closerId) qs.set("closer_id", params.closerId);
+  const caminho = `/api/agendamentos/primeira-call${qs.toString() ? `?${qs.toString()}` : ""}`;
+  const json = await buscar(caminho);
+  const parsed = AgendamentosPrimeiraCallResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new DataError(
+      `Resposta de /api/agendamentos/primeira-call fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      "invalid_contract",
+    );
+  }
+  return parsed.data;
 }
 
 // Diretório de usuários (id→nome). Buscado uma vez e cacheado pelo React Query

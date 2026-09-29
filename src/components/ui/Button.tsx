@@ -27,17 +27,31 @@ const TAMANHOS = {
   md: "px-6 py-3 text-sm",
 };
 
+// As MESMAS classes do botão, para links (<a>) que precisam da aparência dele
+// (ex.: "Abrir sala", "Abrir na Clint") sem duplicar o estilo.
+export function classesDoBotao({
+  variant = "primary",
+  size = "md",
+  className,
+}: {
+  variant?: keyof typeof VARIANTES;
+  size?: keyof typeof TAMANHOS;
+  className?: string;
+} = {}): string {
+  return cn(
+    "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
+    VARIANTES[variant],
+    TAMANHOS[size],
+    className,
+  );
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = "primary", size = "md", loading, className, children, disabled, ...props }, ref) => (
     <button
       ref={ref}
       disabled={disabled || loading}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40",
-        VARIANTES[variant],
-        TAMANHOS[size],
-        className,
-      )}
+      className={classesDoBotao({ variant, size, className })}
       {...props}
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}

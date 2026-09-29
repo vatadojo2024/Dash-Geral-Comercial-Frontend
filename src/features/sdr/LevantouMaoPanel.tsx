@@ -255,14 +255,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
       </div>
 
       {erroIntervalo ? null : isLoading ? (
-        <>
-          {ehDescartes && (
-            <p className="text-xs text-texto-sec" role="status">
-              Contando os descartes de cada evento na Clint — cerca de 2 segundos por evento; um mês inteiro leva uns 10.
-            </p>
-          )}
-          <CarregandoEventos rotulo={ehDescartes ? "descartes" : "oportunidades"} />
-        </>
+        <CarregandoEventos rotulo={ehDescartes ? "descartes" : "oportunidades"} />
       ) : isError ? (
         <>
           {ehDescartes && <BarraRecortes recorte="descartes" />}

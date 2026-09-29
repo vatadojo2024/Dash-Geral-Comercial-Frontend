@@ -318,3 +318,16 @@ select,
 input[type="date"] {
   color-scheme: dark;
 }
+
+/* Lista aberta dos menus suspensos nativos. Sem isto o navegador pinta as
+   opções com o fundo do próprio <select> — que em alguns é translúcido — sobre
+   branco, e a letra branca some ("fundo branco com letra branca"). Fundo
+   OPACO do tema em toda opção, em qualquer select. */
+select option,
+select optgroup {
+  background-color: rgb(var(--c-painel));
+  color: rgb(var(--c-texto));
+}
+select option:disabled {
+  color: rgb(var(--c-texto-sec));
+}
