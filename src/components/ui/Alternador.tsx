@@ -30,7 +30,7 @@ export function Alternador<T extends string>({
           aria-checked={valor === o.valor}
           onClick={() => onChange(o.valor)}
           className={cn(
-            "nav-link rounded-lg border px-3 py-1 text-xs font-medium transition-all",
+            "nav-link whitespace-nowrap rounded-lg border px-3 py-1 text-xs font-medium transition-all",
             valor === o.valor ? "border-azul/50 bg-azul/15 text-texto" : "border-transparent text-texto",
           )}
         >

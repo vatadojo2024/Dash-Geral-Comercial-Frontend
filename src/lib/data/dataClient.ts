@@ -25,6 +25,12 @@ import { InscritosResponseSchema, type InscritosResponse } from "@/lib/sdr/inscr
 import { AusentesResponseSchema, type AusentesResponse } from "@/lib/sdr/ausentes";
 import { DescartesResponseSchema, type DescartesResponse } from "@/lib/sdr/descartes";
 import {
+  HistoricoResponseSchema,
+  queryDoHistorico,
+  type FiltrosHistorico,
+  type HistoricoResponse,
+} from "@/lib/agendamentos/historico";
+import {
   AgendamentosPrimeiraCallResponseSchema,
   type AgendamentosPrimeiraCallResponse,
 } from "@/lib/agendamentos/primeiraCall";
@@ -113,6 +119,22 @@ export async function fetchAgendamentosPrimeiraCall(
   if (!parsed.success) {
     throw new DataError(
       `Resposta de /api/agendamentos/primeira-call fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      "invalid_contract",
+    );
+  }
+  return parsed.data;
+}
+
+// Tela "Histórico de agendamentos" (GET /api/agendamentos/historico), só admin.
+// Uma página por chamada; a seguinte vem de `proximo_cursor` → `antesDe`.
+// 403 (fora da área) vira DataError "sem_permissao" em `buscar`.
+export async function fetchHistoricoAgendamentos(filtros: FiltrosHistorico): Promise<HistoricoResponse> {
+  const qs = queryDoHistorico(filtros);
+  const json = await buscar(`/api/agendamentos/historico${qs ? `?${qs}` : ""}`);
+  const parsed = HistoricoResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new DataError(
+      `Resposta de /api/agendamentos/historico fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
       "invalid_contract",
     );
   }

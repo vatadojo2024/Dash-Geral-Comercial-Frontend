@@ -43,6 +43,8 @@ export const AREAS = [
   "dashboard",
   "leads",
   "agendamentos",
+  // Feed de todos os agendamentos na ordem em que foram marcados (só admin).
+  "historico_agendamentos",
   "chat",
   "salesops",
   "produtividade_sdr",

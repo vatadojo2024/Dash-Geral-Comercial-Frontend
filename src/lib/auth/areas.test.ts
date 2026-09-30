@@ -21,7 +21,8 @@ describe("áreas da sessão (GET /api/me → areas)", () => {
   });
 
   it("reserva espelha a tabela do backend (DOCUMENTACAO-FRONT, seção 6)", () => {
-    expect(AREAS_DO_PAPEL.admin).toHaveLength(9);
+    expect(AREAS_DO_PAPEL.admin).toHaveLength(10);
+    expect(AREAS_DO_PAPEL.admin).toContain("historico_agendamentos");
     expect(AREAS_DO_PAPEL.closer).toEqual(["dashboard", "leads", "agendamentos", "chat", "salesops"]);
     expect(AREAS_DO_PAPEL.sdr).toEqual(["dashboard", "leads", "agendamentos", "chat", "produtividade_sdr", "retencao"]);
     expect(AREAS_DO_PAPEL.marketing).toEqual(["retencao"]);

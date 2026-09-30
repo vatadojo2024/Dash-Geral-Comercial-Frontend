@@ -50,7 +50,8 @@ export function AcoesDoAgendamento({
   tamanho = "sm",
   className,
 }: {
-  ag: AgendamentoPrimeiraCall;
+  // Só os dois links: serve à fila e ao histórico de agendamentos.
+  ag: Pick<AgendamentoPrimeiraCall, "link_call" | "link_crm">;
   tamanho?: "sm" | "md";
   className?: string;
 }) {

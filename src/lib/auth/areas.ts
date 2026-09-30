@@ -44,6 +44,7 @@ export const ROTA_DA_AREA: Record<Area, string> = {
   dashboard: "/dashboard",
   leads: "/leads",
   agendamentos: "/agendamentos",
+  historico_agendamentos: "/historico-agendamentos",
   chat: "/chat",
   salesops: "/salesops",
   produtividade_sdr: "/produtividade-sdr",
