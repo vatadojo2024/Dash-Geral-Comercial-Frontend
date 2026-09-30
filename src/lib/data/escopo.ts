@@ -22,7 +22,8 @@ export type LeadComDono = {
 export function leadNoEscopo(lead: LeadComDono, user: SessionUser): boolean {
   if (user.role === "admin") return true;
   if (user.role === "closer") return lead.closer_id === user.id;
-  return lead.sdr_id === user.id || lead.sdr_pool;
+  if (user.role === "sdr") return lead.sdr_id === user.id || lead.sdr_pool;
+  return false; // marketing/educacional não têm a área de leads
 }
 
 export function filtrarPorEscopo<T extends LeadComDono>(

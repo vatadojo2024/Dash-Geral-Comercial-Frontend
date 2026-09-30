@@ -89,6 +89,7 @@ export function AgendamentosPanel() {
         <Card>
           <ErrorState
             titulo="Não foi possível carregar os agendamentos"
+            error={error}
             descricao={error instanceof Error ? error.message : "Tente novamente."}
             onRetry={() => refetch()}
           />

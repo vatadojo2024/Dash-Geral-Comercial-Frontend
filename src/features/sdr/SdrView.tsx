@@ -171,7 +171,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
         aria-label="Abas da produtividade"
         className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/5 p-1"
       >
-        {ABAS_SDR.filter((a) => !a.soAdmin || user.role === "admin").map((a) => (
+        {ABAS_SDR.filter((a) => user.areas.includes(a.area)).map((a) => (
           <Link
             key={a.aba}
             role="tab"
@@ -247,6 +247,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
         <Card>
           <ErrorState
             titulo="Não foi possível carregar a produtividade SDR"
+            error={error}
             descricao={error instanceof Error ? error.message : "Tente novamente."}
             onRetry={() => refetch()}
           />

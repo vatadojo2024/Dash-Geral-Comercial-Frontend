@@ -1,7 +1,9 @@
 import { PageHeader } from "@/components/layout/PageHeader";
+import { exigirArea } from "@/lib/auth/acesso";
 import { DashboardView } from "@/features/dashboard/DashboardView";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await exigirArea("dashboard");
   return (
     <>
       <PageHeader

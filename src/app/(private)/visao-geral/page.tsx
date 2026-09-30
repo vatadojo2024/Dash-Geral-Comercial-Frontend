@@ -1,13 +1,10 @@
-import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { VisaoGeralView } from "@/features/visaogeral/VisaoGeralView";
-import { getServerSession } from "@/lib/auth/session";
+import { exigirArea } from "@/lib/auth/acesso";
 
-// Rota exclusiva do admin (Parte 7, decisão 2) — home pós-login do papel.
+// Área `visao_geral` (hoje só admin) — home pós-login dele.
 export default async function VisaoGeralPage() {
-  const user = await getServerSession();
-  if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/dashboard");
+  await exigirArea("visao_geral");
 
   return (
     <>

@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { exigirArea } from "@/lib/auth/acesso";
 import { LeadsView } from "@/features/leads/LeadsView";
 
-export default function LeadsPage() {
+export default async function LeadsPage() {
+  await exigirArea("leads");
   return (
     <>
       <PageHeader

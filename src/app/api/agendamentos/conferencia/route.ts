@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { modoDosAgendamentos } from "@/lib/agendamentos/modo";
 import { primeiroNome } from "@/lib/agendamentos/conferencia";
 import { veAgendaDeTodos } from "@/lib/agendamentos/primeiraCall";
-import { getServerSession } from "@/lib/auth/session";
+import { exigirAreaNaApi } from "@/lib/server/acessoApi";
 import { closersDoMock, mockAgendamentosPrimeiraCall } from "@/lib/mock/agendamentos_primeira_call";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +12,8 @@ import { closersDoMock, mockAgendamentosPrimeiraCall } from "@/lib/mock/agendame
 // fica só no servidor (SDR_DASHBOARD_API_URL / SDR_DASHBOARD_API_KEY, as mesmas
 // do Dashboard SDR).
 // Escopo: closer vê só as próprias linhas (pelo primeiro nome da sessão);
-// admin e SDR veem todas.
+// admin e SDR veem todas. Acesso: área `agendamentos` (esta rota não passa pela
+// API do Mapa de Calor, então a trava por área é daqui).
 // Modo: segue o da tela de Agendamentos (lib/agendamentos/modo). Em mock, os
 // totais saem do próprio mock da fila, com uma divergência de propósito para a
 // tela ter o que mostrar.
@@ -21,8 +22,8 @@ import { closersDoMock, mockAgendamentosPrimeiraCall } from "@/lib/mock/agendame
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function GET(req: NextRequest) {
-  const user = await getServerSession();
-  if (!user) return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
+  const { user, negado } = await exigirAreaNaApi("agendamentos");
+  if (negado) return negado;
 
   const { searchParams } = new URL(req.url);
   const de = searchParams.get("de");

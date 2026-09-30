@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SemPermissaoError } from "@/lib/auth/semPermissao";
 
 // ---------------------------------------------------------------------------
 // Adapter ISOLADO do Dashboard de Produtividade SDR (DOCUMENTACAO.md).
@@ -295,6 +296,7 @@ export async function fetchSdrPayload(): Promise<SdrDashboardPayload> {
   const res = await fetch("/api/sdr-dashboard");
   if (!res.ok) {
     const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (res.status === 403) throw new SemPermissaoError(corpo?.error);
     throw new Error(corpo?.error ?? `Dashboard SDR respondeu ${res.status}`);
   }
   return SdrDashboardPayloadSchema.parse(await res.json());

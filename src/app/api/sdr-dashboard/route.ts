@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mock from "@/lib/mock/sdr_dashboard.json";
+import { exigirAreaNaApi } from "@/lib/server/acessoApi";
 import { mapVendasComercial } from "@/lib/server/apiVendas";
 
 // ---------------------------------------------------------------------------
@@ -68,6 +69,11 @@ function mapearLinhas(linhas: unknown, campoTotal: string): unknown[] {
 }
 
 export async function GET() {
+  // Não passa pela API do Mapa de Calor: a trava por área fica aqui. Quem lê
+  // este payload: Produtividade SDR, a sub-aba Liderança e a Visão Geral.
+  const { negado } = await exigirAreaNaApi("produtividade_sdr", "lideranca_pre_venda", "visao_geral");
+  if (negado) return negado;
+
   const modo = process.env.SDR_DASHBOARD_MODE === "api" ? "api" : "mock";
 
   if (modo === "mock") {

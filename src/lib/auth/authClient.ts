@@ -1,7 +1,7 @@
 "use client";
 
 import { SessionUserSchema } from "@/lib/api/contracts";
-import { DEMO_ACCOUNTS } from "@/lib/mock/users";
+import { CONTAS_DE_TESTE, DEMO_ACCOUNTS } from "@/lib/mock/users";
 import { entrarComo, entrarComoUsuario } from "./clientSession";
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,7 @@ export class AuthError extends Error {}
 
 function contaPorEmail(email: string) {
   const alvo = email.trim().toLowerCase();
-  return DEMO_ACCOUNTS.find((a) => a.email.toLowerCase() === alvo) ?? null;
+  return [...DEMO_ACCOUNTS, ...CONTAS_DE_TESTE].find((a) => a.email.toLowerCase() === alvo) ?? null;
 }
 
 async function loginSupabase(email: string, senha: string): Promise<void> {

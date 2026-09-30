@@ -5,9 +5,9 @@ import type { Role } from "@/lib/api/contracts";
 // Os textos de exibição são PLACEHOLDERS a confirmar com o Vata; a estrutura é
 // o que importa. O `papel` vem da mesma fonte que o painel já usa (useSession).
 //
-// Nota: o design lista "admin / gestor" como o mesmo agente. A fonte de papel
-// real (RoleSchema) só emite admin | closer | sdr, então 'gestor' é coberto
-// pelo papel `admin` — não há papel novo aqui.
+// Nota: o design lista "admin / gestor" como o mesmo agente; 'gestor' é coberto
+// pelo papel `admin`. Marketing e educacional não têm a área `chat` (30/09);
+// se um dia uma conversa vier com um papel sem agente, usa o da gestão.
 // ---------------------------------------------------------------------------
 
 export type Agente = {
@@ -16,7 +16,7 @@ export type Agente = {
   subtitulo: string;
 };
 
-export const AGENTES: Record<Role, Agente> = {
+export const AGENTES: Partial<Record<Role, Agente>> & Record<"admin", Agente> = {
   admin: {
     id: "guia_gestao",
     nome_exibicao: "Guia Vata/Cindy",
@@ -35,5 +35,5 @@ export const AGENTES: Record<Role, Agente> = {
 };
 
 export function agenteDoPapel(papel: Role): Agente {
-  return AGENTES[papel];
+  return AGENTES[papel] ?? AGENTES.admin;
 }

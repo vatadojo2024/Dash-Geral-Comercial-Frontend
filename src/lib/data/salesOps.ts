@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SemPermissaoError } from "@/lib/auth/semPermissao";
 
 // ---------------------------------------------------------------------------
 // Camada de dados do Sales Ops (vendas/faturamento do closer). A FONTE (mock |
@@ -35,6 +36,7 @@ export async function fetchVendasDoMes(
   const res = await fetch(`/api/sales/closer?${qs}`);
   if (!res.ok) {
     const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (res.status === 403) throw new SemPermissaoError(corpo?.error);
     throw new Error(corpo?.error ?? `A busca de vendas respondeu ${res.status}.`);
   }
   return VendasDoMesSchema.parse(await res.json());

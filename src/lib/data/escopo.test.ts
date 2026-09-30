@@ -6,9 +6,9 @@ function lead(parcial: Partial<LeadComDono> & { id: string }): LeadComDono & { i
   return { closer_id: null, sdr_id: null, sdr_pool: false, ...parcial };
 }
 
-const admin: SessionUser = { id: "vata", nome: "Vata", email: "v@v.com", role: "admin" };
-const closer: SessionUser = { id: "marcio", nome: "Marcio", email: "m@v.com", role: "closer" };
-const sdr: SessionUser = { id: "benhur", nome: "Benhur", email: "b@v.com", role: "sdr" };
+const admin: SessionUser = { id: "vata", nome: "Vata", email: "v@v.com", role: "admin", areas: [] };
+const closer: SessionUser = { id: "marcio", nome: "Marcio", email: "m@v.com", role: "closer", areas: [] };
+const sdr: SessionUser = { id: "benhur", nome: "Benhur", email: "b@v.com", role: "sdr", areas: [] };
 
 // Carteira de teste: leads de vários donos + um do pool da Hana.
 const CARTEIRA = [

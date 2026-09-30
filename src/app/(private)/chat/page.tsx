@@ -1,7 +1,9 @@
 import { PageHeader } from "@/components/layout/PageHeader";
+import { exigirArea } from "@/lib/auth/acesso";
 import { CopilotoView } from "@/features/copiloto/CopilotoView";
 
-export default function ChatPage() {
+export default async function ChatPage() {
+  await exigirArea("chat");
   return (
     <>
       <PageHeader

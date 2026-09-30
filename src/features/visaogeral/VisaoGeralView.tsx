@@ -116,6 +116,7 @@ export function VisaoGeralView() {
       <Card>
         <ErrorState
           titulo="Não foi possível carregar a visão geral"
+          error={leadsQuery.error ?? vendasQuery.error ?? sdrQuery.error}
           descricao="Tente novamente; se persistir, acione o suporte interno."
           onRetry={() => {
             leadsQuery.refetch();

@@ -5,16 +5,19 @@
 // receber uma referência de client component em vez do array.
 // ---------------------------------------------------------------------------
 
+import type { Area } from "@/lib/api/contracts";
 import type { RecorteLevantou } from "@/lib/sdr/oportunidades";
 
 export type AbaSdr = "dashboard" | "agendamentos" | "levantou" | "comissoes" | "lideranca";
 
-export const ABAS_SDR: { aba: AbaSdr; slug: string; label: string; soAdmin?: boolean }[] = [
-  { aba: "dashboard", slug: "", label: "Dashboard SDR" },
-  { aba: "agendamentos", slug: "calls-por-ciclo", label: "Calls por Ciclo" },
-  { aba: "levantou", slug: "oportunidades", label: "Oportunidades do Evento" },
-  { aba: "comissoes", slug: "comissoes", label: "Comissões" },
-  { aba: "lideranca", slug: "lideranca", label: "Liderança Pré-venda", soAdmin: true },
+// Cada sub-aba pertence a uma área (GET /api/me → areas): todas são
+// `produtividade_sdr`, menos a Liderança, que tem área própria.
+export const ABAS_SDR: { aba: AbaSdr; slug: string; label: string; area: Area }[] = [
+  { aba: "dashboard", slug: "", label: "Dashboard SDR", area: "produtividade_sdr" },
+  { aba: "agendamentos", slug: "calls-por-ciclo", label: "Calls por Ciclo", area: "produtividade_sdr" },
+  { aba: "levantou", slug: "oportunidades", label: "Oportunidades do Evento", area: "produtividade_sdr" },
+  { aba: "comissoes", slug: "comissoes", label: "Comissões", area: "produtividade_sdr" },
+  { aba: "lideranca", slug: "lideranca", label: "Liderança Pré-venda", area: "lideranca_pre_venda" },
 ];
 
 export const ROTA_SDR = "/produtividade-sdr";

@@ -41,7 +41,7 @@ import {
 export class DataError extends Error {
   constructor(
     message: string,
-    public readonly code: "not_found" | "invalid_contract" | "request_failed",
+    public readonly code: "not_found" | "invalid_contract" | "request_failed" | "sem_permissao",
   ) {
     super(message);
   }
@@ -75,7 +75,9 @@ async function buscar(caminho: string): Promise<unknown> {
     }
     const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
     const mensagem = corpo?.error ?? `A busca de leads respondeu ${res.status}.`;
-    throw new DataError(mensagem, res.status === 404 ? "not_found" : "request_failed");
+    // 403 = área fora do perfil (a tela mostra "sem acesso", não erro).
+    const codigo = res.status === 404 ? "not_found" : res.status === 403 ? "sem_permissao" : "request_failed";
+    throw new DataError(mensagem, codigo);
   }
   return res.json();
 }

@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
+import { homeDoUsuario } from "@/lib/auth/areas";
 import { getServerSession } from "@/lib/auth/session";
 
-// Home pós-login por papel (Parte 7): admin cai na Visão Geral; closer e SDR
-// continuam no Dashboard.
+// Home pós-login: a primeira área do usuário (GET /api/me → areas). Admin cai
+// na Visão Geral; closer e SDR no Dashboard; marketing na Retenção. Sem área
+// nenhuma (educacional, por enquanto) → "Sua área ainda não está disponível".
 export default async function Home() {
   const user = await getServerSession();
   if (!user) redirect("/login");
-  redirect(user.role === "admin" ? "/visao-geral" : "/dashboard");
+  redirect(homeDoUsuario(user));
 }

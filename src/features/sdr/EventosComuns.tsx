@@ -8,7 +8,8 @@ import { dataHora } from "@/lib/formatters/date";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/States";
+import { ErrorState, SemAcessoState } from "@/components/ui/States";
+import { ehSemPermissao } from "@/lib/auth/semPermissao";
 
 // O controle segmentado virou componente de UI compartilhado (a tela de
 // Agendamentos também usa); reexportado para os imports existentes.
@@ -47,6 +48,14 @@ export function ErroEventos({
 }) {
   const e = error instanceof OportunidadesError ? error : null;
   const codigo = e?.codigo ?? "desconhecido";
+
+  if (ehSemPermissao(error)) {
+    return (
+      <Card>
+        <SemAcessoState />
+      </Card>
+    );
+  }
 
   if (codigo === "clint_auth" || codigo === "clint_indisponivel") {
     return (

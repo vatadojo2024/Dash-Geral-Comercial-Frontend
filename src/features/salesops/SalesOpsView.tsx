@@ -316,6 +316,7 @@ function PainelCloser({ closerId }: { closerId: string }) {
       <Card>
         <ErrorState
           titulo="Não foi possível carregar o Sales Ops"
+          error={vendasQuery.error ?? leadsQuery.error}
           descricao="Tente novamente; se persistir, acione o suporte interno."
           onRetry={() => {
             vendasQuery.refetch();

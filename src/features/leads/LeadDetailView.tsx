@@ -231,6 +231,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
       <Card>
         <ErrorState
           titulo={naoEncontrado ? "Lead não encontrado" : "Não foi possível carregar o lead"}
+          error={error}
           descricao={
             naoEncontrado
               ? "Este lead não existe ou está fora do escopo do seu papel."

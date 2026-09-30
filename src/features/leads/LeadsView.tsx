@@ -21,7 +21,7 @@ export function LeadsView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
   });
@@ -70,6 +70,7 @@ export function LeadsView() {
         <div className="rounded-xl border border-borda bg-painel">
           <ErrorState
             titulo="Não foi possível carregar a fila"
+            error={error}
             descricao="Tente novamente; se persistir, acione o suporte interno."
             onRetry={() => refetch()}
           />

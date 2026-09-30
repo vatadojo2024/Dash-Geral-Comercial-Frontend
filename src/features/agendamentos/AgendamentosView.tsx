@@ -228,6 +228,7 @@ export function AgendamentosView() {
             <Card>
               <ErrorState
                 titulo="Não foi possível carregar os agendamentos"
+                error={fila.error}
                 descricao={fila.error instanceof Error ? fila.error.message : "Tente novamente; se persistir, acione o suporte interno."}
                 onRetry={() => fila.refetch()}
               />
@@ -262,6 +263,7 @@ export function AgendamentosView() {
           <Card>
             <ErrorState
               titulo="Não foi possível carregar o calendário"
+              error={calendario.error}
               descricao={calendario.error instanceof Error ? calendario.error.message : "Tente novamente; se persistir, acione o suporte interno."}
               onRetry={() => calendario.refetch()}
             />

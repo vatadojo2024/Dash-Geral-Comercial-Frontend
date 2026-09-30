@@ -32,8 +32,25 @@ export const ETAPAS = [
 export const EtapaSchema = z.enum(ETAPAS);
 export type Etapa = z.infer<typeof EtapaSchema>;
 
-export const RoleSchema = z.enum(["admin", "closer", "sdr"]);
+export const RoleSchema = z.enum(["admin", "closer", "sdr", "marketing", "educacional"]);
 export type Role = z.infer<typeof RoleSchema>;
+
+// Áreas do Mapa de Calor (desde 30/09/2026): QUEM VÊ CADA TELA vem pronto da
+// API em GET /api/me → `areas`. O front não decide acesso; só lê a lista para
+// desenhar o menu e proteger as páginas (lib/auth/areas.ts).
+export const AREAS = [
+  "visao_geral",
+  "dashboard",
+  "leads",
+  "agendamentos",
+  "chat",
+  "salesops",
+  "produtividade_sdr",
+  "lideranca_pre_venda",
+  "retencao",
+] as const;
+export const AreaSchema = z.enum(AREAS);
+export type Area = z.infer<typeof AreaSchema>;
 
 // GET /api/me
 export const SessionUserSchema = z.object({
@@ -41,6 +58,7 @@ export const SessionUserSchema = z.object({
   nome: z.string(),
   email: z.string().email(),
   role: RoleSchema,
+  areas: z.array(AreaSchema),
 });
 export type SessionUser = z.infer<typeof SessionUserSchema>;
 

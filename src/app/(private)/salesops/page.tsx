@@ -1,12 +1,9 @@
-import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { SalesOpsView } from "@/features/salesops/SalesOpsView";
-import { getServerSession } from "@/lib/auth/session";
+import { exigirArea } from "@/lib/auth/acesso";
 
 export default async function SalesOpsPage() {
-  const user = await getServerSession();
-  if (!user) redirect("/login");
-  if (user.role === "sdr") redirect("/dashboard");
+  await exigirArea("salesops");
 
   return (
     <>

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SessionUserSchema, type Role } from "@/lib/api/contracts";
+import { normalizarAreas } from "@/lib/auth/areas";
 
 // ---------------------------------------------------------------------------
 // GET /api/me — proxy server-side para {NEXT_PUBLIC_API_URL}/api/me.
@@ -11,6 +12,9 @@ import { SessionUserSchema, type Role } from "@/lib/api/contracts";
 // Tolerância de campo: a API real pode nomear os campos de formas diferentes
 // (name/full_name, papel/tipo, role em pt/en) — normalizamos aqui, num único
 // ponto, sem espalhar suposições pelo app.
+// `areas` (desde 30/09/2026) é a lista do que o usuário pode ver e vai para a
+// sessão como veio (valores desconhecidos são ignorados). API antiga, sem o
+// campo → reserva por papel (lib/auth/areas.ts).
 // ---------------------------------------------------------------------------
 
 function texto(v: unknown): string | null {
@@ -23,6 +27,8 @@ function normalizarRole(raw: unknown): Role | null {
   if (["admin", "administrador", "administrator", "gestor"].includes(v)) return "admin";
   if (["closer", "vendedor", "comercial"].includes(v)) return "closer";
   if (["sdr", "pre-venda", "pré-venda", "pre_venda", "prevenda"].includes(v)) return "sdr";
+  if (["marketing", "mkt"].includes(v)) return "marketing";
+  if (["educacional", "educacao", "educação"].includes(v)) return "educacional";
   return null;
 }
 
@@ -39,7 +45,7 @@ function normalizarMe(raw: Record<string, unknown>) {
   const role = normalizarRole(raw.role ?? raw.papel ?? raw.tipo ?? raw.cargo);
 
   if (!email || !id || !nome || !role) return null;
-  return SessionUserSchema.safeParse({ id, nome, email, role });
+  return SessionUserSchema.safeParse({ id, nome, email, role, areas: normalizarAreas(raw.areas, role) });
 }
 
 export async function GET(req: NextRequest) {

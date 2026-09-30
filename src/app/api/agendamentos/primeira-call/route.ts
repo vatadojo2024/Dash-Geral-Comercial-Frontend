@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { modoDosAgendamentos } from "@/lib/agendamentos/modo";
 import { veAgendaDeTodos } from "@/lib/agendamentos/primeiraCall";
-import { getServerSession } from "@/lib/auth/session";
+import { exigirAreaNaApi } from "@/lib/server/acessoApi";
 import { closersDoMock, mockAgendamentosPrimeiraCall } from "@/lib/mock/agendamentos_primeira_call";
 import { adaptApiAgendamentosPrimeiraCall } from "@/lib/server/apiAgendamentosPrimeiraCall";
 
@@ -41,8 +41,9 @@ export async function GET(req: NextRequest) {
   });
 
   if (modo === "mock") {
-    const user = await getServerSession();
-    if (!user) return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
+    // Em "api" quem trava a área é o backend (403); no mock, esta rota.
+    const { user, negado } = await exigirAreaNaApi("agendamentos");
+    if (negado) return negado;
     const simular = searchParams.get("simular");
     if (simular === "erro") {
       return NextResponse.json(

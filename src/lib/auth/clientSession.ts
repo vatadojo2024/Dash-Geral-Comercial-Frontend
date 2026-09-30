@@ -8,7 +8,7 @@ const OITO_HORAS = 8 * 60 * 60;
 // ---------------------------------------------------------------------------
 // Cookie de sessão (mdc_user). O conteúdo depende do AUTH_MODE:
 //   - mock: o id da conta de demonstração (entrarComo).
-//   - supabase: o SessionUser real (id/nome/email/role) vindo do GET /api/me,
+//   - supabase: o SessionUser real (id/nome/email/role/areas) vindo do GET /api/me,
 //     serializado em JSON (entrarComoUsuario) — o JWT em si fica na sessão do
 //     supabase-js (localStorage) e é anexado às chamadas pelo dataClient.
 // O middleware e o getServerSession leem ESTE mesmo cookie.

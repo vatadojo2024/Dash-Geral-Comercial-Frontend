@@ -15,30 +15,41 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import type { Role } from "@/lib/api/contracts";
+import type { Area } from "@/lib/api/contracts";
+import { ROTA_DA_AREA } from "@/lib/auth/areas";
 import { cn } from "@/lib/utils/cn";
 
-type NavItem = { href: string; label: string; icon: LucideIcon; roles: Role[] };
-
-const TODOS: Role[] = ["admin", "closer", "sdr"];
+// Cada item pertence a uma área; aparece se `user.areas` (GET /api/me) contém
+// alguma delas. A Produtividade SDR também abre para quem só tem a Liderança
+// (sub-aba dela) — nesse caso o link vai direto para a sub-aba.
+type NavItem = { href: string; label: string; icon: LucideIcon; areas: Area[] };
 
 // Visão Geral é a home do admin. Ações, Agenda e Gestão foram REMOVIDAS do menu
 // (spec set/2026, Parte 2.1) — não existe backend para elas.
 const NAV_ITEMS: NavItem[] = [
-  { href: "/visao-geral", label: "Visão Geral", icon: Gauge, roles: ["admin"] },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: TODOS },
-  { href: "/leads", label: "Leads", icon: Users, roles: TODOS },
-  // Primeiras calls do closer (a API filtra por closer; SDR não tem essa fila).
-  { href: "/agendamentos", label: "Agendamentos", icon: CalendarClock, roles: TODOS },
-  { href: "/chat", label: "Chat IA", icon: MessageSquare, roles: TODOS },
-  { href: "/salesops", label: "Sales Ops", icon: Wallet, roles: ["closer", "admin"] },
-  { href: "/produtividade-sdr", label: "Produtividade SDR", icon: PhoneCall, roles: ["sdr", "admin"] },
-  { href: "/retencao", label: "Retenção da audiência", icon: Activity, roles: ["sdr", "admin"] },
+  { href: "/visao-geral", label: "Visão Geral", icon: Gauge, areas: ["visao_geral"] },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, areas: ["dashboard"] },
+  { href: "/leads", label: "Leads", icon: Users, areas: ["leads"] },
+  // Primeiras calls: closer vê a própria agenda; admin e SDR, a de todos.
+  { href: "/agendamentos", label: "Agendamentos", icon: CalendarClock, areas: ["agendamentos"] },
+  { href: "/chat", label: "Chat IA", icon: MessageSquare, areas: ["chat"] },
+  { href: "/salesops", label: "Sales Ops", icon: Wallet, areas: ["salesops"] },
+  {
+    href: "/produtividade-sdr",
+    label: "Produtividade SDR",
+    icon: PhoneCall,
+    areas: ["produtividade_sdr", "lideranca_pre_venda"],
+  },
+  { href: "/retencao", label: "Retenção da audiência", icon: Activity, areas: ["retencao"] },
 ];
 
-function NavContent({ role, onNavigate }: { role: Role; onNavigate?: () => void }) {
+function NavContent({ areas, onNavigate }: { areas: readonly Area[]; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const itens = NAV_ITEMS.filter((i) => i.roles.includes(role));
+  const itens = NAV_ITEMS.flatMap((i) => {
+    const area = i.areas.find((a) => areas.includes(a));
+    if (!area) return [];
+    return [{ ...i, href: area === i.areas[0] ? i.href : ROTA_DA_AREA[area] }];
+  });
 
   return (
     <>
@@ -80,18 +91,18 @@ function NavContent({ role, onNavigate }: { role: Role; onNavigate?: () => void 
 }
 
 export function Sidebar({
-  role,
+  areas,
   mobileOpen,
   onClose,
 }: {
-  role: Role;
+  areas: readonly Area[];
   mobileOpen: boolean;
   onClose: () => void;
 }) {
   return (
     <>
       <aside className="ds-nav hidden w-60 flex-col border-r border-white/10 md:flex">
-        <NavContent role={role} />
+        <NavContent areas={areas} />
       </aside>
 
       {mobileOpen && (
@@ -105,7 +116,7 @@ export function Sidebar({
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
-            <NavContent role={role} onNavigate={onClose} />
+            <NavContent areas={areas} onNavigate={onClose} />
           </aside>
         </div>
       )}

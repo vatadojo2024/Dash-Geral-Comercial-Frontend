@@ -65,7 +65,7 @@ export function DashboardView() {
   const [filtros, setFiltros] = useState<Filtros>(SEM_FILTROS);
   const [recorte, setRecorte] = useState<Recorte | null>(null);
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
   });
@@ -153,6 +153,7 @@ export function DashboardView() {
       <Card>
         <ErrorState
           titulo="Não foi possível carregar o dashboard"
+          error={error}
           descricao="Tente novamente; se persistir, acione o suporte interno."
           onRetry={() => refetch()}
         />

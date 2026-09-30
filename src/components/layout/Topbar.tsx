@@ -53,19 +53,24 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
         <Menu className="h-5 w-5" aria-hidden />
       </button>
 
-      <form onSubmit={buscar} className="relative mr-auto max-w-xs flex-1">
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
-          aria-hidden
-        />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar lead..."
-          aria-label="Buscar lead"
-          className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto transition-colors placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
-        />
-      </form>
+      {/* A busca abre a fila de leads: só para quem tem a área `leads`. */}
+      {user.areas.includes("leads") ? (
+        <form onSubmit={buscar} className="relative mr-auto max-w-xs flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
+            aria-hidden
+          />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar lead..."
+            aria-label="Buscar lead"
+            className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto transition-colors placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
+          />
+        </form>
+      ) : (
+        <div className="mr-auto" />
+      )}
 
 
       <div ref={dropdownRef}>
