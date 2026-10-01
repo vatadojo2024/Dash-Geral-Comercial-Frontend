@@ -7,7 +7,6 @@ import {
   CalendarClock,
   Flame,
   Gauge,
-  History,
   LayoutDashboard,
   MessageSquare,
   PhoneCall,
@@ -31,10 +30,14 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/visao-geral", label: "Visão Geral", icon: Gauge, areas: ["visao_geral"] },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, areas: ["dashboard"] },
   { href: "/leads", label: "Leads", icon: Users, areas: ["leads"] },
-  // Primeiras calls: closer vê a própria agenda; admin e SDR, a de todos.
-  { href: "/agendamentos", label: "Agendamentos", icon: CalendarClock, areas: ["agendamentos"] },
-  // Todos os agendamentos na ordem em que foram marcados (substitui o Discord).
-  { href: "/historico-agendamentos", label: "Histórico de agendamentos", icon: History, areas: ["historico_agendamentos"] },
+  // Primeiras calls (closer vê a própria agenda; admin e SDR, a de todos) e a
+  // sub-aba Histórico (só admin) — quem só tiver o Histórico cai direto nela.
+  {
+    href: "/agendamentos",
+    label: "Agendamentos",
+    icon: CalendarClock,
+    areas: ["agendamentos", "historico_agendamentos"],
+  },
   { href: "/chat", label: "Chat IA", icon: MessageSquare, areas: ["chat"] },
   { href: "/salesops", label: "Sales Ops", icon: Wallet, areas: ["salesops"] },
   {

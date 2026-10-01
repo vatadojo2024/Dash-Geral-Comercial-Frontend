@@ -31,10 +31,12 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
+import { AbasAgendamentos } from "./AbasAgendamentos";
 import { AcoesDoAgendamento } from "./partes";
 
 // ---------------------------------------------------------------------------
-// Histórico de agendamentos (só admin — área `historico_agendamentos`): o feed
+// Sub-aba "Histórico" de Agendamentos (/agendamentos/historico; só admin — área
+// `historico_agendamentos`): o feed
 // de TODOS os agendamentos, de todos os closers, na ordem em que foram marcados.
 // Substitui o canal único do Discord: quando um agendamento cai, aparece no topo.
 //
@@ -117,11 +119,12 @@ export function HistoricoAgendamentosView() {
   return (
     <>
       <PageHeader
-        titulo="Histórico de agendamentos"
-        descricao="Todos os agendamentos, de todos os closers, na ordem em que foram marcados — o mais recente no topo."
+        titulo="Agendamentos"
+        descricao="Histórico: todos os agendamentos, de todos os closers, na ordem em que foram marcados — o mais recente no topo."
       />
 
       <div className="space-y-4">
+        <AbasAgendamentos />
         <div className="ds-card flex flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3">
           <Filtro rotulo="Marcados em">
             <Alternador rotulo="Período do agendamento" valor={periodo} onChange={setPeriodo} opcoes={OPCOES_PERIODO} />

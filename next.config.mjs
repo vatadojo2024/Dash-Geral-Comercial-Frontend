@@ -19,6 +19,8 @@ const nextConfig = {
       { source: "/produtividade-sdr/retencao", destination: "/retencao", permanent: false },
       // "Descartes" virou recorte de Oportunidades do Evento (29/09).
       { source: "/produtividade-sdr/descartes", destination: "/produtividade-sdr/oportunidades/descartes", permanent: false },
+      // "Histórico de agendamentos" virou sub-aba de Agendamentos (01/10).
+      { source: "/historico-agendamentos", destination: "/agendamentos/historico", permanent: false },
     ];
   },
 };

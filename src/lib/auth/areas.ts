@@ -38,13 +38,14 @@ export function temArea(user: Pick<SessionUser, "areas">, area: Area): boolean {
   return user.areas.includes(area);
 }
 
-// Página de entrada de cada área. Liderança é uma sub-aba da Produtividade SDR.
+// Página de entrada de cada área. Liderança é uma sub-aba da Produtividade SDR;
+// Histórico, uma sub-aba de Agendamentos.
 export const ROTA_DA_AREA: Record<Area, string> = {
   visao_geral: "/visao-geral",
   dashboard: "/dashboard",
   leads: "/leads",
   agendamentos: "/agendamentos",
-  historico_agendamentos: "/historico-agendamentos",
+  historico_agendamentos: "/agendamentos/historico",
   chat: "/chat",
   salesops: "/salesops",
   produtividade_sdr: "/produtividade-sdr",

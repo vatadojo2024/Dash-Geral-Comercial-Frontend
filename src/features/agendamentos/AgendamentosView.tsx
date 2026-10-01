@@ -29,6 +29,7 @@ import { Alternador } from "@/components/ui/Alternador";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
+import { AbasAgendamentos } from "./AbasAgendamentos";
 import { AgendamentoCard } from "./AgendamentoCard";
 import { CalendarioAgendamentos } from "./CalendarioAgendamentos";
 import { ConferenciaDashboard, useConferencia } from "./ConferenciaDashboard";
@@ -166,7 +167,7 @@ export function AgendamentosView() {
   return (
     <>
       <PageHeader
-        titulo="Agendamentos — Primeira Call"
+        titulo="Agendamentos"
         descricao={
           veTodos
             ? "Fila e calendário das primeiras calls de todos os closers. Cada closer vê só a própria agenda."
@@ -205,6 +206,7 @@ export function AgendamentosView() {
       />
 
       <div className="space-y-4">
+        <AbasAgendamentos />
         {mockLocal && (
           <p className="ds-card flex flex-wrap items-center gap-2 px-6 py-3 text-xs text-texto-sec" role="note">
             <span className="tag tag-warning">Dados de demonstração</span>
