@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Check, Info } from "lucide-react";
 import {
@@ -78,13 +78,11 @@ export function ConferenciaDashboard({
   fonte: ConferenciaResponse["fonte"] | null;
 }) {
   const divergentes = dias.filter((d) => d.diferenca !== 0);
-  const explicacao =
-    "Clint = as primeiras calls que chegaram da Clint (pelo n8n) e estão na lista abaixo, com lead, horário, link e urgência. " +
-    "Planilha = o total de agendamentos por dia e por closer da planilha do Dashboard SDR (mesma fonte da aba Produtividade SDR), contado pela data da call. " +
-    "Diferença = um lado tem calls que o outro não tem; a planilha pode incluir calls que não são de primeira call.";
 
   return (
-    <Card>
+    // Camada acima da fila: o vidro de cada card cria um contexto de
+    // empilhamento, e sem isso o balão "Como funciona" ficaria por baixo dela.
+    <Card className="relative z-20">
       <CardHeader
         title="Conferência Clint × Planilha"
         subtitle={
@@ -96,17 +94,7 @@ export function ConferenciaDashboard({
                 ? "Os totais por dia da Clint e da planilha batem."
                 : `${divergentes.length} ${divergentes.length === 1 ? "dia com diferença" : "dias com diferença"} entre a Clint e a planilha.`
         }
-        action={
-          <span
-            className="inline-flex cursor-help items-center gap-1 text-xs text-texto-sec"
-            title={explicacao}
-            tabIndex={0}
-            aria-label={`Como funciona: ${explicacao}`}
-          >
-            <Info className="h-3.5 w-3.5" aria-hidden />
-            Como funciona
-          </span>
-        }
+        action={<ComoFunciona />}
       />
       {carregando ? (
         <div className="px-6 pb-6">
@@ -153,5 +141,93 @@ export function ConferenciaDashboard({
         </div>
       )}
     </Card>
+  );
+}
+
+// Balão "Como funciona": abre ao passar o mouse, ao focar (teclado) ou ao tocar
+// (celular); fecha com Esc, clique fora ou tirando o mouse. Texto do Vata (30/09).
+function ComoFunciona() {
+  const [aberto, setAberto] = useState(false);
+  const [fixo, setFixo] = useState(false); // aberto por clique/toque: não fecha ao tirar o mouse
+  const raiz = useRef<HTMLDivElement>(null);
+  const id = useId();
+  const visivel = aberto || fixo;
+
+  useEffect(() => {
+    if (!visivel) return;
+    const fora = (e: MouseEvent) => {
+      if (raiz.current && !raiz.current.contains(e.target as Node)) {
+        setFixo(false);
+        setAberto(false);
+      }
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFixo(false);
+        setAberto(false);
+      }
+    };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [visivel]);
+
+  return (
+    <div
+      ref={raiz}
+      className="relative"
+      onMouseEnter={() => setAberto(true)}
+      onMouseLeave={() => setAberto(false)}
+    >
+      <button
+        type="button"
+        aria-expanded={visivel}
+        aria-controls={id}
+        onClick={() => setFixo((v) => !v)}
+        onFocus={() => setAberto(true)}
+        onBlur={() => setAberto(false)}
+        className="inline-flex items-center gap-1 whitespace-nowrap rounded-md text-xs text-texto-sec transition-colors hover:text-texto"
+      >
+        <Info className="h-3.5 w-3.5" aria-hidden />
+        Como funciona
+      </button>
+      {visivel && (
+        <div
+          id={id}
+          role="tooltip"
+          className="absolute right-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-4rem))] space-y-2.5 rounded-xl border border-white/15 bg-painel p-4 text-xs leading-relaxed text-texto shadow-2xl"
+        >
+          <p>
+            Compara quantas primeiras calls estão nesta tela com quantas a planilha do comercial registra para o
+            mesmo dia.
+          </p>
+          <p>Quando bate, está tudo certo. Quando não bate, há três causas possíveis:</p>
+          <ul className="list-disc space-y-1.5 pl-4 marker:text-texto-sec">
+            <li>
+              <span className="font-medium">A tela está atrasada</span> — a call existe na Clint e ainda não foi
+              lida. Se resolve sozinho em até 15 minutos.
+            </li>
+            <li>
+              <span className="font-medium">A planilha tem uma linha sem par na Clint</span> — alguém lançou na
+              planilha e não criou o card, ou lançou no dia errado.
+            </li>
+            <li>
+              <span className="font-medium">A call foi remarcada</span> e um dos dois lados ainda tem a data
+              antiga.
+            </li>
+          </ul>
+          <p>
+            <span className="font-medium">Como descobrir qual é:</span> compare com a aba Dashboard SDR, que sai da
+            mesma planilha mas pelo lado de quem agendou. Se os dois lados da planilha discordarem entre si, o erro é
+            de lançamento na planilha. Se concordarem e a diferença for com esta tela, confira os nomes direto na
+            Clint.
+          </p>
+          <p className="text-texto-sec">A contagem usa a data DA CALL, não a data em que foi agendada.</p>
+        </div>
+      )}
+    </div>
   );
 }
