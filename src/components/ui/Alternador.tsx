@@ -20,7 +20,9 @@ export function Alternador<T extends string>({
     <div
       role="radiogroup"
       aria-label={rotulo}
-      className="flex gap-1 rounded-xl border border-white/10 bg-white/5 p-1"
+      // flex-wrap: em tela estreita a opção inteira desce de linha (o rótulo
+      // nunca quebra no meio, nem empurra a página para o lado).
+      className="flex flex-wrap gap-1 rounded-xl border border-white/10 bg-white/5 p-1"
     >
       {opcoes.map((o) => (
         <button

@@ -87,9 +87,13 @@ export type RecorteLevantou =
   | "ausentes"
   | "resgate"
   | "nao_abordados"
+  | "incognitas"
   | "descartes";
 // Recortes que derivam da resposta de /oportunidades.
-export type RecorteOportunidades = Exclude<RecorteLevantou, "nao_abordados" | "presentes" | "ausentes" | "descartes">;
+export type RecorteOportunidades = Exclude<
+  RecorteLevantou,
+  "nao_abordados" | "incognitas" | "presentes" | "ausentes" | "descartes"
+>;
 
 // Base de cada recorte, ANTES dos chips: os filtros da tela aplicam em série
 // sobre esta lista.

@@ -10,6 +10,9 @@ import {
   ArrowUpDown,
   Ban,
   CalendarCheck2,
+  ClipboardCheck,
+  ClipboardX,
+  CircleHelp,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -36,6 +39,7 @@ import {
 import {
   fetchAusentes,
   fetchDescartes,
+  fetchIncognitas,
   fetchInscritos,
   fetchNaoAbordados,
   fetchOportunidades,
@@ -114,6 +118,22 @@ import {
 } from "@/lib/sdr/presentesSemAplicar";
 import { rotuloMinutos } from "@/lib/sdr/retencao";
 import {
+  csvDeIncognitas,
+  ehSemAtendimento,
+  esteveAoVivo,
+  filtrarIncognitas,
+  leituraDasEtapas,
+  proporcaoDaAudiencia,
+  respondeuPesquisa,
+  rotuloDaEtapa,
+  separarPorPesquisa,
+  type FiltroPesquisa,
+  type IncognitasResponse,
+  type LeadIncognito,
+  type PorEtapa,
+  type TotaisIncognitas,
+} from "@/lib/sdr/incognitas";
+import {
   blocosAusentes,
   contarViramReplay,
   csvDeAusentes,
@@ -176,6 +196,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     enabled:
       !erroIntervalo &&
       recorte !== "nao_abordados" &&
+      recorte !== "incognitas" &&
       recorte !== "presentes" &&
       recorte !== "ausentes" &&
       recorte !== "descartes",
@@ -185,6 +206,13 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     queryKey: ["nao-abordados", periodo.de, periodo.ate],
     queryFn: () => fetchNaoAbordados(periodo.de, periodo.ate),
     enabled: !erroIntervalo && ehNaoAbordados,
+    retry: false,
+  });
+  const ehIncognitas = recorte === "incognitas";
+  const incognitas = useQuery({
+    queryKey: ["incognitas", periodo.de, periodo.ate],
+    queryFn: () => fetchIncognitas(periodo.de, periodo.ate),
+    enabled: !erroIntervalo && ehIncognitas,
     retry: false,
   });
   const ehPresentes = recorte === "presentes";
@@ -222,7 +250,9 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   });
   const { error, isLoading, isFetching, isError, refetch } = ehNaoAbordados
     ? naoAbordados
-    : ehPresentes
+    : ehIncognitas
+      ? incognitas
+      : ehPresentes
       ? presentes
       : ehAusentes
         ? ausentes
@@ -265,6 +295,15 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
         naoAbordados.data && (
           <ConteudoNaoAbordados
             data={naoAbordados.data}
+            periodo={periodo}
+            atualizando={isFetching}
+            onAtualizar={() => refetch()}
+          />
+        )
+      ) : recorte === "incognitas" ? (
+        incognitas.data && (
+          <ConteudoIncognitas
+            data={incognitas.data}
             periodo={periodo}
             atualizando={isFetching}
             onAtualizar={() => refetch()}
@@ -2117,6 +2156,651 @@ function ConteudoAusentes({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Recorte "Incógnitas": inscritos SEM nenhuma tag de classificação (nem MQL,
+// nem Ninja, nem QC) — fonte própria (/api/eventos/incognitas). Não é "Não
+// abordados" (lá: quem ninguém procurou; aqui: quem está sem classificação,
+// procurado ou não); `sem_atendimento` é o cruzamento das duas. O coração é
+// `respondeu_pesquisa`: quem respondeu é falha de etiquetagem (classifica-se
+// hoje, sem falar com o lead); quem nunca respondeu só sai perguntando. Ordem
+// do backend (pesquisa → ao vivo → % assistido → nome), sem reordenar; nada de
+// badge de classificação (o tier é sempre null).
+// ---------------------------------------------------------------------------
+
+type FiltrosIncognitasSalvos = {
+  pesquisa: FiltroPesquisa;
+  soAoVivo: boolean;
+  agendou: FiltroAgendou;
+  donos: string[];
+  visao: Visao;
+  busca: string;
+};
+const memoriaFiltrosIncognitas: { salvo: FiltrosIncognitasSalvos | null } = { salvo: null };
+
+function ConteudoIncognitas({
+  data,
+  periodo,
+  atualizando,
+  onAtualizar,
+}: {
+  data: IncognitasResponse;
+  periodo: { de: string; ate: string };
+  atualizando: boolean;
+  onAtualizar: () => void;
+}) {
+  const salvo = memoriaFiltrosIncognitas.salvo;
+  const [pesquisa, setPesquisa] = useState<FiltroPesquisa>(salvo?.pesquisa ?? "todos");
+  const [soAoVivo, setSoAoVivo] = useState(salvo?.soAoVivo ?? false);
+  const [agendou, setAgendou] = useState<FiltroAgendou>(salvo?.agendou ?? "todos");
+  const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
+  const [visao, setVisao] = useState<Visao>(salvo?.visao ?? "lista");
+  const [busca, setBusca] = useState(salvo?.busca ?? "");
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    memoriaFiltrosIncognitas.salvo = { pesquisa, soAoVivo, agendou, donos: donosSel, visao, busca };
+  }, [pesquisa, soAoVivo, agendou, donosSel, visao, busca]);
+
+  const leads = data.leads;
+  const t = data.totais;
+  const filtrados = useMemo(
+    () => filtrarIncognitas(leads, { pesquisa, soAoVivo, agendou, donos: donosSel, busca }),
+    [leads, pesquisa, soAoVivo, agendou, donosSel, busca],
+  );
+  const grupos = useMemo(() => separarPorPesquisa(filtrados), [filtrados]);
+  const porDono = useMemo(() => agruparPorDono(filtrados), [filtrados]);
+  const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
+  const multiEvento = data.eventos.length > 1;
+  const selecionado = useMemo(
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
+
+  // Contagens dos filtros: sobre a lista inteira (o número do chip não muda ao filtrar).
+  const nResponderam = leads.filter(respondeuPesquisa).length;
+  const nAoVivo = leads.filter(esteveAoVivo).length;
+  const nAgendaram = leads.filter((l) => l.ja_agendou === true).length;
+  const responderam = t.responderam_pesquisa ?? nResponderam;
+  const nunca = t.nao_responderam ?? leads.length - nResponderam;
+  const aoVivo = t.presentes_ao_vivo ?? nAoVivo;
+  const semAtendimento = t.sem_atendimento ?? leads.filter((l) => ehSemAtendimento(l.etapa)).length;
+
+  function alternarDono(chave: string) {
+    setDonosSel((atual) => (atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave]));
+  }
+
+  function exportarCsv() {
+    const csv = "\uFEFF" + csvDeIncognitas(filtrados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `oportunidades_incognitas_${periodo.de}_${periodo.ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const tabela = (lista: LeadIncognito[], extra?: { paginar?: boolean; semColunaDono?: boolean }) => (
+    <TabelaIncognitas
+      leads={lista}
+      multiEvento={multiEvento}
+      onAbrir={setSelecionadoId}
+      paginar={extra?.paginar ?? true}
+      semColunaDono={extra?.semColunaDono}
+    />
+  );
+
+  return (
+    <>
+      <BarraRecortes recorte="incognitas" />
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        <KpiChip
+          icon={CircleHelp}
+          rotulo="Incógnitas"
+          valor={String(t.incognitas)}
+          detalhe={
+            t.inscritos > 0
+              ? `de ${t.inscritos} inscritos (${formatarPct(pct(t.incognitas, t.inscritos))})`
+              : "sem classificação nenhuma"
+          }
+        />
+        <KpiChip
+          icon={ClipboardCheck}
+          rotulo="Responderam a pesquisa"
+          valor={String(responderam)}
+          detalhe="resolvível hoje — classificar pela resposta"
+          destaque={responderam > 0}
+        />
+        <KpiChip icon={ClipboardX} rotulo="Nunca responderam" valor={String(nunca)} detalhe="só sai perguntando" />
+        <KpiChip
+          icon={Radio}
+          rotulo="Estiveram ao vivo"
+          valor={String(aoVivo)}
+          detalhe="interesse comprovado, qualificação nenhuma"
+        />
+        <KpiChip
+          icon={Inbox}
+          rotulo="Sem atendimento"
+          valor={String(semAtendimento)}
+          detalhe='também aparecem em "Não abordados"'
+          tom="neutro"
+          href={hrefDoRecorte("nao_abordados")}
+        />
+      </div>
+
+      <p className="ds-card flex items-start gap-2 px-5 py-3 text-xs text-texto-sec" role="note">
+        <CircleHelp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-azul-claro" aria-hidden />
+        <span>
+          <span className="font-medium text-texto">Não é a aba &ldquo;Não abordados&rdquo;.</span> Lá estão os
+          inscritos que a equipe ainda não procurou (etapa &ldquo;Sem atendimento&rdquo;); aqui, os que estão{" "}
+          <span className="font-medium text-texto">sem classificação</span>, procurados ou não.{" "}
+          {t.incognitas > 0 && (
+            <>
+              Só <span className="font-medium tabular-nums text-texto">{semAtendimento}</span> das{" "}
+              <span className="tabular-nums">{t.incognitas}</span> incógnitas estão nas duas abas — as outras{" "}
+              <span className="tabular-nums">{Math.max(0, t.incognitas - semAtendimento)}</span> já estão com alguém e
+              seguem sem classificação.
+            </>
+          )}
+        </span>
+      </p>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader
+            title="Proporção da audiência"
+            subtitle="Inscritos do evento (já sem desqualificados e perdidos) pela classificação que têm na Clint."
+          />
+          <CardContent>
+            <BarraAudiencia t={t} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader title="Onde estão as incógnitas na Clint" subtitle={subtituloDasEtapas(data.por_etapa ?? [])} />
+          <CardContent>
+            <EtapasDasIncognitas porEtapa={data.por_etapa ?? []} total={t.incognitas} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {t.inscritos === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Users}
+            titulo="Nenhum contato com a tag deste ciclo"
+            descricao={
+              data.eventos.length > 0
+                ? `Tag consultada: ${data.eventos.join(", ")}. Confira se ela existe na Clint.`
+                : `Nenhuma terça entre ${rotuloCiclo({ inicio: data.de, fim: data.ate })} — nenhuma tag WG para consultar.`
+            }
+          />
+        </Card>
+      ) : leads.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={PartyPopper}
+            tom="positivo"
+            titulo="Todo inscrito tem classificação"
+            descricao="Nenhum inscrito deste período está sem tag de classificação (escala MQL, Ninja ou QC)."
+          />
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardHeader title="Filtros" subtitle="Comece por quem respondeu a pesquisa: é a fila de trabalho mais barata." />
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <ClipboardCheck className="h-3.5 w-3.5" aria-hidden />
+                  Pesquisa:
+                </span>
+                <Alternador<FiltroPesquisa>
+                  rotulo="Filtrar pela pesquisa"
+                  valor={pesquisa}
+                  onChange={setPesquisa}
+                  opcoes={[
+                    { valor: "todos", label: `Todos (${leads.length})` },
+                    { valor: "respondeu", label: `Responderam (${nResponderam})` },
+                    { valor: "nao_respondeu", label: `Nunca responderam (${leads.length - nResponderam})` },
+                  ]}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <Radio className="h-3.5 w-3.5" aria-hidden />
+                  Presença:
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={soAoVivo}
+                  onClick={() => setSoAoVivo((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
+                    soAoVivo
+                      ? "border-info-forte/60 bg-info-forte/15 text-info"
+                      : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
+                    nAoVivo === 0 && !soAoVivo && "opacity-50",
+                  )}
+                >
+                  Estiveram ao vivo <span className="tabular-nums">({nAoVivo})</span>
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <CalendarCheck2 className="h-3.5 w-3.5" aria-hidden />
+                  Call agendada:
+                </span>
+                <Alternador<FiltroAgendou>
+                  rotulo="Filtrar por call agendada"
+                  valor={agendou}
+                  onChange={setAgendou}
+                  opcoes={[
+                    { valor: "todos", label: `Todos (${leads.length})` },
+                    { valor: "nao", label: `Ainda não agendaram (${leads.length - nAgendaram})` },
+                    { valor: "sim", label: `Já agendaram (${nAgendaram})` },
+                  ]}
+                />
+              </div>
+              <FiltroDono
+                opcoes={opcoesDono}
+                selecionados={donosSel}
+                onAlternar={alternarDono}
+                onLimpar={() => setDonosSel([])}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={`Incógnitas${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
+              subtitle={`${filtrados.length} de ${leads.length} · ${grupos.responderam.length} ${grupos.responderam.length === 1 ? "respondeu" : "responderam"} a pesquisa · ordem do backend (pesquisa, depois quem esteve ao vivo)`}
+              action={
+                <Button variant="outline" size="sm" onClick={exportarCsv} disabled={filtrados.length === 0}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Exportar CSV
+                </Button>
+              }
+            />
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="relative w-full max-w-sm">
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
+                    aria-hidden
+                  />
+                  <input
+                    type="search"
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Buscar por nome, e-mail ou telefone"
+                    aria-label="Buscar incógnita"
+                    className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
+                  />
+                </div>
+                <Alternador<Visao>
+                  rotulo="Visão da lista"
+                  valor={visao}
+                  onChange={setVisao}
+                  opcoes={[
+                    { valor: "lista", label: "Lista" },
+                    { valor: "por_sdr", label: "Por SDR" },
+                  ]}
+                />
+              </div>
+
+              {filtrados.length === 0 ? (
+                <EmptyState
+                  titulo="Nenhum contato neste recorte"
+                  descricao="Ajuste a pesquisa, a presença, a call agendada, o dono ou a busca."
+                />
+              ) : visao === "por_sdr" ? (
+                <div className="space-y-5">
+                  {porDono.map((g) => (
+                    <section key={g.chave} aria-label={`Incógnitas de ${g.nome}`}>
+                      <header className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-borda/60 pb-1.5">
+                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                          <UserRound className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
+                          {g.nome}
+                        </h3>
+                        <span className="text-xs text-texto-sec">
+                          <span className="font-semibold tabular-nums text-texto">{g.leads.length}</span>{" "}
+                          {g.leads.length === 1 ? "incógnita" : "incógnitas"}
+                          {" · "}
+                          <span className="font-semibold tabular-nums text-texto">
+                            {g.leads.filter(respondeuPesquisa).length}
+                          </span>{" "}
+                          responderam a pesquisa
+                        </span>
+                      </header>
+                      {tabela(g.leads as LeadIncognito[], { paginar: false, semColunaDono: true })}
+                    </section>
+                  ))}
+                </div>
+              ) : pesquisa === "todos" && grupos.responderam.length > 0 ? (
+                <div className="space-y-6">
+                  <section aria-label="Responderam a pesquisa" className="space-y-2">
+                    <header className="rounded-xl border border-verde/30 bg-verde/10 px-3 py-2">
+                      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                        <ClipboardCheck className="h-4 w-4 text-verde" aria-hidden />
+                        Responderam a pesquisa · {grupos.responderam.length}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-texto-sec">
+                        A resposta existe e a classificação não saiu — falha de etiquetagem. Dá para classificar hoje,
+                        sem falar com o lead.
+                      </p>
+                    </header>
+                    {tabela(grupos.responderam, { paginar: false })}
+                  </section>
+                  {grupos.nunca.length > 0 && (
+                    <section aria-label="Nunca responderam" className="space-y-2">
+                      <header className="border-b border-borda/60 pb-1.5">
+                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-texto">
+                          <ClipboardX className="h-4 w-4 text-texto-sec" aria-hidden />
+                          Nunca responderam · {grupos.nunca.length}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-texto-sec">
+                          A classificação só sai perguntando. No topo, quem esteve ao vivo — interesse comprovado.
+                        </p>
+                      </header>
+                      {tabela(grupos.nunca)}
+                    </section>
+                  )}
+                </div>
+              ) : (
+                tabela(filtrados)
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <RodapeEventos data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
+      {selecionado && <DetalhePendente lead={selecionado} incognita onClose={() => setSelecionadoId(null)} />}
+    </>
+  );
+}
+
+function subtituloDasEtapas(porEtapa: readonly PorEtapa[]): string {
+  const { maior, semAtendimento } = leituraDasEtapas(porEtapa);
+  if (maior && !ehSemAtendimento(maior.etapa) && maior.total > semAtendimento) {
+    return `${maior.total} em ${maior.etapa} contra ${semAtendimento} em Sem atendimento: o gargalo é classificação, não abordagem.`;
+  }
+  return "Etapa do negócio mais recente de cada incógnita na Clint.";
+}
+
+// Barra empilhada: classificados + QC + incógnitas = inscritos.
+const COR_FATIA: Record<string, { barra: string; ponto: string }> = {
+  classificados: { barra: "bg-verde/60", ponto: "bg-verde" },
+  qc: { barra: "bg-white/25", ponto: "bg-white/50" },
+  incognitas: { barra: "bg-laranja/70", ponto: "bg-laranja" },
+};
+
+function BarraAudiencia({ t }: { t: TotaisIncognitas }) {
+  const { fatias, fechaConta } = proporcaoDaAudiencia(t);
+  return (
+    <div className="space-y-3">
+      <div
+        className="flex h-4 w-full overflow-hidden rounded-full bg-white/5"
+        role="img"
+        aria-label={fatias.map((f) => `${f.rotulo}: ${f.valor} (${formatarPct(f.pct)})`).join("; ")}
+      >
+        {fatias.map((f) =>
+          f.valor > 0 ? (
+            <div
+              key={f.chave}
+              className={cn("h-full", COR_FATIA[f.chave].barra)}
+              style={{ width: `${f.pct}%` }}
+              title={`${f.rotulo}: ${f.valor} (${formatarPct(f.pct)})`}
+            />
+          ) : null,
+        )}
+      </div>
+      <ul className="space-y-1.5 text-sm">
+        {fatias.map((f) => (
+          <li key={f.chave} className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-texto">
+              <span className={cn("h-2.5 w-2.5 rounded-full", COR_FATIA[f.chave].ponto)} aria-hidden />
+              {f.rotulo}
+            </span>
+            <span className="tabular-nums text-texto">
+              <span className="font-semibold">{f.valor}</span>
+              <span className="ml-1.5 text-xs text-texto-sec">{formatarPct(f.pct)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className={cn("text-[11px]", fechaConta ? "text-texto-sec" : "text-aviso")}>
+        {fechaConta
+          ? `${t.inscritos} inscritos = classificados + QC + incógnitas.`
+          : `As partes somam ${fatias.reduce((s, f) => s + f.valor, 0)}, mas o backend informou ${t.inscritos} inscritos — confira com o time técnico.`}
+      </p>
+    </div>
+  );
+}
+
+// Barras horizontais por etapa, na ordem do backend (maior primeiro, sem
+// negócio por último). "Sem atendimento" em destaque: é o cruzamento com a aba
+// "Não abordados".
+function EtapasDasIncognitas({ porEtapa, total }: { porEtapa: readonly PorEtapa[]; total: number }) {
+  if (porEtapa.length === 0) return <p className="text-xs text-texto-sec">Sem dados de etapa neste período.</p>;
+  const max = Math.max(1, ...porEtapa.map((e) => e.total));
+  return (
+    <ul className="space-y-2.5">
+      {porEtapa.map((e) => {
+        const semAtend = ehSemAtendimento(e.etapa);
+        const semNegocio = e.etapa == null;
+        return (
+          <li key={e.etapa ?? "sem-negocio"}>
+            <div className="mb-1 flex items-baseline justify-between gap-3 text-xs">
+              <span className={cn("text-texto", semNegocio && "text-texto-sec")}>
+                {rotuloDaEtapa(e.etapa)}
+                {semAtend && <span className="ml-1.5 text-rosa">· também em Não abordados</span>}
+              </span>
+              <span className="tabular-nums text-texto">
+                <span className="font-semibold">{e.total}</span>
+                {total > 0 && <span className="ml-1.5 text-texto-sec">{formatarPct(pct(e.total, total))}</span>}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+              <div
+                className={cn("h-full rounded-full", semAtend ? "bg-rosa/80" : semNegocio ? "bg-white/20" : "bg-white/45")}
+                style={{ width: `${(e.total / max) * 100}%` }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function SeloPesquisa({ lead }: { lead: object }) {
+  return respondeuPesquisa(lead) ? (
+    <span
+      className="tag tag-success px-1.5 py-px"
+      title="Respondeu a pesquisa e a classificação não saiu — classificar pela resposta"
+    >
+      <ClipboardCheck className="h-3 w-3" aria-hidden />
+      Respondeu a pesquisa
+    </span>
+  ) : (
+    <span className="text-xs text-texto-sec/70">Não respondeu</span>
+  );
+}
+
+function AoVivoIncognita({ lead }: { lead: LeadIncognito }) {
+  if (lead.minutos_assistidos != null || lead.percentual_assistido != null) return <Assistido lead={lead} />;
+  if (lead.assistiu_ao_vivo) {
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-sm text-texto">
+        <Radio className="h-3 w-3" aria-hidden />
+        Esteve ao vivo
+      </span>
+    );
+  }
+  return <span className="text-texto-sec/50">—</span>;
+}
+
+function TabelaIncognitas({
+  leads,
+  multiEvento,
+  onAbrir,
+  paginar: permitePaginar = true,
+  semColunaDono = false,
+}: {
+  leads: LeadIncognito[];
+  multiEvento: boolean;
+  onAbrir: (id: string) => void;
+  paginar?: boolean;
+  semColunaDono?: boolean;
+}) {
+  const [pagina, setPagina] = useState(1);
+  useEffect(() => setPagina(1), [leads]);
+  const paginar = permitePaginar && leads.length > TAMANHO_PAGINA;
+  const totalPaginas = Math.max(1, Math.ceil(leads.length / TAMANHO_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const visiveis = paginar ? leads.slice((paginaAtual - 1) * TAMANHO_PAGINA, paginaAtual * TAMANHO_PAGINA) : leads;
+
+  const etapa = (l: LeadIncognito) => (
+    <span
+      className={cn(
+        "text-xs",
+        ehSemAtendimento(l.etapa) ? "text-rosa" : l.etapa ? "text-texto" : "text-texto-sec/70",
+      )}
+    >
+      {rotuloDaEtapa(l.etapa)}
+    </span>
+  );
+  const aplicou = (l: LeadIncognito) =>
+    l.aplicou ? <span className="tag tag-info px-1.5 py-px">Aplicou</span> : <span className="text-texto-sec/50">—</span>;
+  const agendou = (l: LeadIncognito) =>
+    l.ja_agendou ? <SeloAgendou lead={l} /> : <span className="text-texto-sec/50">—</span>;
+
+  return (
+    <>
+      {/* Tabela (≥ md) */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-borda text-left text-xs text-texto-sec">
+              <th className="px-2 py-2 font-medium">Nome</th>
+              <th className="px-2 py-2 font-medium">Pesquisa</th>
+              <th className="px-2 py-2 font-medium">Etapa</th>
+              {!semColunaDono && <th className="px-2 py-2 font-medium">Dono</th>}
+              <th className="whitespace-nowrap px-2 py-2 font-medium">Ao vivo</th>
+              <th className="px-2 py-2 font-medium">Aplicou</th>
+              <th className="whitespace-nowrap px-2 py-2 font-medium">Call agendada</th>
+              {multiEvento && <th className="px-2 py-2 font-medium">Evento</th>}
+              <th className="px-2 py-2 font-medium">Contato</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visiveis.map((l) => (
+              <tr
+                key={chaveDaLinha(l)}
+                className={cn("border-b border-borda/40 align-top", respondeuPesquisa(l) && "bg-verde/[0.06]")}
+              >
+                <td className="max-w-[220px] px-2 py-2">
+                  <NomePendente lead={l} onAbrir={onAbrir} />
+                </td>
+                <td className="whitespace-nowrap px-2 py-2">
+                  <SeloPesquisa lead={l} />
+                </td>
+                <td className="whitespace-nowrap px-2 py-2">{etapa(l)}</td>
+                {!semColunaDono && (
+                  <td className="px-2 py-2">
+                    <DonoBadge dono={l.dono} size="sm" />
+                  </td>
+                )}
+                <td className="whitespace-nowrap px-2 py-2">
+                  <AoVivoIncognita lead={l} />
+                </td>
+                <td className="px-2 py-2">{aplicou(l)}</td>
+                <td className="whitespace-nowrap px-2 py-2">{agendou(l)}</td>
+                {multiEvento && (
+                  <td className="whitespace-nowrap px-2 py-2 text-xs text-texto-sec">{l.evento_tag ?? "—"}</td>
+                )}
+                <td className="whitespace-nowrap px-2 py-2">
+                  <span className="inline-flex items-center gap-0.5">
+                    {l.telefone ? (
+                      <>
+                        <span className="tabular-nums text-texto">{l.telefone}</span>
+                        <BotaoCopiar valor={l.telefone} rotulo="telefone" />
+                        <LinkWhatsApp telefone={l.telefone} />
+                      </>
+                    ) : (
+                      <span className="text-texto-sec/50">—</span>
+                    )}
+                    <LinkClint url={l.url_clint} />
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Cards (< md) */}
+      <ul className="space-y-2 md:hidden">
+        {visiveis.map((l) => (
+          <li
+            key={chaveDaLinha(l)}
+            className={cn("card-interactive rounded-xl p-4", respondeuPesquisa(l) && "border-verde/40 bg-verde/[0.06]")}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <NomePendente lead={l} onAbrir={onAbrir} />
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <SeloPesquisa lead={l} />
+                  {etapa(l)}
+                  {!semColunaDono && <DonoBadge dono={l.dono} size="sm" />}
+                  <AoVivoIncognita lead={l} />
+                  {l.aplicou && <span className="tag tag-info px-1.5 py-px">Aplicou</span>}
+                  <SeloAgendou lead={l} />
+                  {multiEvento && l.evento_tag && <span className="text-[11px] text-texto-sec">{l.evento_tag}</span>}
+                </div>
+              </div>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <LinkWhatsApp telefone={l.telefone} destaque />
+                <LinkClint url={l.url_clint} destaque />
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {paginar && (
+        <nav className="flex items-center justify-between text-xs text-texto-sec" aria-label="Paginação">
+          <span>
+            Página {paginaAtual} de {totalPaginas} · {leads.length} incógnitas
+          </span>
+          <span className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={paginaAtual <= 1}
+              onClick={() => setPagina(paginaAtual - 1)}
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={paginaAtual >= totalPaginas}
+              onClick={() => setPagina(paginaAtual + 1)}
+              aria-label="Próxima página"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Button>
+          </span>
+        </nav>
+      )}
+    </>
+  );
+}
+
 // Sinais de recuperação do ausente: "Viu o replay" em destaque (interesse
 // comprovado), mais "Aplicou pelo replay" e "Resgate" quando houver.
 function RecuperacaoCelula({ lead }: { lead: LeadPendente }) {
@@ -3129,7 +3813,17 @@ function LinhaDetalhe({ rotulo, children }: { rotulo: string; children: React.Re
   );
 }
 
-function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () => void }) {
+// `incognita`: aba Incógnitas — sem selo de classificação (o lead não tem
+// nenhuma) e com a linha da pesquisa, que decide a ação.
+function DetalhePendente({
+  lead,
+  onClose,
+  incognita = false,
+}: {
+  lead: LeadPendente;
+  onClose: () => void;
+  incognita?: boolean;
+}) {
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -3153,8 +3847,14 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
             <div className="min-w-0">
             <h2 className="truncate font-jakarta text-xl font-semibold tracking-tight text-texto">{lead.nome}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <MqlBadge lead={lead} size="sm" />
-              <SeloNinja lead={lead} />
+              {incognita ? (
+                <SeloPesquisa lead={lead} />
+              ) : (
+                <>
+                  <MqlBadge lead={lead} size="sm" />
+                  <SeloNinja lead={lead} />
+                </>
+              )}
               <SeloAgendou lead={lead} />
               {lead.origem !== undefined && <OrigemCelula lead={lead} />}
               <DonoBadge dono={lead.dono} size="sm" />
@@ -3168,6 +3868,23 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          {incognita && (
+            <LinhaDetalhe rotulo="Pesquisa de qualificação">
+              {respondeuPesquisa(lead) ? (
+                <span>
+                  <span className="font-medium text-verde">Respondeu</span>
+                  <span className="text-texto-sec">
+                    {" "}
+                    — a resposta existe e a classificação não saiu. Dá para classificar hoje pela resposta, sem falar
+                    com o lead.
+                  </span>
+                </span>
+              ) : (
+                <span className="text-texto-sec">Nunca respondeu — a classificação só sai perguntando ao lead.</span>
+              )}
+            </LinhaDetalhe>
+          )}
+
           <LinhaDetalhe rotulo="Negócio na Clint">
             {lead.url_clint ? (
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -3205,7 +3922,11 @@ function DetalhePendente({ lead, onClose }: { lead: LeadPendente; onClose: () =>
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <Assistido lead={lead} />
                 <span className="text-texto-sec">
-                  {ficouAteOFim(lead) ? "Ficou até o fim e não aplicou durante o evento — melhor alvo de ligação." : "Esteve ao vivo e não aplicou durante o evento."}
+                  {incognita
+                    ? `Esteve ao vivo${lead.aplicou ? " e aplicou" : ""} — interesse comprovado, sem nenhuma classificação.`
+                    : ficouAteOFim(lead)
+                      ? "Ficou até o fim e não aplicou durante o evento — melhor alvo de ligação."
+                      : "Esteve ao vivo e não aplicou durante o evento."}
                   {lead.ja_agendou ? " Já tem call agendada." : ""}
                 </span>
               </span>
