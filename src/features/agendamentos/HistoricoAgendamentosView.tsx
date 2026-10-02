@@ -11,7 +11,6 @@ import {
   inicioDoPeriodo,
   juntarPaginas,
   OPCOES_PERIODO,
-  rotuloDaCall,
   type ItemHistorico,
   type PeriodoHistorico,
 } from "@/lib/agendamentos/historico";
@@ -37,7 +36,8 @@ import { AcoesDoAgendamento } from "./partes";
 // ---------------------------------------------------------------------------
 // Sub-aba "Histórico" de Agendamentos (/agendamentos/historico; só admin — área
 // `historico_agendamentos`): o feed
-// de TODOS os agendamentos, de todos os closers, na ordem em que foram marcados.
+// de TODAS as primeiras calls agendadas (2ª call em diante não entra), de todos
+// os closers, na ordem em que foram marcadas.
 // Substitui o canal único do Discord: quando um agendamento cai, aparece no topo.
 //
 // - Ordem e datas são as da API (já em Brasília): nada é reordenado nem
@@ -50,14 +50,6 @@ import { AcoesDoAgendamento } from "./partes";
 // ---------------------------------------------------------------------------
 
 const POR_PAGINA = 100;
-const OPCOES_CALL: { valor: string; label: string }[] = [
-  { valor: "todas", label: "Todas" },
-  { valor: "1", label: "1ª" },
-  { valor: "2", label: "2ª" },
-  { valor: "3", label: "3ª" },
-  { valor: "4", label: "4ª" },
-  { valor: "5", label: "5ª+" },
-];
 
 export function HistoricoAgendamentosView() {
   const queryClient = useQueryClient();
@@ -72,18 +64,16 @@ export function HistoricoAgendamentosView() {
   const hoje = agora ? hojeBR(agora) : null;
 
   const [periodo, setPeriodo] = useState<PeriodoHistorico>("tudo");
-  const [call, setCall] = useState("todas");
   const [incluirSemData, setIncluirSemData] = useState(true);
   const [aberto, setAberto] = useState<string | null>(null);
 
   const de = hoje ? inicioDoPeriodo(periodo, hoje) : null;
-  const numeroCall = call === "todas" ? null : Number(call);
-  const chave = ["agendamentos-historico", de, numeroCall, incluirSemData] as const;
+  const chave = ["agendamentos-historico", de, incluirSemData] as const;
 
   const lista = useInfiniteQuery({
     queryKey: chave,
     queryFn: ({ pageParam }) =>
-      fetchHistoricoAgendamentos({ de, numeroCall, incluirSemData, limite: POR_PAGINA, antesDe: pageParam }),
+      fetchHistoricoAgendamentos({ de, incluirSemData, limite: POR_PAGINA, antesDe: pageParam }),
     initialPageParam: null as string | null,
     getNextPageParam: (ultima) => ultima.proximo_cursor ?? undefined,
     enabled: !!hoje,
@@ -103,8 +93,8 @@ export function HistoricoAgendamentosView() {
   // Novidades acima do topo (a janela é inclusiva: o próprio topo volta e não conta).
   const topo = itens[0]?.agendado_em ?? null;
   const novidades = useQuery({
-    queryKey: ["agendamentos-historico-novos", topo, numeroCall, incluirSemData],
-    queryFn: () => fetchHistoricoAgendamentos({ de: topo, numeroCall, incluirSemData, limite: 50 }),
+    queryKey: ["agendamentos-historico-novos", topo, incluirSemData],
+    queryFn: () => fetchHistoricoAgendamentos({ de: topo, incluirSemData, limite: 50 }),
     enabled: !!topo,
     refetchInterval: 60_000,
     retry: false,
@@ -120,7 +110,7 @@ export function HistoricoAgendamentosView() {
     <>
       <PageHeader
         titulo="Agendamentos"
-        descricao="Histórico: todos os agendamentos, de todos os closers, na ordem em que foram marcados — o mais recente no topo."
+        descricao="Histórico: todas as primeiras calls agendadas, de todos os closers, na ordem em que foram marcadas — a mais recente no topo."
       />
 
       <div className="space-y-4">
@@ -128,9 +118,6 @@ export function HistoricoAgendamentosView() {
         <div className="ds-card flex flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3">
           <Filtro rotulo="Marcados em">
             <Alternador rotulo="Período do agendamento" valor={periodo} onChange={setPeriodo} opcoes={OPCOES_PERIODO} />
-          </Filtro>
-          <Filtro rotulo="Call">
-            <Alternador rotulo="Número da call" valor={call} onChange={setCall} opcoes={OPCOES_CALL} />
           </Filtro>
           <label className="flex cursor-pointer items-center gap-2 text-xs text-texto-sec">
             <button
@@ -193,11 +180,11 @@ export function HistoricoAgendamentosView() {
           <Card>
             <EmptyState
               icon={CalendarX}
-              titulo="Nenhum agendamento"
+              titulo="Nenhuma primeira call agendada"
               descricao={
-                periodo === "tudo" && numeroCall == null && incluirSemData
-                  ? "Ainda não há agendamentos registrados. Quando um card entrar numa etapa de call agendada na Clint, ele aparece aqui."
-                  : "Nenhum agendamento com esses filtros. Amplie o período ou mostre todas as calls."
+                periodo === "tudo" && incluirSemData
+                  ? "Ainda não há primeiras calls registradas. Quando um card entrar em “Primeira Call Agendada” na Clint, ele aparece aqui."
+                  : "Nenhuma primeira call com esses filtros. Amplie o período ou mostre também as sem data."
               }
             />
           </Card>
@@ -205,7 +192,7 @@ export function HistoricoAgendamentosView() {
           <>
             <p className="text-xs text-texto-sec" role="status">
               <span className="font-semibold tabular-nums text-texto">{total}</span>{" "}
-              {total === 1 ? "agendamento" : "agendamentos"}
+              {total === 1 ? "primeira call agendada" : "primeiras calls agendadas"}
               {itens.length < total && <> · mostrando os {itens.length} mais recentes</>}
               {incluirSemData && semData > 0 && (
                 <>
@@ -317,7 +304,6 @@ function LinhaHistorico({
   onAlternar: () => void;
 }) {
   const nome = nomeDoLead(item);
-  const call = rotuloDaCall(item.numero_call);
   const idDetalhe = `historico-${item.id}`;
 
   return (
@@ -338,9 +324,8 @@ function LinhaHistorico({
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
             <span className="text-sm font-semibold text-texto sm:truncate">{nome}</span>
-            {call && <span className={cn("tag", item.numero_call === 1 && "tag-info")}>{call}</span>}
             {remarcou && (
-              <span className="tag tag-warning" title="Este lead já tinha esta call marcada para outra data">
+              <span className="tag tag-warning" title="Este lead já tinha a primeira call marcada para outra data">
                 remarcou
               </span>
             )}

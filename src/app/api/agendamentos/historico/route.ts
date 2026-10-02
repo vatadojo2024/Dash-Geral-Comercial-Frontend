@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { queryDoHistorico, type FiltrosHistorico } from "@/lib/agendamentos/historico";
+import {
+  NUMERO_DA_PRIMEIRA_CALL,
+  queryDoHistorico,
+  soPrimeiraCall,
+  type FiltrosHistorico,
+} from "@/lib/agendamentos/historico";
 import { modoDosAgendamentos } from "@/lib/agendamentos/modo";
 import { MENSAGEM_SEM_PERMISSAO } from "@/lib/auth/semPermissao";
 import { mockAgendamentosHistorico } from "@/lib/mock/agendamentos_historico";
@@ -9,7 +14,8 @@ import { adaptApiAgendamentosHistorico } from "@/lib/server/apiAgendamentosHisto
 // ---------------------------------------------------------------------------
 // GET /api/agendamentos/historico[?de&ate&antes_de&limite&numero_call&incluir_sem_data]
 // — única porta da tela "Histórico de agendamentos" (só admin: área
-// `historico_agendamentos`). Somente leitura.
+// `historico_agendamentos`). Somente leitura. SÓ PRIMEIRA CALL: a rota pede
+// numero_call=1 à API e ainda filtra a resposta (2ª call em diante nunca passa).
 // A fonte segue a da tela de Agendamentos (lib/agendamentos/modo):
 //   - "mock": fixture com datas relativas a agora, mesmas regras do backend
 //     (ordem, cursor, total). `simular=vazio|erro` exercita os estados.
@@ -32,14 +38,10 @@ function lerFiltros(sp: URLSearchParams): FiltrosHistorico | string {
   if (limite !== undefined && (!Number.isInteger(limite) || limite < 1 || limite > 500)) {
     return "limite deve ser um inteiro de 1 a 500.";
   }
-  const numeroTxt = sp.get("numero_call");
-  const numeroCall = numeroTxt == null ? null : Number(numeroTxt);
-  if (numeroCall !== null && (!Number.isInteger(numeroCall) || numeroCall < 1 || numeroCall > 5)) {
-    return "numero_call deve ser de 1 a 5.";
-  }
   const semData = sp.get("incluir_sem_data");
   if (semData != null && semData !== "true" && semData !== "false") return "incluir_sem_data deve ser true ou false.";
-  return { de, ate, antesDe, limite, numeroCall, incluirSemData: semData !== "false" };
+  // Só primeira call, sempre: o `numero_call` da URL é ignorado de propósito.
+  return { de, ate, antesDe, limite, numeroCall: NUMERO_DA_PRIMEIRA_CALL, incluirSemData: semData !== "false" };
 }
 
 export async function GET(req: NextRequest) {
@@ -70,7 +72,7 @@ export async function GET(req: NextRequest) {
     if (!adaptado.ok) {
       return NextResponse.json({ error: `Mock fora do contrato: ${adaptado.motivo}` }, { status: 500 });
     }
-    return NextResponse.json({ ...adaptado.resposta, fonte: mockLocal ? "mock_local" : null });
+    return NextResponse.json({ ...soPrimeiraCall(adaptado.resposta), fonte: mockLocal ? "mock_local" : null });
   }
 
   const base = process.env.NEXT_PUBLIC_API_URL;
@@ -112,7 +114,7 @@ export async function GET(req: NextRequest) {
         { status: 502 },
       );
     }
-    return NextResponse.json(adaptado.resposta);
+    return NextResponse.json(soPrimeiraCall(adaptado.resposta));
   } catch (e) {
     return NextResponse.json(
       { error: `Falha ao consultar a API do histórico: ${e instanceof Error ? e.message : "erro"}` },

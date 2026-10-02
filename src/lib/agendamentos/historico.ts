@@ -62,6 +62,16 @@ export const HistoricoResponseSchema = z.object({
 });
 export type HistoricoResponse = z.infer<typeof HistoricoResponseSchema>;
 
+// A aba mostra SÓ agendamentos de PRIMEIRA CALL (pedido Vata 02/10): 2ª call
+// em diante nunca aparece. A rota pede `numero_call=1` à API e, por garantia,
+// descarta aqui o que vier com outro número (ou sem número).
+export const NUMERO_DA_PRIMEIRA_CALL = 1;
+
+export function soPrimeiraCall(resposta: HistoricoResponse): HistoricoResponse {
+  const agendamentos = resposta.agendamentos.filter((a) => a.numero_call === NUMERO_DA_PRIMEIRA_CALL);
+  return { ...resposta, agendamentos, retornados: agendamentos.length };
+}
+
 export type FiltrosHistorico = {
   de?: string | null;
   ate?: string | null;

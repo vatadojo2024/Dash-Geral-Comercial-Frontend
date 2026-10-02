@@ -9,6 +9,7 @@ import {
   juntarPaginas,
   queryDoHistorico,
   rotuloDaCall,
+  soPrimeiraCall,
   type ItemHistorico,
 } from "./historico";
 
@@ -149,6 +150,25 @@ describe("regras da tela", () => {
     expect(rotuloDaCall(1)).toBe("1ª call");
     expect(rotuloDaCall(5)).toBe("5ª+ call");
     expect(rotuloDaCall(null)).toBeNull();
+  });
+});
+
+describe("só primeira call (pedido 02/10)", () => {
+  it("2ª call em diante e item sem número nunca passam; o cursor e o total da API ficam", () => {
+    const r = adaptar(
+      [
+        api({ agendado_em: "2026-09-30T19:00:00Z" }),
+        api({ agendado_em: "2026-09-30T18:00:00Z", numero_call: 2, etapa: "2a_call_agendada" }),
+        api({ agendado_em: "2026-09-30T17:30:00Z", numero_call: null, etapa: "fechado" }),
+        api(),
+      ],
+      { total: 120, proximo_cursor: "2026-09-30T17:05:00.000Z" },
+    );
+    const so = soPrimeiraCall(r);
+    expect(so.agendamentos.map((a) => a.numero_call)).toEqual([1, 1]);
+    expect(so.retornados).toBe(2);
+    expect(so.total).toBe(120);
+    expect(so.proximo_cursor).toBe("2026-09-30T17:05:00.000Z");
   });
 });
 
