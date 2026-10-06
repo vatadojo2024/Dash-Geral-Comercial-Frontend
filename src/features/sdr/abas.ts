@@ -32,6 +32,7 @@ export const RECORTES_LEVANTOU: { recorte: RecorteLevantou; slug: string; label:
   { recorte: "resgate", slug: "resgate", label: "Campanha de resgate" },
   { recorte: "nao_abordados", slug: "nao-abordados", label: "Não abordados" },
   { recorte: "incognitas", slug: "incognitas", label: "Incógnitas" },
+  { recorte: "abordagem", slug: "abordagem", label: "Abordagem" },
   { recorte: "descartes", slug: "descartes", label: "Descartes" },
 ];
 

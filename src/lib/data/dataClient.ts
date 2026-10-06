@@ -20,6 +20,7 @@ import {
 } from "@/lib/sdr/oportunidades";
 import { NaoAbordadosResponseSchema, type NaoAbordadosResponse } from "@/lib/sdr/naoAbordados";
 import { IncognitasResponseSchema, type IncognitasResponse } from "@/lib/sdr/incognitas";
+import { AbordagemResponseSchema, type AbordagemResponse } from "@/lib/sdr/abordagem";
 import { RetencaoResponseSchema, type RetencaoResponse } from "@/lib/sdr/retencao";
 import { PresentesResponseSchema, type PresentesResponse } from "@/lib/sdr/presentesSemAplicar";
 import { InscritosResponseSchema, type InscritosResponse } from "@/lib/sdr/inscritos";
@@ -256,6 +257,12 @@ export function fetchNaoAbordados(de: string, ate: string): Promise<NaoAbordados
 // nenhuma tag de classificação. Mesmo protocolo das rotas de evento.
 export function fetchIncognitas(de: string, ate: string): Promise<IncognitasResponse> {
   return fetchEndpointEventos("/api/eventos/incognitas", "incógnitas", IncognitasResponseSchema, de, ate);
+}
+
+// Recorte "Abordagem" (GET /api/eventos/abordagem?de&ate): coluna da Clint ×
+// presença no webinar, com cada indicador partido em certo (antes) × incerto.
+export function fetchAbordagem(de: string, ate: string): Promise<AbordagemResponse> {
+  return fetchEndpointEventos("/api/eventos/abordagem", "abordagem", AbordagemResponseSchema, de, ate);
 }
 
 // Recorte "Presentes que não aplicaram" (GET /api/eventos/presentes-sem-aplicar?de&ate).

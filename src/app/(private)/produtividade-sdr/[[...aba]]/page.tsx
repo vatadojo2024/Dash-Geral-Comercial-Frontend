@@ -10,7 +10,7 @@ import { ROTA_DA_AREA, temArea } from "@/lib/auth/areas";
 //   /produtividade-sdr                  → Dashboard SDR
 //   /produtividade-sdr/calls-por-ciclo  → Calls por Ciclo
 //   /produtividade-sdr/oportunidades    → Oportunidades do Evento (visão geral)
-//   /produtividade-sdr/oportunidades/ao-vivo | replay | presentes-sem-aplicar | nao-participaram | resgate | nao-abordados | incognitas | descartes
+//   /produtividade-sdr/oportunidades/ao-vivo | replay | presentes-sem-aplicar | nao-participaram | resgate | nao-abordados | incognitas | abordagem | descartes
 //   (/levantou-a-mao redireciona — next.config.mjs)
 //   /produtividade-sdr/comissoes        → Comissões
 //   /produtividade-sdr/lideranca        → Liderança Pré-venda (área lideranca_pre_venda)

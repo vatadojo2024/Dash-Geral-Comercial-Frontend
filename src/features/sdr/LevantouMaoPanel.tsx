@@ -10,6 +10,9 @@ import {
   ArrowUpDown,
   Ban,
   CalendarCheck2,
+  CircleCheck,
+  MessagesSquare,
+  UserCheck,
   ClipboardCheck,
   ClipboardX,
   CircleHelp,
@@ -38,6 +41,7 @@ import {
 } from "lucide-react";
 import {
   fetchAusentes,
+  fetchAbordagem,
   fetchDescartes,
   fetchIncognitas,
   fetchInscritos,
@@ -118,6 +122,26 @@ import {
 } from "@/lib/sdr/presentesSemAplicar";
 import { rotuloMinutos } from "@/lib/sdr/retencao";
 import {
+  csvDeAbordagem,
+  esteveAoVivo as esteveAoVivoAbordagem,
+  filtrarAbordagem,
+  noIndicador,
+  presentesFecham,
+  proporcaoAbordagem,
+  rotuloDaEtapaAbordagem,
+  semComoConfirmar,
+  ROTULO_GRUPO,
+  TEXTO_IMPRECISAO,
+  type AbordagemResponse,
+  type ChaveIndicador,
+  type EtapaAbordagem,
+  type FiltroCerteza,
+  type GrupoAbordagem,
+  type Indicador,
+  type LeadAbordagem,
+  type TotaisAbordagem,
+} from "@/lib/sdr/abordagem";
+import {
   csvDeIncognitas,
   ehSemAtendimento,
   esteveAoVivo,
@@ -153,6 +177,7 @@ import {
 import { dataCompleta, dataHora, tempoRelativo } from "@/lib/formatters/date";
 import { DonoBadge, MqlBadge, OrigemBadge, SeloAgendou, SeloNinja } from "@/components/domain/Badges";
 import { BotaoCopiar } from "@/components/ui/BotaoCopiar";
+import { Balao } from "@/components/ui/Balao";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/States";
@@ -197,6 +222,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
       !erroIntervalo &&
       recorte !== "nao_abordados" &&
       recorte !== "incognitas" &&
+      recorte !== "abordagem" &&
       recorte !== "presentes" &&
       recorte !== "ausentes" &&
       recorte !== "descartes",
@@ -213,6 +239,13 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     queryKey: ["incognitas", periodo.de, periodo.ate],
     queryFn: () => fetchIncognitas(periodo.de, periodo.ate),
     enabled: !erroIntervalo && ehIncognitas,
+    retry: false,
+  });
+  const ehAbordagem = recorte === "abordagem";
+  const abordagem = useQuery({
+    queryKey: ["abordagem", periodo.de, periodo.ate],
+    queryFn: () => fetchAbordagem(periodo.de, periodo.ate),
+    enabled: !erroIntervalo && ehAbordagem,
     retry: false,
   });
   const ehPresentes = recorte === "presentes";
@@ -252,7 +285,9 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
     ? naoAbordados
     : ehIncognitas
       ? incognitas
-      : ehPresentes
+      : ehAbordagem
+        ? abordagem
+        : ehPresentes
       ? presentes
       : ehAusentes
         ? ausentes
@@ -304,6 +339,15 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
         incognitas.data && (
           <ConteudoIncognitas
             data={incognitas.data}
+            periodo={periodo}
+            atualizando={isFetching}
+            onAtualizar={() => refetch()}
+          />
+        )
+      ) : recorte === "abordagem" ? (
+        abordagem.data && (
+          <ConteudoAbordagem
+            data={abordagem.data}
             periodo={periodo}
             atualizando={isFetching}
             onAtualizar={() => refetch()}
@@ -2801,6 +2845,679 @@ function TabelaIncognitas({
   );
 }
 
+// ---------------------------------------------------------------------------
+// Recorte "Abordagem": estado da abordagem (coluna do card na Clint) × presença
+// no webinar — fonte própria (/api/eventos/abordagem). O CENTRO DA TELA é a
+// imprecisão: a Clint guarda a coluna de HOJE, não a do dia do evento. Cada
+// indicador mostra grande só o número CERTO (`antes`: card parado desde antes do
+// evento) e, à parte e em cinza, os que "não há como confirmar" (`depois` +
+// `sem_informacao`). Nunca somar os dois sob o rótulo "antes do evento".
+// "Outras colunas" e "Base" aparecem para a conta fechar.
+// ---------------------------------------------------------------------------
+
+type FiltroIndicador = ChaveIndicador | "todos";
+type FiltroGrupo = GrupoAbordagem | "todos";
+type FiltrosAbordagemSalvos = {
+  indicador: FiltroIndicador;
+  certeza: FiltroCerteza;
+  grupo: FiltroGrupo;
+  soAoVivo: boolean;
+  donos: string[];
+  busca: string;
+};
+const memoriaFiltrosAbordagem: { salvo: FiltrosAbordagemSalvos | null } = { salvo: null };
+
+const INDICADORES: { chave: ChaveIndicador; titulo: string; regra: string; icone: typeof Users }[] = [
+  {
+    chave: "responderam",
+    titulo: "Responderam antes do evento",
+    regra: "Coluna “Em qualificação” ou “Qualificado”. Não exige ter assistido.",
+    icone: MessagesSquare,
+  },
+  {
+    chave: "abordados_compareceram",
+    titulo: "Abordados antes do evento que compareceram",
+    regra: "Qualquer coluna menos “Sem atendimento”, e esteve ao vivo.",
+    icone: UserCheck,
+  },
+  {
+    chave: "sem_resposta_compareceram",
+    titulo: "Sem resposta antes do evento, e compareceram",
+    regra: "Coluna “Prospecção” (abordado, não respondeu), e esteve ao vivo.",
+    icone: Radio,
+  },
+];
+
+const COR_GRUPO: Record<GrupoAbordagem, { tag: string; barra: string; ponto: string }> = {
+  nao_abordado: { tag: "border-rosa/40 bg-rosa/15 text-rosa", barra: "bg-rosa/70", ponto: "bg-rosa" },
+  sem_resposta: { tag: "border-laranja/40 bg-laranja/15 text-laranja", barra: "bg-laranja/70", ponto: "bg-laranja" },
+  respondeu: { tag: "border-verde/40 bg-verde/15 text-verde", barra: "bg-verde/70", ponto: "bg-verde" },
+  outra: { tag: "border-white/20 bg-white/10 text-texto-sec", barra: "bg-white/35", ponto: "bg-white/50" },
+};
+
+function TextoDaImprecisao({ ind }: { ind?: Indicador }) {
+  return (
+    <span className="block space-y-2">
+      <span className="block">{TEXTO_IMPRECISAO}</span>
+      {ind && (
+        <span className="block text-texto-sec">
+          Neste indicador: {ind.depois} {ind.depois === 1 ? "mudou" : "mudaram"} de coluna no dia do evento ou depois
+          {ind.sem_informacao > 0 &&
+            ` e ${ind.sem_informacao} ${ind.sem_informacao === 1 ? "não tem" : "não têm"} card ou data de movimento na Clint`}
+          .
+        </span>
+      )}
+    </span>
+  );
+}
+
+function CardIndicador({
+  titulo,
+  regra,
+  icone: Icone,
+  ind,
+  ativo,
+  onFiltrar,
+}: {
+  titulo: string;
+  regra: string;
+  icone: typeof Users;
+  ind: Indicador;
+  ativo: boolean;
+  onFiltrar: () => void;
+}) {
+  const incertos = semComoConfirmar(ind);
+  return (
+    <div
+      className={cn(
+        // relative + z no hover/foco: o card com o balão aberto fica acima dos
+        // vizinhos (cada card de vidro é uma camada própria).
+        "relative flex flex-col rounded-2xl border p-4 shadow-layered transition-colors hover:z-10 focus-within:z-10",
+        ativo ? "border-azul/50 bg-azul/10" : "border-white/10 bg-white/5",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-info-forte/20 text-info">
+          <Icone className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <p className="text-sm font-medium leading-snug text-texto">{titulo}</p>
+      </div>
+      <p className="mt-3 text-4xl font-semibold tabular-nums text-texto">{ind.antes}</p>
+      <p className="mt-0.5 text-[11px] text-texto-sec">certos — o card não se move desde antes do evento</p>
+      <p className="mt-2 flex items-center gap-1.5 text-xs text-texto-sec/80">
+        {incertos > 0 ? (
+          <span>
+            + <span className="tabular-nums">{incertos}</span> sem como confirmar
+          </span>
+        ) : (
+          <span>nenhum caso sem como confirmar</span>
+        )}
+        <Balao rotulo={`Por que há casos sem como confirmar em “${titulo}”`} gatilho={<CircleHelp className="h-3.5 w-3.5" aria-hidden />}>
+          <TextoDaImprecisao ind={ind} />
+        </Balao>
+      </p>
+      <p className="mt-3 flex-1 text-[11px] leading-snug text-texto-sec">{regra}</p>
+      <button
+        type="button"
+        aria-pressed={ativo}
+        onClick={onFiltrar}
+        className="mt-3 self-start text-xs font-medium text-azul-claro underline-offset-2 hover:underline"
+      >
+        {ativo ? "Mostrando na lista · limpar" : `Ver os ${ind.total} na lista`}
+      </button>
+    </div>
+  );
+}
+
+function ConteudoAbordagem({
+  data,
+  periodo,
+  atualizando,
+  onAtualizar,
+}: {
+  data: AbordagemResponse;
+  periodo: { de: string; ate: string };
+  atualizando: boolean;
+  onAtualizar: () => void;
+}) {
+  const salvo = memoriaFiltrosAbordagem.salvo;
+  const [indicador, setIndicador] = useState<FiltroIndicador>(salvo?.indicador ?? "todos");
+  const [certeza, setCerteza] = useState<FiltroCerteza>(salvo?.certeza ?? "todos");
+  const [grupo, setGrupo] = useState<FiltroGrupo>(salvo?.grupo ?? "todos");
+  const [soAoVivo, setSoAoVivo] = useState(salvo?.soAoVivo ?? false);
+  const [donosSel, setDonosSel] = useState<string[]>(salvo?.donos ?? []);
+  const [busca, setBusca] = useState(salvo?.busca ?? "");
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    memoriaFiltrosAbordagem.salvo = { indicador, certeza, grupo, soAoVivo, donos: donosSel, busca };
+  }, [indicador, certeza, grupo, soAoVivo, donosSel, busca]);
+
+  const leads = data.leads;
+  const t = data.totais;
+  const filtrados = useMemo(
+    () =>
+      filtrarAbordagem(leads, {
+        indicador: indicador === "todos" ? null : indicador,
+        grupo: grupo === "todos" ? null : grupo,
+        certeza,
+        soAoVivo,
+        donos: donosSel,
+        busca,
+      }),
+    [leads, indicador, grupo, certeza, soAoVivo, donosSel, busca],
+  );
+  const opcoesDono = useMemo(() => opcoesDeDono(leads, data.por_dono), [leads, data.por_dono]);
+  const multiEvento = data.eventos.length > 1;
+  const selecionado = useMemo(
+    () => leads.find((l) => chaveDaLinha(l) === selecionadoId) ?? null,
+    [leads, selecionadoId],
+  );
+  const conta = (f: (l: LeadAbordagem) => boolean) => leads.filter(f).length;
+
+  function alternarDono(chave: string) {
+    setDonosSel((atual) => (atual.includes(chave) ? atual.filter((d) => d !== chave) : [...atual, chave]));
+  }
+
+  function exportarCsv() {
+    const csv = "\uFEFF" + csvDeAbordagem(filtrados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `oportunidades_abordagem_${periodo.de}_${periodo.ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <>
+      <BarraRecortes recorte="abordagem" />
+
+      {/* z-20: o balão do "(?)" precisa ficar acima dos cards de vidro abaixo. */}
+      <div className="relative z-20 grid gap-3 md:grid-cols-3">
+        {INDICADORES.map((i) => (
+          <CardIndicador
+            key={i.chave}
+            titulo={i.titulo}
+            regra={i.regra}
+            icone={i.icone}
+            ind={data.indicadores[i.chave]}
+            ativo={indicador === i.chave}
+            onFiltrar={() => setIndicador((atual) => (atual === i.chave ? "todos" : i.chave))}
+          />
+        ))}
+      </div>
+
+      <div className="ds-card relative z-10 flex items-start gap-2 px-5 py-3 text-xs text-texto-sec" role="note">
+        <CircleHelp className="mt-0.5 h-3.5 w-3.5 shrink-0 text-azul-claro" aria-hidden />
+        <span>
+          <span className="font-medium text-texto">Como ler:</span> o número grande é o que dá para afirmar — o card
+          não mudou de coluna desde antes do webinar, então a coluna de hoje era a do dia. O &ldquo;sem como
+          confirmar&rdquo; são pessoas que estão nessa situação hoje mas mudaram de coluna no dia do evento ou depois:
+          não dá para saber onde estavam no dia. Os dois não se somam.{" "}
+          <Balao rotulo="Por que a Clint não permite saber" gatilho={<span className="text-azul-claro underline-offset-2 hover:underline">Por quê?</span>}>
+            <TextoDaImprecisao />
+          </Balao>
+        </span>
+      </div>
+
+      {t.inscritos === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Users}
+            titulo="Nenhum contato com a tag deste ciclo"
+            descricao={
+              data.eventos.length > 0
+                ? `Tag consultada: ${data.eventos.join(", ")}. Confira se ela existe na Clint.`
+                : `Nenhuma terça entre ${rotuloCiclo({ inicio: data.de, fim: data.ate })} — nenhuma tag WG para consultar.`
+            }
+          />
+        </Card>
+      ) : (
+        <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader
+                title="Onde estão os inscritos na Clint"
+                subtitle="Coluna de HOJE de cada inscrito do evento (já sem desqualificados e perdidos)."
+              />
+              <CardContent>
+                <BarraAbordagem t={t} porEtapa={data.por_etapa} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader
+                title="Coluna por coluna"
+                subtitle="A auditoria da aba: quantos inscritos em cada coluna e quantos estiveram ao vivo."
+              />
+              <CardContent>
+                <ColunasDaAbordagem porEtapa={data.por_etapa} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader title="Filtros" subtitle="Os cards de cima também filtram: “Ver na lista”." />
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <UserCheck className="h-3.5 w-3.5" aria-hidden />
+                  Indicador:
+                </span>
+                <Alternador<FiltroIndicador>
+                  rotulo="Filtrar por indicador"
+                  valor={indicador}
+                  onChange={setIndicador}
+                  opcoes={[
+                    { valor: "todos", label: `Todos (${leads.length})` },
+                    { valor: "responderam", label: `Responderam (${conta((l) => noIndicador(l, "responderam"))})` },
+                    {
+                      valor: "abordados_compareceram",
+                      label: `Abordados que compareceram (${conta((l) => noIndicador(l, "abordados_compareceram"))})`,
+                    },
+                    {
+                      valor: "sem_resposta_compareceram",
+                      label: `Sem resposta e compareceram (${conta((l) => noIndicador(l, "sem_resposta_compareceram"))})`,
+                    },
+                  ]}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <CircleCheck className="h-3.5 w-3.5" aria-hidden />
+                  Certeza:
+                </span>
+                <Alternador<FiltroCerteza>
+                  rotulo="Filtrar pela certeza"
+                  valor={certeza}
+                  onChange={setCerteza}
+                  opcoes={[
+                    { valor: "todos", label: "Todos" },
+                    { valor: "confirmados", label: "Certos (sem movimento desde antes)" },
+                    { valor: "sem_confirmar", label: "Sem como confirmar" },
+                  ]}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <Inbox className="h-3.5 w-3.5" aria-hidden />
+                  Coluna:
+                </span>
+                <Alternador<FiltroGrupo>
+                  rotulo="Filtrar pela coluna"
+                  valor={grupo}
+                  onChange={setGrupo}
+                  opcoes={[
+                    { valor: "todos", label: "Todas" },
+                    { valor: "nao_abordado", label: `Não abordados (${conta((l) => l.grupo === "nao_abordado")})` },
+                    { valor: "sem_resposta", label: `Sem resposta (${conta((l) => l.grupo === "sem_resposta")})` },
+                    { valor: "respondeu", label: `Responderam (${conta((l) => l.grupo === "respondeu")})` },
+                    { valor: "outra", label: `Outras colunas (${conta((l) => l.grupo === "outra")})` },
+                  ]}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-xs text-texto-sec">
+                  <Radio className="h-3.5 w-3.5" aria-hidden />
+                  Presença:
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={soAoVivo}
+                  onClick={() => setSoAoVivo((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-wide transition-all",
+                    soAoVivo
+                      ? "border-info-forte/60 bg-info-forte/15 text-info"
+                      : "border-white/20 bg-white/10 text-texto opacity-70 hover:opacity-100",
+                  )}
+                >
+                  Estiveram ao vivo <span className="tabular-nums">({conta(esteveAoVivoAbordagem)})</span>
+                </button>
+              </div>
+              <FiltroDono
+                opcoes={opcoesDono}
+                selecionados={donosSel}
+                onAlternar={alternarDono}
+                onLimpar={() => setDonosSel([])}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={`Inscritos da aba${multiEvento ? ` — ${data.eventos.length} eventos` : ""}`}
+              subtitle={`${filtrados.length} de ${leads.length} · a coluna “Base” fica fora (${t.fora_da_aba}) · ordem do backend (quem compareceu, quanto assistiu, coluna)`}
+              action={
+                <Button variant="outline" size="sm" onClick={exportarCsv} disabled={filtrados.length === 0}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Exportar CSV
+                </Button>
+              }
+            />
+            <CardContent className="space-y-3">
+              <div className="relative w-full max-w-sm">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Buscar por nome, e-mail ou telefone"
+                  aria-label="Buscar inscrito"
+                  className="h-9 w-full rounded-xl border border-white/20 bg-white/5 pl-9 pr-3 text-sm text-texto placeholder:opacity-60 focus:border-azul/50 focus:bg-white/10"
+                />
+              </div>
+              {filtrados.length === 0 ? (
+                <EmptyState
+                  titulo="Nenhum inscrito neste recorte"
+                  descricao="Ajuste o indicador, a certeza, a coluna, a presença, o dono ou a busca."
+                />
+              ) : (
+                <TabelaAbordagem leads={filtrados} multiEvento={multiEvento} onAbrir={setSelecionadoId} />
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <RodapeEventos data={data} atualizando={atualizando} onAtualizar={onAtualizar} />
+      {selecionado && <DetalhePendente lead={selecionado} abordagem onClose={() => setSelecionadoId(null)} />}
+    </>
+  );
+}
+
+// Barra empilhada dos cinco baldes (somam os inscritos) + as duas conferências.
+function BarraAbordagem({ t, porEtapa }: { t: TotaisAbordagem; porEtapa: readonly EtapaAbordagem[] }) {
+  const { fatias, fechaConta } = proporcaoAbordagem(t);
+  const cor: Record<string, string> = {
+    nao_abordados: COR_GRUPO.nao_abordado.barra,
+    sem_resposta: COR_GRUPO.sem_resposta.barra,
+    responderam: COR_GRUPO.respondeu.barra,
+    outras_etapas: COR_GRUPO.outra.barra,
+    fora_da_aba: "bg-white/15",
+  };
+  const ponto: Record<string, string> = {
+    nao_abordados: COR_GRUPO.nao_abordado.ponto,
+    sem_resposta: COR_GRUPO.sem_resposta.ponto,
+    responderam: COR_GRUPO.respondeu.ponto,
+    outras_etapas: COR_GRUPO.outra.ponto,
+    fora_da_aba: "bg-white/25",
+  };
+  const presentesOk = presentesFecham(t, porEtapa);
+  return (
+    <div className="space-y-3">
+      <div
+        className="flex h-4 w-full overflow-hidden rounded-full bg-white/5"
+        role="img"
+        aria-label={fatias.map((f) => `${f.rotulo}: ${f.valor} (${formatarPct(f.pct)})`).join("; ")}
+      >
+        {fatias.map((f) =>
+          f.valor > 0 ? (
+            <div
+              key={f.chave}
+              className={cn("h-full", cor[f.chave])}
+              style={{ width: `${f.pct}%` }}
+              title={`${f.rotulo}: ${f.valor} (${formatarPct(f.pct)})`}
+            />
+          ) : null,
+        )}
+      </div>
+      <ul className="space-y-1.5 text-sm">
+        {fatias.map((f) => (
+          <li key={f.chave}>
+            <span className="flex items-center justify-between gap-3">
+              <span className={cn("flex items-center gap-2", f.chave === "fora_da_aba" ? "text-texto-sec" : "text-texto")}>
+                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", ponto[f.chave])} aria-hidden />
+                {f.rotulo}
+              </span>
+              <span className="whitespace-nowrap tabular-nums text-texto">
+                <span className="font-semibold">{f.valor}</span>
+                <span className="ml-1.5 text-xs text-texto-sec">{formatarPct(f.pct)}</span>
+              </span>
+            </span>
+            {f.chave === "outras_etapas" && f.valor > 0 && (
+              <span className="mt-0.5 block pl-[1.125rem] text-[11px] leading-snug text-texto-sec">
+                Ainda não é o momento, Potencial Promissor, calls agendadas… Não contam como &ldquo;respondeu&rdquo;
+                (decisão do Vata) — o detalhe está em &ldquo;Coluna por coluna&rdquo;.
+              </span>
+            )}
+            {f.chave === "fora_da_aba" && f.valor > 0 && (
+              <span className="mt-0.5 block pl-[1.125rem] text-[11px] leading-snug text-texto-sec">
+                Fica fora da aba por decisão do Vata: não entra em nenhum indicador nem na lista. Aparece só para a
+                conta fechar.
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className={cn("text-[11px]", fechaConta && presentesOk ? "text-texto-sec" : "text-aviso")}>
+        {fechaConta
+          ? `${t.inscritos} inscritos = as cinco faixas acima.`
+          : `As faixas somam ${fatias.reduce((s, f) => s + f.valor, 0)}, mas o backend informou ${t.inscritos} inscritos — confira com o time técnico.`}{" "}
+        {presentesOk
+          ? `${t.presentes_ao_vivo} estiveram ao vivo (fora a Base).`
+          : `Presentes não fecham com a soma coluna a coluna — confira com o time técnico.`}
+      </p>
+    </div>
+  );
+}
+
+function TagGrupo({ grupo }: { grupo: GrupoAbordagem }) {
+  return (
+    <span className={cn("inline-flex whitespace-nowrap rounded-full border px-1.5 py-px text-[10px] font-medium", COR_GRUPO[grupo].tag)}>
+      {ROTULO_GRUPO[grupo]}
+    </span>
+  );
+}
+
+function ColunasDaAbordagem({ porEtapa }: { porEtapa: readonly EtapaAbordagem[] }) {
+  if (porEtapa.length === 0) return <p className="text-xs text-texto-sec">Sem dados de coluna neste período.</p>;
+  const max = Math.max(1, ...porEtapa.map((e) => e.total));
+  return (
+    <ul className="space-y-2.5">
+      {porEtapa.map((e) => (
+        <li key={e.etapa ?? "sem-negocio"}>
+          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs">
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className={cn(e.etapa ? "text-texto" : "text-texto-sec")}>{rotuloDaEtapaAbordagem(e.etapa)}</span>
+              <TagGrupo grupo={e.grupo} />
+            </span>
+            <span className="tabular-nums text-texto">
+              <span className="font-semibold">{e.total}</span>
+              <span className="ml-1.5 text-texto-sec">· {e.presentes} ao vivo</span>
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+            <div className={cn("h-full rounded-full", COR_GRUPO[e.grupo].barra)} style={{ width: `${(e.total / max) * 100}%` }} />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Certeza da linha: "certo" (parado desde antes do evento) ou, em cinza, desde
+// quando o card se moveu (é por isso que não dá para confirmar).
+function CertezaCelula({ lead }: { lead: LeadAbordagem }) {
+  if (lead.momento === "antes") {
+    return (
+      <span
+        className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-verde"
+        title={lead.movido_em ? `Última mudança de coluna: ${dataHora(lead.movido_em)}, antes do evento` : undefined}
+      >
+        <CircleCheck className="h-3.5 w-3.5" aria-hidden />
+        Certo
+      </span>
+    );
+  }
+  if (lead.momento === "depois") {
+    return (
+      <span className="whitespace-nowrap text-xs text-texto-sec/80" title="Mudou de coluna no dia do evento ou depois: não dá para saber a coluna do dia">
+        movido {lead.movido_em ? `em ${dataHora(lead.movido_em)}` : "depois do evento"}
+      </span>
+    );
+  }
+  return <span className="whitespace-nowrap text-xs text-texto-sec/60">sem informação</span>;
+}
+
+function LinhaAbordagem({ lead }: { lead: LeadAbordagem }) {
+  return (
+    <LinhaDetalhe rotulo="Abordagem (coluna na Clint)">
+      <span className="flex flex-wrap items-center gap-1.5">
+        <TagGrupo grupo={lead.grupo} />
+        <span className="text-texto-sec">coluna {rotuloDaEtapaAbordagem(lead.etapa)}</span>
+      </span>
+      <span className="mt-1 block text-texto-sec">
+        {lead.momento === "antes"
+          ? `Certo: o card não muda de coluna desde ${lead.movido_em ? dataHora(lead.movido_em) : "antes do evento"} — esta era a coluna no dia do webinar.`
+          : lead.momento === "depois"
+            ? `Mudou de coluna ${lead.movido_em ? `em ${dataHora(lead.movido_em)}` : "depois do evento"}: sabemos a coluna de hoje, não a do dia do webinar.`
+            : "Sem card ou sem data de movimento na Clint: não dá para dizer a coluna do dia do webinar."}
+      </span>
+    </LinhaDetalhe>
+  );
+}
+
+function TabelaAbordagem({
+  leads,
+  multiEvento,
+  onAbrir,
+}: {
+  leads: LeadAbordagem[];
+  multiEvento: boolean;
+  onAbrir: (id: string) => void;
+}) {
+  const [pagina, setPagina] = useState(1);
+  useEffect(() => setPagina(1), [leads]);
+  const paginar = leads.length > TAMANHO_PAGINA;
+  const totalPaginas = Math.max(1, Math.ceil(leads.length / TAMANHO_PAGINA));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const visiveis = paginar ? leads.slice((paginaAtual - 1) * TAMANHO_PAGINA, paginaAtual * TAMANHO_PAGINA) : leads;
+  const coluna = (l: LeadAbordagem) => (
+    <span className="flex flex-col items-start gap-1">
+      <span className={cn("text-xs", l.etapa ? "text-texto" : "text-texto-sec/70")}>{rotuloDaEtapaAbordagem(l.etapa)}</span>
+      <TagGrupo grupo={l.grupo} />
+    </span>
+  );
+
+  return (
+    <>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-borda text-left text-xs text-texto-sec">
+              <th className="px-2 py-2 font-medium">Nome</th>
+              <th className="px-2 py-2 font-medium">Coluna hoje</th>
+              <th className="px-2 py-2 font-medium">Certeza</th>
+              <th className="whitespace-nowrap px-2 py-2 font-medium">Ao vivo</th>
+              <th className="px-2 py-2 font-medium">Aplicou</th>
+              <th className="whitespace-nowrap px-2 py-2 font-medium">Call agendada</th>
+              <th className="px-2 py-2 font-medium">Dono</th>
+              {multiEvento && <th className="px-2 py-2 font-medium">Evento</th>}
+              <th className="px-2 py-2 font-medium">Contato</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visiveis.map((l) => (
+              <tr key={chaveDaLinha(l)} className="border-b border-borda/40 align-top">
+                <td className="max-w-[220px] px-2 py-2">
+                  <NomePendente lead={l} onAbrir={onAbrir} />
+                  <span className="mt-1 flex flex-wrap items-center gap-1">
+                    <MqlBadge lead={l} size="sm" />
+                  </span>
+                </td>
+                <td className="px-2 py-2">{coluna(l)}</td>
+                <td className="px-2 py-2">
+                  <CertezaCelula lead={l} />
+                </td>
+                <td className="whitespace-nowrap px-2 py-2">
+                  <AoVivoIncognita lead={l} />
+                </td>
+                <td className="px-2 py-2">
+                  {l.aplicou ? <span className="tag tag-info px-1.5 py-px">Aplicou</span> : <span className="text-texto-sec/50">—</span>}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2">
+                  {l.ja_agendou ? <SeloAgendou lead={l} /> : <span className="text-texto-sec/50">—</span>}
+                </td>
+                <td className="px-2 py-2">
+                  <DonoBadge dono={l.dono} size="sm" />
+                </td>
+                {multiEvento && <td className="whitespace-nowrap px-2 py-2 text-xs text-texto-sec">{l.evento_tag ?? "—"}</td>}
+                <td className="whitespace-nowrap px-2 py-2">
+                  <span className="inline-flex items-center gap-0.5">
+                    {l.telefone ? (
+                      <>
+                        <span className="tabular-nums text-texto">{l.telefone}</span>
+                        <BotaoCopiar valor={l.telefone} rotulo="telefone" />
+                        <LinkWhatsApp telefone={l.telefone} />
+                      </>
+                    ) : (
+                      <span className="text-texto-sec/50">—</span>
+                    )}
+                    <LinkClint url={l.url_clint} />
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <ul className="space-y-2 md:hidden">
+        {visiveis.map((l) => (
+          <li key={chaveDaLinha(l)} className="card-interactive rounded-xl p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <NomePendente lead={l} onAbrir={onAbrir} />
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <TagGrupo grupo={l.grupo} />
+                  <span className="text-xs text-texto">{rotuloDaEtapaAbordagem(l.etapa)}</span>
+                  <CertezaCelula lead={l} />
+                  <AoVivoIncognita lead={l} />
+                  {l.aplicou && <span className="tag tag-info px-1.5 py-px">Aplicou</span>}
+                  <SeloAgendou lead={l} />
+                  <DonoBadge dono={l.dono} size="sm" />
+                  {multiEvento && l.evento_tag && <span className="text-[11px] text-texto-sec">{l.evento_tag}</span>}
+                </div>
+              </div>
+              <span className="flex shrink-0 items-center gap-1.5">
+                <LinkWhatsApp telefone={l.telefone} destaque />
+                <LinkClint url={l.url_clint} destaque />
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {paginar && (
+        <nav className="flex items-center justify-between text-xs text-texto-sec" aria-label="Paginação">
+          <span>
+            Página {paginaAtual} de {totalPaginas} · {leads.length} inscritos
+          </span>
+          <span className="flex gap-1">
+            <Button variant="ghost" size="sm" disabled={paginaAtual <= 1} onClick={() => setPagina(paginaAtual - 1)} aria-label="Página anterior">
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={paginaAtual >= totalPaginas}
+              onClick={() => setPagina(paginaAtual + 1)}
+              aria-label="Próxima página"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Button>
+          </span>
+        </nav>
+      )}
+    </>
+  );
+}
+
 // Sinais de recuperação do ausente: "Viu o replay" em destaque (interesse
 // comprovado), mais "Aplicou pelo replay" e "Resgate" quando houver.
 function RecuperacaoCelula({ lead }: { lead: LeadPendente }) {
@@ -3819,10 +4536,13 @@ function DetalhePendente({
   lead,
   onClose,
   incognita = false,
+  abordagem = false,
 }: {
   lead: LeadPendente;
   onClose: () => void;
   incognita?: boolean;
+  // Aba Abordagem: linha com a coluna e a certeza (antes/depois do evento).
+  abordagem?: boolean;
 }) {
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
@@ -3868,6 +4588,8 @@ function DetalhePendente({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          {abordagem && <LinhaAbordagem lead={lead as LeadAbordagem} />}
+
           {incognita && (
             <LinhaDetalhe rotulo="Pesquisa de qualificação">
               {respondeuPesquisa(lead) ? (
@@ -3924,6 +4646,8 @@ function DetalhePendente({
                 <span className="text-texto-sec">
                   {incognita
                     ? `Esteve ao vivo${lead.aplicou ? " e aplicou" : ""} — interesse comprovado, sem nenhuma classificação.`
+                    : abordagem
+                      ? `Esteve ao vivo${lead.aplicou ? " e aplicou" : ""}.`
                     : ficouAteOFim(lead)
                       ? "Ficou até o fim e não aplicou durante o evento — melhor alvo de ligação."
                       : "Esteve ao vivo e não aplicou durante o evento."}
