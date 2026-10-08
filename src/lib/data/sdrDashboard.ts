@@ -8,6 +8,12 @@ import { SemPermissaoError } from "@/lib/auth/semPermissao";
 // existente: aliases (5.1), produtos por substring (5.2), qualificados +
 // bônus QC (5.3), metas escalonadas 40/50/60 (5.4), mês padrão (5.13) e
 // no-show % (5.7). As regras da aba Liderança vivem em src/lib/sdr/lideranca.ts.
+//
+// REGRA DE META A PARTIR DE 08/10/2026 (decisão do Vata): reuniões de leads
+// Ninja e QC NÃO contam mais para a meta individual dos SDRs. Esses leads
+// passaram para o Arthur, que tem meta própria (30/40/50) e conta TODAS as
+// reuniões dele, uma a uma. O número de "qualificados" (bônus QC incluso)
+// segue igual: é ele que alimenta a meta da EQUIPE e a comissão por reunião.
 // ---------------------------------------------------------------------------
 
 const LinhaSdrSchema = z.object({
@@ -74,7 +80,7 @@ export const SdrDashboardPayloadSchema = z.object({
 export type SdrDashboardPayload = z.infer<typeof SdrDashboardPayloadSchema>;
 
 // 5.1 — aliases canônicos; nomes que não casam são descartados.
-export const SDRS_DASHBOARD = ["Glaucio", "Delrue", "Benhur", "Hana"] as const;
+export const SDRS_DASHBOARD = ["Glaucio", "Delrue", "Benhur", "Arthur", "Hana"] as const;
 export type SdrCanonico = (typeof SDRS_DASHBOARD)[number];
 
 export function normalizarSdr(nome: string): SdrCanonico | null {
@@ -84,6 +90,7 @@ export function normalizarSdr(nome: string): SdrCanonico | null {
     .replace(/[̀-ͯ]/g, "");
   if (n.includes("glaucio")) return "Glaucio";
   if (n.includes("delrue")) return "Delrue";
+  if (n.includes("arthur") || n.includes("artur")) return "Arthur";
   if (n.includes("ben")) return "Benhur";
   if (n.includes("hana")) return "Hana";
   return null;
@@ -115,6 +122,31 @@ export function produtoChave(nome: string): ProdutoChave | null {
 // 5.4 — metas escalonadas individuais; Hana não tem meta.
 export const METAS_SDR: number[] = [40, 50, 60];
 
+/** Metas próprias de quem não segue a escala padrão. */
+export const METAS_POR_SDR: Partial<Record<SdrCanonico, number[]>> = {
+  Arthur: [30, 40, 50],
+};
+
+/**
+ * SDRs que atendem os leads Ninja e QC. Para eles, toda reunião conta 1 para a
+ * meta, qualquer que seja o produto (sem o "+1 a cada 3 QC").
+ */
+export const SDRS_NINJA_QC: readonly SdrCanonico[] = ["Arthur"];
+
+/**
+ * A partir desta data da call (inclusive), reuniões Ninja e QC deixam de contar
+ * para a meta dos demais SDRs. As anteriores seguem contando pela regra antiga.
+ */
+export const INICIO_META_SEM_NINJA_QC = "2026-10-08";
+
+/** Produtos que saem da meta dos SDRs regulares a partir do corte. */
+const PRODUTOS_FORA_DA_META: readonly ProdutoChave[] = ["ninja", "qc"];
+
+export function metasDoSdr(sdr: SdrCanonico): number[] | null {
+  if (sdr === "Hana") return null;
+  return METAS_POR_SDR[sdr] ?? METAS_SDR;
+}
+
 export type SdrMetrics = {
   sdr: SdrCanonico;
   callsAgendadas: number;
@@ -126,7 +158,12 @@ export type SdrMetrics = {
   produtos: Record<ProdutoChave, number>;
   qualificadosBase: number;
   bonusQC: number;
+  /** Qualificados do mês (Ninja+ e bônus QC). Alimenta a meta da EQUIPE. */
   qualificados: number;
+  /** O número que bate na meta INDIVIDUAL (regra de 08/10 aplicada). */
+  qualificadosMeta: number;
+  /** Reuniões Ninja/QC do mês que deixaram de contar para a meta individual. */
+  foraDaMeta: number;
   /** null = sem meta (Hana) */
   metas: number[] | null;
   metaAtual: number | null;
@@ -200,24 +237,41 @@ export function agregarDashboard(
   const noShows = somaPorSdr(payload.no_show, mes);
   const remarcadas = somaPorSdr(payload.remarcadas, mes);
 
+  const zerado = (): Record<ProdutoChave, number> => ({
+    qc: 0,
+    ninja: 0,
+    black: 0,
+    prime: 0,
+    private: 0,
+  });
   const produtosPorSdr = new Map<SdrCanonico, Record<ProdutoChave, number>>();
+  // Mesma contagem, só com o que vale para a meta individual.
+  const produtosMetaPorSdr = new Map<SdrCanonico, Record<ProdutoChave, number>>();
   for (const linha of payload.por_produto) {
     if (!linha.data_referencia.startsWith(mes)) continue;
     const sdr = normalizarSdr(linha.sdr);
     const chave = produtoChave(linha.produto);
     if (!sdr || !chave) continue;
-    const atual =
-      produtosPorSdr.get(sdr) ?? { qc: 0, ninja: 0, black: 0, prime: 0, private: 0 };
+    const atual = produtosPorSdr.get(sdr) ?? zerado();
     atual[chave] += linha.total;
     produtosPorSdr.set(sdr, atual);
+
+    const saiDaMeta =
+      !SDRS_NINJA_QC.includes(sdr) &&
+      PRODUTOS_FORA_DA_META.includes(chave) &&
+      linha.data_referencia.slice(0, 10) >= INICIO_META_SEM_NINJA_QC;
+    if (saiDaMeta) continue;
+    const meta = produtosMetaPorSdr.get(sdr) ?? zerado();
+    meta[chave] += linha.total;
+    produtosMetaPorSdr.set(sdr, meta);
   }
 
   const sdrs: SdrMetrics[] = SDRS_DASHBOARD.map((sdr) => {
     const ag = agendadas.get(sdr) ?? 0;
     const re = realizadas.get(sdr) ?? 0;
     const ns = noShows.get(sdr) ?? 0;
-    const produtos =
-      produtosPorSdr.get(sdr) ?? { qc: 0, ninja: 0, black: 0, prime: 0, private: 0 };
+    const produtos = produtosPorSdr.get(sdr) ?? zerado();
+    const pm = produtosMetaPorSdr.get(sdr) ?? zerado();
 
     // 5.3 — qualificados = Ninja+ + bônus de 1 a cada 3 QC
     const qualificadosBase =
@@ -225,17 +279,23 @@ export function agregarDashboard(
     const bonusQC = Math.floor(produtos.qc / 3);
     const qualificados = qualificadosBase + bonusQC;
 
+    // Meta individual: quem atende Ninja/QC conta toda reunião 1 a 1; os demais
+    // seguem a fórmula antiga só com o que sobrou depois do corte de 08/10.
+    const qualificadosMeta = SDRS_NINJA_QC.includes(sdr)
+      ? pm.qc + pm.ninja + pm.black + pm.prime + pm.private
+      : pm.ninja + pm.black + pm.prime + pm.private + Math.floor(pm.qc / 3);
+    const foraDaMeta = produtos.ninja - pm.ninja + (produtos.qc - pm.qc);
+
     // 5.4 — Hana é linha informativa, sem meta
-    const temMeta = sdr !== "Hana";
-    const metas = temMeta ? METAS_SDR : null;
-    const metasBatidas = metas ? metas.filter((m) => qualificados >= m).length : 0;
+    const metas = metasDoSdr(sdr);
+    const metasBatidas = metas ? metas.filter((m) => qualificadosMeta >= m).length : 0;
     const metaAtual = metas
-      ? (metas.find((m) => qualificados < m) ?? metas[metas.length - 1])
+      ? (metas.find((m) => qualificadosMeta < m) ?? metas[metas.length - 1])
       : null;
     const nivelAtual = metas
       ? ((`M${Math.min(metasBatidas + 1, metas.length)}`) as "M1" | "M2" | "M3")
       : null;
-    const gap = metaAtual !== null ? Math.max(metaAtual - qualificados, 0) : null;
+    const gap = metaAtual !== null ? Math.max(metaAtual - qualificadosMeta, 0) : null;
 
     return {
       sdr,
@@ -248,6 +308,8 @@ export function agregarDashboard(
       qualificadosBase,
       bonusQC,
       qualificados,
+      qualificadosMeta,
+      foraDaMeta,
       metas,
       metaAtual,
       nivelAtual,

@@ -15,6 +15,8 @@ function sdr(parcial: Partial<SdrMetrics> & { sdr: SdrMetrics["sdr"] }): SdrMetr
     qualificadosBase: 20,
     bonusQC: 0,
     qualificados: 20,
+    qualificadosMeta: 20,
+    foraDaMeta: 0,
     metas: [40, 50, 60],
     metaAtual: 40,
     nivelAtual: "M1",

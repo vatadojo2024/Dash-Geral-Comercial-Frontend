@@ -89,7 +89,8 @@ export function ChartsPanel({ sdrs }: { sdrs: SdrMetrics[] }) {
     .map((s) => ({
       sdr: s.sdr,
       Meta: s.metaAtual ?? 0,
-      Qualificadas: s.qualificados,
+      // A barra compara com a meta: usa o número que conta para ela.
+      Qualificadas: s.qualificadosMeta,
       Gap: s.gap ?? 0,
     }));
 
@@ -142,7 +143,7 @@ export function ChartsPanel({ sdrs }: { sdrs: SdrMetrics[] }) {
       <Card className="lg:col-span-2">
         <CardHeader
           title="Atingimento de meta e gap"
-          subtitle="Meta atual vs. qualificadas, com o gap em área"
+          subtitle="Meta atual vs. qualificadas que contam para ela, com o gap em área"
         />
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>

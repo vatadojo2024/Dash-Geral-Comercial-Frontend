@@ -101,11 +101,12 @@ function CardComissaoSdr({
           </span>
         </div>
 
-        {/* As DUAS métricas de qualificadas: o patamar usa o nº COM bônus de
-            meta; a comissão de reuniões paga só as qualificadas BASE. */}
+        {/* As DUAS métricas de qualificadas: o patamar usa o nº que conta para a
+            meta individual (`qualificadosMeta`: desde 08/10 sem Ninja/QC, exceto
+            o Arthur); a comissão de reuniões paga só as qualificadas BASE. */}
         <p className="mt-1 text-xs text-texto-sec">
-          Patamar definido por {m.qualificados} qualificados p/ meta ({m.qualificadosBase}{" "}
-          base + {m.bonusQC} bônus QC)
+          Patamar definido por {m.qualificadosMeta} qualificados p/ meta
+          {m.foraDaMeta > 0 ? ` (${m.foraDaMeta} Ninja/QC não contam desde 08/10)` : ""}
           {m.gap !== null && m.gap > 0 && m.metaAtual !== null
             ? ` · faltam ${m.gap} p/ ${m.metaAtual}`
             : ""}
@@ -179,7 +180,7 @@ export function ComissoesPanel({
     const qtdVendas = vendas.reduce((a, v) => a + (v.quantidade ?? 1), 0);
     const resultado = calcularComissaoSdr({
       reunioesQualificadas: m.qualificadosBase,
-      qualificadosParaMeta: m.qualificados,
+      qualificadosParaMeta: m.qualificadosMeta,
       callsQC: m.produtos.qc,
       volumeVendas,
       metas: m.metas,

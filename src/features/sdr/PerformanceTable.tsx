@@ -22,6 +22,7 @@ const COLUNAS = [
   "Private",
   "Bônus QC",
   "Qualificados",
+  "P/ Meta",
   "Gap p/ Meta",
   "No-Show",
 ];
@@ -40,7 +41,7 @@ export function PerformanceTable({
         subtitle="Todas as métricas do mês, lado a lado"
       />
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] text-sm">
+        <table className="w-full min-w-[920px] text-sm">
           <thead>
             <tr className="border-b border-borda/60">
               {COLUNAS.map((c) => (
@@ -84,6 +85,16 @@ export function PerformanceTable({
                 <td className="px-3 py-2 tabular-nums text-texto-sec">{m.bonusQC}</td>
                 <td className="px-3 py-2 font-semibold tabular-nums text-texto">
                   {m.qualificados}
+                </td>
+                <td
+                  className="px-3 py-2 font-semibold tabular-nums text-texto"
+                  title={
+                    m.foraDaMeta > 0
+                      ? `${m.foraDaMeta} reuniões Ninja/QC não contam para a meta`
+                      : undefined
+                  }
+                >
+                  {m.metas ? m.qualificadosMeta : "—"}
                 </td>
                 <td
                   className={cn(

@@ -6,7 +6,7 @@ function conta(id: string, nome: string, email: string, role: Role): SessionUser
   return { id, nome, email, role, areas: [...AREAS_DO_PAPEL[role]] };
 }
 
-// As 9 contas reais do time (roadmap Parte 2) — usadas só no login mock.
+// As 10 contas reais do time (roadmap Parte 2) — usadas só no login mock.
 // Pós-aprovação: substituídas por Supabase Auth + GET /api/me.
 export const DEMO_ACCOUNTS: SessionUser[] = [
   conta("vata", "Vata", "contato@vatadojo.com.br", "admin"),
@@ -18,6 +18,7 @@ export const DEMO_ACCOUNTS: SessionUser[] = [
   conta("benhur", "Benhur", "benhur@vatadojo.com.br", "sdr"),
   conta("guilherme", "Guilherme", "guilherme@vatadojo.com.br", "sdr"),
   conta("glaucio", "Glaucio", "glaucio@vatadojo.com.br", "sdr"),
+  conta("arthur", "Arthur", "arthur.vatadojo@gmail.com", "sdr"),
 ];
 
 // Contas SÓ de teste do login mock para os papéis sem ninguém do time ainda.

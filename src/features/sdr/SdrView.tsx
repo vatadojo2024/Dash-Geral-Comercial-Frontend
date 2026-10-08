@@ -117,6 +117,17 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
             </span>
           </Metrica>
           <Metrica rotulo="Bônus QC (+1 a cada 3)">{m.bonusQC}</Metrica>
+          {m.metas && (
+            <Metrica rotulo="Contam p/ meta">
+              {m.qualificadosMeta}
+              {m.foraDaMeta > 0 && (
+                <span className="text-xs text-texto-sec">
+                  {" "}
+                  ({m.foraDaMeta} Ninja/QC fora)
+                </span>
+              )}
+            </Metrica>
+          )}
           <Metrica rotulo="Produtos">{linhaProdutos}</Metrica>
           {m.gap !== null && (
             <Metrica rotulo="Gap p/ meta">
@@ -304,7 +315,8 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
         <>
           <p className="text-xs text-texto-sec" role="status">
             {periodoDoMes(mes)} · contabilização pelo mês da data da call, não pela data
-            de agendamento · meta escalonada individual 40/50/60
+            de agendamento · meta escalonada individual 40/50/60 (Arthur 30/40/50) ·
+            desde 08/10, reuniões Ninja e QC só contam para a meta do Arthur
           </p>
 
           {/* 6.3 — os 9 KPIs agregados do original */}
