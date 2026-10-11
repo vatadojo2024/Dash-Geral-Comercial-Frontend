@@ -312,7 +312,8 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
           <p className="text-xs text-texto-sec" role="status">
             {periodoDoMes(mes)} · contabilização pelo mês da data da call, não pela data
             de agendamento · meta escalonada individual 40/50/60 (Arthur 30/40/50) ·
-            reuniões Ninja e QC não contam para a meta (cada 3 QC valem +1)
+            desde out/2026, Ninja e QC contam 1 cada só para o Arthur; para os demais, Ninja
+            não conta e cada 3 QC valem +1
           </p>
 
           {/* 6.3 — os 9 KPIs agregados do original */}

@@ -102,7 +102,7 @@ function CardComissaoSdr({
         </div>
 
         {/* As DUAS métricas de qualificadas: o patamar usa o nº que conta para a
-            meta individual (`qualificadosMeta`: sem Ninja/QC, cada 3 QC valem +1);
+            meta individual (`qualificadosMeta`; regra Ninja/QC em sdrDashboard.ts);
             a comissão de reuniões paga só as qualificadas BASE. */}
         <p className="mt-1 text-xs text-texto-sec">
           Patamar definido por {m.qualificadosMeta} qualificados p/ meta

@@ -9,14 +9,17 @@ import { SemPermissaoError } from "@/lib/auth/semPermissao";
 // bônus QC (5.3), metas escalonadas 40/50/60 (5.4), mês padrão (5.13) e
 // no-show % (5.7). As regras da aba Liderança vivem em src/lib/sdr/lideranca.ts.
 //
-// REGRA DA META INDIVIDUAL (confirmada pelo Vata em 11/10/2026): reuniões de
-// produto Ninja e QC NÃO contam para a meta — de NENHUM SDR, sem exceção e sem
-// data de corte. Cada 3 QC ainda valem +1 (o "Bônus QC"):
-//   contam_para_meta = (reuniões de todos os produtos − Ninja − QC) + ⌊QC/3⌋
-// Produto por RÓTULO EXATO ("Ninja", "QC" ou "Quebrando Código"); produto
-// desconhecido CONTA. O
-// número de "qualificados" (bônus QC incluso) segue igual: é ele que alimenta a
-// meta da EQUIPE e a comissão por reunião.
+// REGRA DA META INDIVIDUAL (decisões do Vata, 11/10/2026), a partir de
+// INICIO_REGRA_NINJA_QC (calls de 01/10/2026 em diante):
+//   - Ninja e QC são do Arthur. Para ele, TODA reunião vale 1 para a meta —
+//     Ninja e QC inclusive (sem o "3 QC = 1").
+//   - Para os demais SDRs, Ninja não conta para a meta e QC não conta direto:
+//     contam_para_meta = (reuniões de todos os produtos − Ninja − QC) + ⌊QC/3⌋
+//   - Ninja e QC reconhecidos por qualquer nome que os contenha ("Ninja Anual",
+//     "Quebrando Código"); produto realmente novo CONTA.
+// Meses anteriores ao corte NÃO mudam: seguem a regra antiga (Ninja vale 1, QC
+// vale 1 a cada 3). O número de "qualificados" (bônus QC incluso) segue igual
+// em qualquer mês: é ele que alimenta a meta da EQUIPE e a comissão por reunião.
 // ---------------------------------------------------------------------------
 
 const LinhaSdrSchema = z.object({
@@ -130,21 +133,17 @@ export const METAS_POR_SDR: Partial<Record<SdrCanonico, number[]>> = {
   Arthur: [30, 40, 50],
 };
 
-// Rótulos (comparação EXATA, sem acento/caixa) que NÃO contam para a meta
-// individual. O QC aparece também pelo nome completo ("Quebrando Código", como
-// no mock e em meses antigos) — é o mesmo produto, não um produto novo.
-// Qualquer outro rótulo — inclusive um produto novo — CONTA.
-const ROTULOS_NINJA = new Set(["ninja"]);
-const ROTULOS_QC = new Set(["qc", "quebrando codigo", "quebrando o codigo"]);
+/** SDRs que atendem Ninja e QC: para eles toda reunião vale 1 para a meta. */
+export const SDRS_NINJA_QC: readonly SdrCanonico[] = ["Arthur"];
 
-function rotuloExato(produto: string): string {
-  return produto
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/\s+/g, " ");
-}
+/**
+ * Data da call (inclusive) a partir da qual vale a regra Ninja/QC da meta.
+ * Antes dela, todos seguem a regra antiga — meses fechados não mudam.
+ */
+export const INICIO_REGRA_NINJA_QC = "2026-10-01";
+
+// Regra que valeu para a conta da meta do mês (o card explica qual).
+export type RegraDaMeta = "padrao" | "ninja_qc" | "anterior";
 
 export function metasDoSdr(sdr: SdrCanonico): number[] | null {
   if (sdr === "Hana") return null;
@@ -164,12 +163,12 @@ export type SdrMetrics = {
   bonusQC: number;
   /** Qualificados do mês (Ninja+ e bônus QC). Alimenta a meta da EQUIPE. */
   qualificados: number;
-  /** O número que bate na meta INDIVIDUAL: (tudo − Ninja − QC) + ⌊QC/3⌋. */
+  /** O número que bate na meta INDIVIDUAL (ver REGRA DA META no topo). */
   qualificadosMeta: number;
-  /** Reuniões Ninja + QC do mês, que não contam direto para a meta. */
+  /** Reuniões Ninja + QC do mês que não contam direto para a meta. */
   foraDaMeta: number;
   /** O detalhe da conta da meta, para a tela mostrar: Ninja fora, QC fora, bônus. */
-  metaDetalhe: { ninja: number; qc: number; bonusQC: number };
+  metaDetalhe: { ninja: number; qc: number; bonusQC: number; regra: RegraDaMeta };
   /** null = sem meta (Hana) */
   metas: number[] | null;
   metaAtual: number | null;
@@ -251,21 +250,28 @@ export function agregarDashboard(
     private: 0,
   });
   const produtosPorSdr = new Map<SdrCanonico, Record<ProdutoChave, number>>();
-  // Conta da meta, por rótulo exato: o que conta direto, Ninja e QC à parte.
-  const metaPorSdr = new Map<SdrCanonico, { contam: number; ninja: number; qc: number }>();
+  // Conta da meta: o que conta direto (1 cada), o "pote" de QC que vale 1 a
+  // cada 3, e o que ficou fora (Ninja/QC) — só para a tela explicar.
+  type ContaMeta = { contam: number; poteQC: number; ninjaFora: number; qcFora: number; regra: RegraDaMeta };
+  const metaPorSdr = new Map<SdrCanonico, ContaMeta>();
   for (const linha of payload.por_produto) {
     if (!linha.data_referencia.startsWith(mes)) continue;
     const sdr = normalizarSdr(linha.sdr);
     if (!sdr) continue;
 
-    const meta = metaPorSdr.get(sdr) ?? { contam: 0, ninja: 0, qc: 0 };
-    const rotulo = rotuloExato(linha.produto);
-    if (ROTULOS_NINJA.has(rotulo)) meta.ninja += linha.total;
-    else if (ROTULOS_QC.has(rotulo)) meta.qc += linha.total;
+    const chave = produtoChave(linha.produto);
+    const regraNova = linha.data_referencia.slice(0, 10) >= INICIO_REGRA_NINJA_QC;
+    const regra: RegraDaMeta = !regraNova ? "anterior" : SDRS_NINJA_QC.includes(sdr) ? "ninja_qc" : "padrao";
+    const meta = metaPorSdr.get(sdr) ?? { contam: 0, poteQC: 0, ninjaFora: 0, qcFora: 0, regra };
+    meta.regra = regra;
+    if (regra === "ninja_qc") meta.contam += linha.total; // Arthur: tudo vale 1
+    else if (chave === "qc") {
+      meta.poteQC += linha.total; // QC: 1 a cada 3, nas duas regras
+      if (regra === "padrao") meta.qcFora += linha.total;
+    } else if (chave === "ninja" && regra === "padrao") meta.ninjaFora += linha.total;
     else meta.contam += linha.total; // inclusive produto desconhecido
     metaPorSdr.set(sdr, meta);
 
-    const chave = produtoChave(linha.produto);
     if (!chave) continue;
     const atual = produtosPorSdr.get(sdr) ?? zerado();
     atual[chave] += linha.total;
@@ -277,7 +283,15 @@ export function agregarDashboard(
     const re = realizadas.get(sdr) ?? 0;
     const ns = noShows.get(sdr) ?? 0;
     const produtos = produtosPorSdr.get(sdr) ?? zerado();
-    const conta = metaPorSdr.get(sdr) ?? { contam: 0, ninja: 0, qc: 0 };
+    const conta = metaPorSdr.get(sdr) ?? {
+      contam: 0,
+      poteQC: 0,
+      ninjaFora: 0,
+      qcFora: 0,
+      regra: (mes >= INICIO_REGRA_NINJA_QC.slice(0, 7)
+        ? SDRS_NINJA_QC.includes(sdr) ? "ninja_qc" : "padrao"
+        : "anterior") as RegraDaMeta,
+    };
 
     // 5.3 — qualificados = Ninja+ + bônus de 1 a cada 3 QC
     const qualificadosBase =
@@ -285,10 +299,10 @@ export function agregarDashboard(
     const bonusQC = Math.floor(produtos.qc / 3);
     const qualificados = qualificadosBase + bonusQC;
 
-    // Meta individual (todos os SDRs): Ninja e QC fora; cada 3 QC valem +1.
-    const bonusQCMeta = Math.floor(conta.qc / 3);
+    // Meta individual: ver REGRA DA META no topo do arquivo.
+    const bonusQCMeta = Math.floor(conta.poteQC / 3);
     const qualificadosMeta = conta.contam + bonusQCMeta;
-    const foraDaMeta = conta.ninja + conta.qc;
+    const foraDaMeta = conta.ninjaFora + conta.qcFora;
 
     // 5.4 — Hana é linha informativa, sem meta
     const metas = metasDoSdr(sdr);
@@ -314,7 +328,7 @@ export function agregarDashboard(
       qualificados,
       qualificadosMeta,
       foraDaMeta,
-      metaDetalhe: { ninja: conta.ninja, qc: conta.qc, bonusQC: bonusQCMeta },
+      metaDetalhe: { ninja: conta.ninjaFora, qc: conta.qcFora, bonusQC: bonusQCMeta, regra: conta.regra },
       metas,
       metaAtual,
       nivelAtual,
@@ -370,9 +384,12 @@ export async function fetchSdrPayload(): Promise<SdrDashboardPayload> {
 }
 
 // Texto da conta da meta no card: "8 · 3 Ninja fora", "8 · 3 Ninja, 2 QC fora ·
-// +0 bônus", "10 · nada fora". O bônus só aparece quando há QC.
+// +0 bônus", "10 · nada fora". O bônus só aparece quando há QC. Arthur: "Ninja e
+// QC valem 1". Mês anterior a out/2026: "regra antiga".
 export function notaDaMeta(m: Pick<SdrMetrics, "metaDetalhe">): string {
-  const { ninja, qc, bonusQC } = m.metaDetalhe;
+  const { ninja, qc, bonusQC, regra } = m.metaDetalhe;
+  if (regra === "ninja_qc") return "Ninja e QC valem 1 cada";
+  if (regra === "anterior") return "regra antiga (antes de out/2026)";
   const partes = [ninja > 0 ? `${ninja} Ninja` : null, qc > 0 ? `${qc} QC` : null].filter(Boolean);
   if (partes.length === 0) return "nada fora";
   return `${partes.join(", ")} fora${qc > 0 ? ` · +${bonusQC} bônus` : ""}`;
