@@ -9,11 +9,14 @@ import { SemPermissaoError } from "@/lib/auth/semPermissao";
 // bônus QC (5.3), metas escalonadas 40/50/60 (5.4), mês padrão (5.13) e
 // no-show % (5.7). As regras da aba Liderança vivem em src/lib/sdr/lideranca.ts.
 //
-// REGRA DE META A PARTIR DE 08/10/2026 (decisão do Vata): reuniões de leads
-// Ninja e QC NÃO contam mais para a meta individual dos SDRs. Esses leads
-// passaram para o Arthur, que tem meta própria (30/40/50) e conta TODAS as
-// reuniões dele, uma a uma. O número de "qualificados" (bônus QC incluso)
-// segue igual: é ele que alimenta a meta da EQUIPE e a comissão por reunião.
+// REGRA DA META INDIVIDUAL (confirmada pelo Vata em 11/10/2026): reuniões de
+// produto Ninja e QC NÃO contam para a meta — de NENHUM SDR, sem exceção e sem
+// data de corte. Cada 3 QC ainda valem +1 (o "Bônus QC"):
+//   contam_para_meta = (reuniões de todos os produtos − Ninja − QC) + ⌊QC/3⌋
+// Produto por RÓTULO EXATO ("Ninja", "QC" ou "Quebrando Código"); produto
+// desconhecido CONTA. O
+// número de "qualificados" (bônus QC incluso) segue igual: é ele que alimenta a
+// meta da EQUIPE e a comissão por reunião.
 // ---------------------------------------------------------------------------
 
 const LinhaSdrSchema = z.object({
@@ -127,20 +130,21 @@ export const METAS_POR_SDR: Partial<Record<SdrCanonico, number[]>> = {
   Arthur: [30, 40, 50],
 };
 
-/**
- * SDRs que atendem os leads Ninja e QC. Para eles, toda reunião conta 1 para a
- * meta, qualquer que seja o produto (sem o "+1 a cada 3 QC").
- */
-export const SDRS_NINJA_QC: readonly SdrCanonico[] = ["Arthur"];
+// Rótulos (comparação EXATA, sem acento/caixa) que NÃO contam para a meta
+// individual. O QC aparece também pelo nome completo ("Quebrando Código", como
+// no mock e em meses antigos) — é o mesmo produto, não um produto novo.
+// Qualquer outro rótulo — inclusive um produto novo — CONTA.
+const ROTULOS_NINJA = new Set(["ninja"]);
+const ROTULOS_QC = new Set(["qc", "quebrando codigo", "quebrando o codigo"]);
 
-/**
- * A partir desta data da call (inclusive), reuniões Ninja e QC deixam de contar
- * para a meta dos demais SDRs. As anteriores seguem contando pela regra antiga.
- */
-export const INICIO_META_SEM_NINJA_QC = "2026-10-08";
-
-/** Produtos que saem da meta dos SDRs regulares a partir do corte. */
-const PRODUTOS_FORA_DA_META: readonly ProdutoChave[] = ["ninja", "qc"];
+function rotuloExato(produto: string): string {
+  return produto
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ");
+}
 
 export function metasDoSdr(sdr: SdrCanonico): number[] | null {
   if (sdr === "Hana") return null;
@@ -160,10 +164,12 @@ export type SdrMetrics = {
   bonusQC: number;
   /** Qualificados do mês (Ninja+ e bônus QC). Alimenta a meta da EQUIPE. */
   qualificados: number;
-  /** O número que bate na meta INDIVIDUAL (regra de 08/10 aplicada). */
+  /** O número que bate na meta INDIVIDUAL: (tudo − Ninja − QC) + ⌊QC/3⌋. */
   qualificadosMeta: number;
-  /** Reuniões Ninja/QC do mês que deixaram de contar para a meta individual. */
+  /** Reuniões Ninja + QC do mês, que não contam direto para a meta. */
   foraDaMeta: number;
+  /** O detalhe da conta da meta, para a tela mostrar: Ninja fora, QC fora, bônus. */
+  metaDetalhe: { ninja: number; qc: number; bonusQC: number };
   /** null = sem meta (Hana) */
   metas: number[] | null;
   metaAtual: number | null;
@@ -245,25 +251,25 @@ export function agregarDashboard(
     private: 0,
   });
   const produtosPorSdr = new Map<SdrCanonico, Record<ProdutoChave, number>>();
-  // Mesma contagem, só com o que vale para a meta individual.
-  const produtosMetaPorSdr = new Map<SdrCanonico, Record<ProdutoChave, number>>();
+  // Conta da meta, por rótulo exato: o que conta direto, Ninja e QC à parte.
+  const metaPorSdr = new Map<SdrCanonico, { contam: number; ninja: number; qc: number }>();
   for (const linha of payload.por_produto) {
     if (!linha.data_referencia.startsWith(mes)) continue;
     const sdr = normalizarSdr(linha.sdr);
+    if (!sdr) continue;
+
+    const meta = metaPorSdr.get(sdr) ?? { contam: 0, ninja: 0, qc: 0 };
+    const rotulo = rotuloExato(linha.produto);
+    if (ROTULOS_NINJA.has(rotulo)) meta.ninja += linha.total;
+    else if (ROTULOS_QC.has(rotulo)) meta.qc += linha.total;
+    else meta.contam += linha.total; // inclusive produto desconhecido
+    metaPorSdr.set(sdr, meta);
+
     const chave = produtoChave(linha.produto);
-    if (!sdr || !chave) continue;
+    if (!chave) continue;
     const atual = produtosPorSdr.get(sdr) ?? zerado();
     atual[chave] += linha.total;
     produtosPorSdr.set(sdr, atual);
-
-    const saiDaMeta =
-      !SDRS_NINJA_QC.includes(sdr) &&
-      PRODUTOS_FORA_DA_META.includes(chave) &&
-      linha.data_referencia.slice(0, 10) >= INICIO_META_SEM_NINJA_QC;
-    if (saiDaMeta) continue;
-    const meta = produtosMetaPorSdr.get(sdr) ?? zerado();
-    meta[chave] += linha.total;
-    produtosMetaPorSdr.set(sdr, meta);
   }
 
   const sdrs: SdrMetrics[] = SDRS_DASHBOARD.map((sdr) => {
@@ -271,7 +277,7 @@ export function agregarDashboard(
     const re = realizadas.get(sdr) ?? 0;
     const ns = noShows.get(sdr) ?? 0;
     const produtos = produtosPorSdr.get(sdr) ?? zerado();
-    const pm = produtosMetaPorSdr.get(sdr) ?? zerado();
+    const conta = metaPorSdr.get(sdr) ?? { contam: 0, ninja: 0, qc: 0 };
 
     // 5.3 — qualificados = Ninja+ + bônus de 1 a cada 3 QC
     const qualificadosBase =
@@ -279,12 +285,10 @@ export function agregarDashboard(
     const bonusQC = Math.floor(produtos.qc / 3);
     const qualificados = qualificadosBase + bonusQC;
 
-    // Meta individual: quem atende Ninja/QC conta toda reunião 1 a 1; os demais
-    // seguem a fórmula antiga só com o que sobrou depois do corte de 08/10.
-    const qualificadosMeta = SDRS_NINJA_QC.includes(sdr)
-      ? pm.qc + pm.ninja + pm.black + pm.prime + pm.private
-      : pm.ninja + pm.black + pm.prime + pm.private + Math.floor(pm.qc / 3);
-    const foraDaMeta = produtos.ninja - pm.ninja + (produtos.qc - pm.qc);
+    // Meta individual (todos os SDRs): Ninja e QC fora; cada 3 QC valem +1.
+    const bonusQCMeta = Math.floor(conta.qc / 3);
+    const qualificadosMeta = conta.contam + bonusQCMeta;
+    const foraDaMeta = conta.ninja + conta.qc;
 
     // 5.4 — Hana é linha informativa, sem meta
     const metas = metasDoSdr(sdr);
@@ -310,6 +314,7 @@ export function agregarDashboard(
       qualificados,
       qualificadosMeta,
       foraDaMeta,
+      metaDetalhe: { ninja: conta.ninja, qc: conta.qc, bonusQC: bonusQCMeta },
       metas,
       metaAtual,
       nivelAtual,
@@ -362,4 +367,13 @@ export async function fetchSdrPayload(): Promise<SdrDashboardPayload> {
     throw new Error(corpo?.error ?? `Dashboard SDR respondeu ${res.status}`);
   }
   return SdrDashboardPayloadSchema.parse(await res.json());
+}
+
+// Texto da conta da meta no card: "8 · 3 Ninja fora", "8 · 3 Ninja, 2 QC fora ·
+// +0 bônus", "10 · nada fora". O bônus só aparece quando há QC.
+export function notaDaMeta(m: Pick<SdrMetrics, "metaDetalhe">): string {
+  const { ninja, qc, bonusQC } = m.metaDetalhe;
+  const partes = [ninja > 0 ? `${ninja} Ninja` : null, qc > 0 ? `${qc} QC` : null].filter(Boolean);
+  if (partes.length === 0) return "nada fora";
+  return `${partes.join(", ")} fora${qc > 0 ? ` · +${bonusQC} bônus` : ""}`;
 }

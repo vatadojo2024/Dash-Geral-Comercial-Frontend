@@ -6,8 +6,8 @@
 //  - QC: R$ 20 a cada 3 calls QC (⌊qc/3⌋ × 20). NÃO confundir com o bônus de
 //    meta "+1 qualificado a cada 3 QC", que vale só para definir o PATAMAR.
 //  - Aceleradores RETROATIVOS pelo atingimento da meta individual (40/50/60;
-//    Arthur 30/40/50). Desde 08/10/2026 Ninja e QC não contam para a meta dos
-//    demais SDRs — a regra mora em agregarDashboard (sdrDashboard.ts):
+//    Arthur 30/40/50). Ninja e QC não contam para a meta de nenhum SDR (cada
+//    3 QC valem +1) — a regra mora em agregarDashboard (sdrDashboard.ts):
 //      abaixo da M1 → R$ 40/reunião + 0,7% por venda
 //      atingiu M1   → R$ 60/reunião + 1,2% por venda
 //      atingiu M2   → R$ 80/reunião + 1,8% por venda

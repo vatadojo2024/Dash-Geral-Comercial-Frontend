@@ -22,6 +22,7 @@ import {
   mesesDisponiveis,
   mesPadrao,
   normalizarSdr,
+  notaDaMeta,
   periodoDoMes,
   PRODUTO_ROTULO,
   rotuloMes,
@@ -113,19 +114,14 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
           <Metrica rotulo="Leads qualificados">
             {m.qualificados}{" "}
             <span className="text-xs text-texto-sec">
-              ({m.qualificadosBase}+{m.bonusQC} bônus)
+              ({m.qualificadosBase}+{m.bonusQC} bônus{m.metas && m.foraDaMeta > 0 ? " · total, sem o desconto da meta" : ""})
             </span>
           </Metrica>
           <Metrica rotulo="Bônus QC (+1 a cada 3)">{m.bonusQC}</Metrica>
           {m.metas && (
             <Metrica rotulo="Contam p/ meta">
               {m.qualificadosMeta}
-              {m.foraDaMeta > 0 && (
-                <span className="text-xs text-texto-sec">
-                  {" "}
-                  ({m.foraDaMeta} Ninja/QC fora)
-                </span>
-              )}
+              <span className="text-xs text-texto-sec"> · {notaDaMeta(m)}</span>
             </Metrica>
           )}
           <Metrica rotulo="Produtos">{linhaProdutos}</Metrica>
@@ -316,7 +312,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
           <p className="text-xs text-texto-sec" role="status">
             {periodoDoMes(mes)} · contabilização pelo mês da data da call, não pela data
             de agendamento · meta escalonada individual 40/50/60 (Arthur 30/40/50) ·
-            desde 08/10, reuniões Ninja e QC só contam para a meta do Arthur
+            reuniões Ninja e QC não contam para a meta (cada 3 QC valem +1)
           </p>
 
           {/* 6.3 — os 9 KPIs agregados do original */}
