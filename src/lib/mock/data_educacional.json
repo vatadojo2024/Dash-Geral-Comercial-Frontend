@@ -1,0 +1,1750 @@
+{
+  "resumo": {
+    "atualizado_em": "2026-10-14T09:00:00-03:00",
+    "kpis": {
+      "health_score_medio": 62,
+      "alunos_ativos": 14,
+      "intervencoes_sla": 7,
+      "em_risco": 4
+    },
+    "funil": [
+      {
+        "etapa": "fundamentos_iniciais",
+        "alunos": 3
+      },
+      {
+        "etapa": "tres_pilares",
+        "alunos": 3
+      },
+      {
+        "etapa": "oferta_e_demanda",
+        "alunos": 3
+      },
+      {
+        "etapa": "construcao_operacional",
+        "alunos": 3
+      },
+      {
+        "etapa": "validacao",
+        "alunos": 2
+      }
+    ],
+    "sinais": {
+      "upgrade": 3,
+      "renovacao": 2,
+      "prova_social": 3
+    }
+  },
+  "alunos": [
+    {
+      "id": "ebdbbbf5-884b-52c4-825e-22dc50bf4a78",
+      "nome": "Ana Paula Ribeiro",
+      "nivel_inicial": "intermediario",
+      "etapa_atual": "validacao",
+      "proximo_checkpoint": {
+        "nome": "Mês 5",
+        "status": "realizado",
+        "data_prevista": "2026-10-08"
+      },
+      "dias_estagnados": 12,
+      "health_score": 86,
+      "risco": "saudavel",
+      "proxima_acao": {
+        "descricao": "Apresentar o case no encontro da turma",
+        "prazo": "2026-10-16"
+      },
+      "responsavel": {
+        "tipo": "mentor",
+        "nome": "Carla Mendes"
+      },
+      "sinais": [
+        "upgrade",
+        "prova_social"
+      ],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-05-11",
+      "data_termino": "2026-11-07",
+      "objetivo": "Estruturar a operação e dobrar o faturamento em 6 meses.",
+      "status_geral": "Em andamento",
+      "etapa_desde": "2026-10-02",
+      "status_financeiro": "adimplente",
+      "ltv": 18000,
+      "checkpoints": [
+        {
+          "id": "c67515c6-a0c9-5654-9fe2-90c958206e37",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-05-11",
+          "data_realizada": "2026-05-12",
+          "status": "realizado"
+        },
+        {
+          "id": "314c2c55-53e3-50ee-8415-2f78f6b7fdea",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-05-18",
+          "data_realizada": "2026-05-19",
+          "status": "realizado"
+        },
+        {
+          "id": "7f31ce1b-ca0c-5f9e-a5b2-a0dcc2f9785f",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-06-10",
+          "data_realizada": "2026-06-11",
+          "status": "realizado"
+        },
+        {
+          "id": "f6ffad8d-efe2-58d3-ab1e-56cc31518b9f",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-07-10",
+          "data_realizada": "2026-07-11",
+          "status": "realizado"
+        },
+        {
+          "id": "076ecc02-a6af-5083-839a-320c60d20407",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-08-09",
+          "data_realizada": "2026-08-10",
+          "status": "realizado"
+        },
+        {
+          "id": "4472982a-eaeb-5785-9e52-8631d716862c",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-09-08",
+          "data_realizada": "2026-09-09",
+          "status": "realizado"
+        },
+        {
+          "id": "0e196367-cc68-520f-9363-6206172f22ad",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-10-08",
+          "data_realizada": "2026-10-09",
+          "status": "realizado"
+        },
+        {
+          "id": "5fd65a75-b6b6-5e65-a55c-c7201b66c3ed",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2026-11-07",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "validou",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Aplicou o método no próprio negócio e trouxe números da primeira semana."
+          },
+          {
+            "data_aula": "2026-10-03",
+            "texto": "Dúvida recorrente sobre precificação; vale revisar a aula de oferta."
+          },
+          {
+            "data_aula": "2026-09-26",
+            "texto": "Mostrou clareza nos três pilares e já definiu a meta do trimestre."
+          }
+        ]
+      },
+      "diagnostico": "Aluno engajado, aplicando o método com consistência.",
+      "intervencoes": [
+        {
+          "id": "4917b32a-016b-5652-bb32-b7419ba6cf92",
+          "tipo": "contato",
+          "descricao": "Ligação para entender a ausência no último checkpoint.",
+          "responsavel": {
+            "tipo": "mentor",
+            "nome": "Carla Mendes"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:00:00-03:00"
+        },
+        {
+          "id": "a6cfc5c4-b2f6-5190-82b8-faa15e1637da",
+          "tipo": "reuniao",
+          "descricao": "Reunião de alinhamento do plano da etapa.",
+          "responsavel": {
+            "tipo": "mentor",
+            "nome": "Carla Mendes"
+          },
+          "prazo": "2026-10-11",
+          "criada_em": "2026-10-06T10:01:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "beb1def1-f178-5cc6-84ce-d76e83b8eee9",
+      "nome": "Bruno Teixeira",
+      "nivel_inicial": "avancado",
+      "etapa_atual": "validacao",
+      "proximo_checkpoint": {
+        "nome": "Mês 5",
+        "status": "pendente",
+        "data_prevista": "2026-10-07"
+      },
+      "dias_estagnados": 20,
+      "health_score": 72,
+      "risco": "atencao",
+      "proxima_acao": {
+        "descricao": "Regularizar a parcela de outubro",
+        "prazo": "2026-10-17"
+      },
+      "responsavel": {
+        "tipo": "suporte",
+        "nome": "Diego Alves"
+      },
+      "sinais": [
+        "prova_social"
+      ],
+      "mentoria": "Mentoria Black",
+      "data_entrada": "2026-05-10",
+      "data_termino": "2026-11-06",
+      "objetivo": "Sair do zero e fechar os primeiros clientes.",
+      "status_geral": "Atenção do time",
+      "etapa_desde": "2026-09-24",
+      "status_financeiro": "inadimplente",
+      "ltv": 24000,
+      "checkpoints": [
+        {
+          "id": "91351fa3-5ac5-54bd-9fe5-fe394e87b10d",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-05-10",
+          "data_realizada": "2026-05-11",
+          "status": "realizado"
+        },
+        {
+          "id": "6e229be7-c3ea-5276-9e4d-a798c358fe4e",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-05-17",
+          "data_realizada": "2026-05-18",
+          "status": "realizado"
+        },
+        {
+          "id": "1e404636-1c9e-54c5-a62e-2b4243ed5793",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-06-09",
+          "data_realizada": "2026-06-10",
+          "status": "realizado"
+        },
+        {
+          "id": "9de18fb1-82d5-50e0-827c-492b0eb6a2bd",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-07-09",
+          "data_realizada": "2026-07-10",
+          "status": "realizado"
+        },
+        {
+          "id": "38fc2f91-7842-578b-af90-72c72fecbde4",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-08-08",
+          "data_realizada": "2026-08-09",
+          "status": "realizado"
+        },
+        {
+          "id": "be88bde3-d267-5932-a0f0-734d40b4dbe6",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-09-07",
+          "data_realizada": "2026-09-08",
+          "status": "realizado"
+        },
+        {
+          "id": "ff9d7674-c5b3-5041-aeef-3a38f6622863",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-10-07",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "bd6a6e59-8c6a-5331-a452-b54e82784b9e",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2026-11-06",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "aplicou",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Dúvida recorrente sobre precificação; vale revisar a aula de oferta."
+          },
+          {
+            "data_aula": "2026-10-03",
+            "texto": "Mostrou clareza nos três pilares e já definiu a meta do trimestre."
+          }
+        ]
+      },
+      "diagnostico": "Evolução dentro do esperado, com pontos de atenção na rotina.",
+      "intervencoes": [
+        {
+          "id": "f6d79f83-da72-5062-8e29-2dfc9c1bd2ad",
+          "tipo": "reuniao",
+          "descricao": "Reunião de alinhamento do plano da etapa.",
+          "responsavel": {
+            "tipo": "suporte",
+            "nome": "Diego Alves"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:07:00-03:00"
+        },
+        {
+          "id": "be4484d2-636f-509f-a3af-393ff8a342c5",
+          "tipo": "ajuste_plano",
+          "descricao": "Plano ajustado para a rotina atual do aluno.",
+          "responsavel": {
+            "tipo": "suporte",
+            "nome": "Diego Alves"
+          },
+          "prazo": "2026-10-11",
+          "criada_em": "2026-10-06T10:08:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "90e0c0a2-2395-5941-814f-f5ea4a00a928",
+      "nome": "Camila Rocha",
+      "nivel_inicial": "iniciante",
+      "etapa_atual": "construcao_operacional",
+      "proximo_checkpoint": {
+        "nome": "Mês 3 — Big Win",
+        "status": "nao_respondeu",
+        "data_prevista": "2026-09-30"
+      },
+      "dias_estagnados": 25,
+      "health_score": 38,
+      "risco": "risco",
+      "proxima_acao": {
+        "descricao": "Ligar e remarcar o checkpoint do Mês 3",
+        "prazo": "2026-10-18"
+      },
+      "responsavel": {
+        "tipo": "mentor",
+        "nome": "Carla Mendes"
+      },
+      "sinais": [],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-07-02",
+      "data_termino": "2026-12-29",
+      "objetivo": "Organizar a rotina e parar de depender de indicação.",
+      "status_geral": "Atenção do time",
+      "etapa_desde": "2026-09-19",
+      "status_financeiro": "adimplente",
+      "ltv": 12000,
+      "checkpoints": [
+        {
+          "id": "390bbb6b-1320-52f9-89ef-f336160167be",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-07-02",
+          "data_realizada": "2026-07-03",
+          "status": "realizado"
+        },
+        {
+          "id": "df530ade-fef7-5473-bbfc-2c2c8d1e8b05",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-07-09",
+          "data_realizada": "2026-07-10",
+          "status": "realizado"
+        },
+        {
+          "id": "9acb4993-3ff6-5dfb-98f5-b84f696283c8",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-08-01",
+          "data_realizada": "2026-08-02",
+          "status": "realizado"
+        },
+        {
+          "id": "c7e75145-71c1-58c9-9253-8c2355815d84",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-08-31",
+          "data_realizada": "2026-09-01",
+          "status": "realizado"
+        },
+        {
+          "id": "f35ba95d-1042-5590-8ae5-658732595222",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-09-30",
+          "data_realizada": null,
+          "status": "nao_respondeu"
+        },
+        {
+          "id": "07ac09d7-f15a-51ee-ba3d-54f4f919bd8d",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-10-30",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "cc174d01-17b7-5d93-93d1-20d5282174f3",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-11-29",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "d4d06a75-6741-5446-8502-62dfc28171f2",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2026-12-29",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "entendeu",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Mostrou clareza nos três pilares e já definiu a meta do trimestre."
+          }
+        ]
+      },
+      "diagnostico": "Engajamento caiu nas últimas semanas e não respondeu ao checkpoint.",
+      "intervencoes": [
+        {
+          "id": "50b476fc-53b2-5732-b28b-9100e4323792",
+          "tipo": "ajuste_plano",
+          "descricao": "Plano ajustado para a rotina atual do aluno.",
+          "responsavel": {
+            "tipo": "mentor",
+            "nome": "Carla Mendes"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:14:00-03:00"
+        },
+        {
+          "id": "d8730c0b-8330-529e-a6b9-121a8295a458",
+          "tipo": "outro",
+          "descricao": "Envio de material complementar.",
+          "responsavel": {
+            "tipo": "mentor",
+            "nome": "Carla Mendes"
+          },
+          "prazo": "2026-10-11",
+          "criada_em": "2026-10-06T10:15:00-03:00"
+        },
+        {
+          "id": "6f352481-6ea2-51b5-a4ac-c240f7de13d7",
+          "tipo": "contato",
+          "descricao": "Ligação para entender a ausência no último checkpoint.",
+          "responsavel": {
+            "tipo": "mentor",
+            "nome": "Carla Mendes"
+          },
+          "prazo": "2026-10-05",
+          "criada_em": "2026-09-30T10:16:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "30987c44-2741-5488-bb7b-57ffea372230",
+      "nome": "Daniel Pires",
+      "nivel_inicial": "intermediario",
+      "etapa_atual": "construcao_operacional",
+      "proximo_checkpoint": {
+        "nome": "Mês 3 — Big Win",
+        "status": "realizado",
+        "data_prevista": "2026-09-29"
+      },
+      "dias_estagnados": 9,
+      "health_score": 79,
+      "risco": "saudavel",
+      "proxima_acao": {
+        "descricao": "Revisar o plano de execução da etapa",
+        "prazo": "2026-10-19"
+      },
+      "responsavel": {
+        "tipo": "mentor",
+        "nome": "Rafael Souza"
+      },
+      "sinais": [
+        "renovacao"
+      ],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-07-01",
+      "data_termino": "2026-12-28",
+      "objetivo": null,
+      "status_geral": "Em andamento",
+      "etapa_desde": "2026-10-05",
+      "status_financeiro": "adimplente",
+      "ltv": 12000,
+      "checkpoints": [
+        {
+          "id": "576eb8c1-3a21-55ca-a01e-7bc63f4d4b1d",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-07-01",
+          "data_realizada": "2026-07-02",
+          "status": "realizado"
+        },
+        {
+          "id": "7833d7cc-bb43-58dd-8466-3ebb0e1ef483",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-07-08",
+          "data_realizada": "2026-07-09",
+          "status": "realizado"
+        },
+        {
+          "id": "9b0b9649-ae3b-5906-8d44-cc673dd7a1e2",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-07-31",
+          "data_realizada": "2026-08-01",
+          "status": "realizado"
+        },
+        {
+          "id": "1012e580-d501-5212-8e53-3e3ec5b19ee0",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-08-30",
+          "data_realizada": "2026-08-31",
+          "status": "realizado"
+        },
+        {
+          "id": "d2cecc0b-e3be-59ed-b7eb-40fced9ba6b7",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-09-29",
+          "data_realizada": "2026-09-30",
+          "status": "realizado"
+        },
+        {
+          "id": "ed70715c-9a63-5f93-ae01-9e14e049b0fd",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-10-29",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "833656c4-fbfb-5371-abe2-a1df983495e6",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-11-28",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "b7759f28-0a2a-5405-9489-22e68a59e4c3",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2026-12-28",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "aplicou",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Aplicou o método no próprio negócio e trouxe números da primeira semana."
+          },
+          {
+            "data_aula": "2026-10-03",
+            "texto": "Dúvida recorrente sobre precificação; vale revisar a aula de oferta."
+          }
+        ]
+      },
+      "diagnostico": "Aluno engajado, aplicando o método com consistência.",
+      "intervencoes": [
+        {
+          "id": "d49bcaff-d5e3-5f0d-a4ad-eb5b96f3d987",
+          "tipo": "outro",
+          "descricao": "Envio de material complementar.",
+          "responsavel": {
+            "tipo": "mentor",
+            "nome": "Rafael Souza"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:21:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "6181af5a-6de4-5252-adf5-bcb75aeaa62b",
+      "nome": "Eduarda Lima",
+      "nivel_inicial": "iniciante",
+      "etapa_atual": "construcao_operacional",
+      "proximo_checkpoint": {
+        "nome": "Mês 3 — Big Win",
+        "status": "em_pausa",
+        "data_prevista": "2026-10-02"
+      },
+      "dias_estagnados": 31,
+      "health_score": 55,
+      "risco": "atencao",
+      "proxima_acao": {
+        "descricao": "Confirmar a data de retorno da pausa",
+        "prazo": "2026-10-20"
+      },
+      "responsavel": {
+        "tipo": "suporte",
+        "nome": "Diego Alves"
+      },
+      "sinais": [],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-07-04",
+      "data_termino": "2026-12-31",
+      "objetivo": "Estruturar a operação e dobrar o faturamento em 6 meses.",
+      "status_geral": "Em pausa",
+      "etapa_desde": "2026-09-13",
+      "status_financeiro": "adimplente",
+      "ltv": 9000,
+      "checkpoints": [
+        {
+          "id": "dadad3fd-0cbf-55d7-abd8-638314d9f9b8",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-07-04",
+          "data_realizada": "2026-07-05",
+          "status": "realizado"
+        },
+        {
+          "id": "d8a8702c-89bc-5eff-b81b-b4ee73998baf",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-07-11",
+          "data_realizada": "2026-07-12",
+          "status": "realizado"
+        },
+        {
+          "id": "4c5ba90a-4809-512a-b662-413abbdc9fe2",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-08-03",
+          "data_realizada": "2026-08-04",
+          "status": "realizado"
+        },
+        {
+          "id": "5805277a-433a-5ad5-bc35-cf663419ddec",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-09-02",
+          "data_realizada": "2026-09-03",
+          "status": "realizado"
+        },
+        {
+          "id": "6a5751d7-71f8-5934-8a29-4f14635eea13",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-10-02",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "923b857d-5f82-57c6-acd2-2eeb3931f23f",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-11-01",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "f7f91fcd-e1f9-5cb0-ab15-f0e9d0bb5a3c",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-12-01",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "5b92b090-ecf9-5896-b3e2-f3a5ddc21336",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2026-12-31",
+          "data_realizada": null,
+          "status": "em_pausa"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "consumiu",
+        "highlights": []
+      },
+      "diagnostico": "Evolução dentro do esperado, com pontos de atenção na rotina.",
+      "intervencoes": [
+        {
+          "id": "45b3814a-2029-5b6c-963a-7ff48c5b9c46",
+          "tipo": "contato",
+          "descricao": "Ligação para entender a ausência no último checkpoint.",
+          "responsavel": {
+            "tipo": "suporte",
+            "nome": "Diego Alves"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:28:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "3461d517-82ea-52fd-b550-d975b014c644",
+      "nome": "Felipe Andrade",
+      "nivel_inicial": "avancado",
+      "etapa_atual": "oferta_e_demanda",
+      "proximo_checkpoint": {
+        "nome": "Mês 2",
+        "status": "pendente",
+        "data_prevista": "2026-09-25"
+      },
+      "dias_estagnados": 18,
+      "health_score": 61,
+      "risco": "atencao",
+      "proxima_acao": {
+        "descricao": "Agendar o checkpoint do Mês 2",
+        "prazo": "2026-10-21"
+      },
+      "responsavel": {
+        "tipo": "comercial",
+        "nome": "Juliana Prado"
+      },
+      "sinais": [
+        "upgrade"
+      ],
+      "mentoria": "Mentoria Black",
+      "data_entrada": "2026-07-27",
+      "data_termino": "2027-01-23",
+      "objetivo": "Sair do zero e fechar os primeiros clientes.",
+      "status_geral": "Atenção do time",
+      "etapa_desde": "2026-09-26",
+      "status_financeiro": "adimplente",
+      "ltv": 24000,
+      "checkpoints": [
+        {
+          "id": "a0b40950-4d5c-5916-8808-edd02d749c93",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-07-27",
+          "data_realizada": "2026-07-28",
+          "status": "realizado"
+        },
+        {
+          "id": "57e9c927-0de4-5d35-a267-6680efa7976f",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-08-03",
+          "data_realizada": "2026-08-04",
+          "status": "realizado"
+        },
+        {
+          "id": "743cb82d-5898-512f-b873-2fe2a1dcb23c",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-08-26",
+          "data_realizada": "2026-08-27",
+          "status": "realizado"
+        },
+        {
+          "id": "969d89df-9b7f-5e46-88fe-005c053b2327",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-09-25",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "57fab876-f67f-5530-9114-26f0894549cd",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-10-25",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "e2f71d6f-f9d9-510a-9c20-16f5b20a008f",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-11-24",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "dd6bd15b-ccac-575c-9ea3-190a7490214b",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-12-24",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "3ab24c32-ad6a-5b61-aa81-7f898d5ac1b4",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-01-23",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "entendeu",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Mostrou clareza nos três pilares e já definiu a meta do trimestre."
+          },
+          {
+            "data_aula": "2026-10-03",
+            "texto": "Aplicou o método no próprio negócio e trouxe números da primeira semana."
+          }
+        ]
+      },
+      "diagnostico": "Evolução dentro do esperado, com pontos de atenção na rotina.",
+      "intervencoes": [
+        {
+          "id": "c4b5d93c-a3d5-512f-9da3-ea35a54f0666",
+          "tipo": "reuniao",
+          "descricao": "Reunião de alinhamento do plano da etapa.",
+          "responsavel": {
+            "tipo": "comercial",
+            "nome": "Juliana Prado"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:35:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "725dca1d-028b-5c10-a9ba-862d2e4581cb",
+      "nome": "Gabriela Nunes",
+      "nivel_inicial": "intermediario",
+      "etapa_atual": "oferta_e_demanda",
+      "proximo_checkpoint": {
+        "nome": "Mês 2",
+        "status": "realizado",
+        "data_prevista": "2026-09-24"
+      },
+      "dias_estagnados": 6,
+      "health_score": 83,
+      "risco": "saudavel",
+      "proxima_acao": {
+        "descricao": "Gravar o depoimento combinado",
+        "prazo": "2026-10-16"
+      },
+      "responsavel": {
+        "tipo": "mentor",
+        "nome": "Rafael Souza"
+      },
+      "sinais": [
+        "renovacao",
+        "prova_social"
+      ],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-07-26",
+      "data_termino": "2027-01-22",
+      "objetivo": "Organizar a rotina e parar de depender de indicação.",
+      "status_geral": "Em andamento",
+      "etapa_desde": "2026-10-08",
+      "status_financeiro": "adimplente",
+      "ltv": 15000,
+      "checkpoints": [
+        {
+          "id": "d1ce095d-9116-51e6-ac54-2d30003f84c2",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-07-26",
+          "data_realizada": "2026-07-27",
+          "status": "realizado"
+        },
+        {
+          "id": "83b9af4c-9bf2-5057-87c8-6451d4aaccfe",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-08-02",
+          "data_realizada": "2026-08-03",
+          "status": "realizado"
+        },
+        {
+          "id": "3ce2305c-4454-5298-87cc-c8c31895d0dd",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-08-25",
+          "data_realizada": "2026-08-26",
+          "status": "realizado"
+        },
+        {
+          "id": "3c71964f-cb5a-5f0c-9dd0-32ee686d3a81",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-09-24",
+          "data_realizada": "2026-09-25",
+          "status": "realizado"
+        },
+        {
+          "id": "0e46d5e7-71f1-5ff3-a06d-9bdd4215d5e1",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-10-24",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "396d7d02-f716-5bdf-a7de-900929d184ab",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-11-23",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "650ab9dc-6571-55f3-a022-903e00a7d37a",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-12-23",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "fabfada0-297b-5c87-ae01-f673522fa27c",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-01-22",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "aplicou",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Aplicou o método no próprio negócio e trouxe números da primeira semana."
+          },
+          {
+            "data_aula": "2026-10-03",
+            "texto": "Dúvida recorrente sobre precificação; vale revisar a aula de oferta."
+          },
+          {
+            "data_aula": "2026-09-26",
+            "texto": "Mostrou clareza nos três pilares e já definiu a meta do trimestre."
+          }
+        ]
+      },
+      "diagnostico": "Aluno engajado, aplicando o método com consistência.",
+      "intervencoes": []
+    },
+    {
+      "id": "190eb686-a352-5732-a3a9-86bf16393a69",
+      "nome": "Henrique Castro",
+      "nivel_inicial": "iniciante",
+      "etapa_atual": "oferta_e_demanda",
+      "proximo_checkpoint": {
+        "nome": "Mês 2",
+        "status": "nao_respondeu",
+        "data_prevista": "2026-09-23"
+      },
+      "dias_estagnados": 40,
+      "health_score": 31,
+      "risco": "risco",
+      "proxima_acao": {
+        "descricao": "Contato do suporte sobre aulas e pagamento",
+        "prazo": "2026-10-17"
+      },
+      "responsavel": {
+        "tipo": "suporte",
+        "nome": "Diego Alves"
+      },
+      "sinais": [],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-07-25",
+      "data_termino": "2027-01-21",
+      "objetivo": null,
+      "status_geral": "Atenção do time",
+      "etapa_desde": "2026-09-04",
+      "status_financeiro": "inadimplente",
+      "ltv": 6000,
+      "checkpoints": [
+        {
+          "id": "57524410-5cdc-5a9e-9b01-cb99cc824b8b",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-07-25",
+          "data_realizada": "2026-07-26",
+          "status": "realizado"
+        },
+        {
+          "id": "6fa9c1ab-81e0-5d81-a544-33b99a0c93ea",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-08-01",
+          "data_realizada": "2026-08-02",
+          "status": "realizado"
+        },
+        {
+          "id": "774fab62-1266-5f07-9a45-2ebbd5dbfa37",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-08-24",
+          "data_realizada": "2026-08-25",
+          "status": "realizado"
+        },
+        {
+          "id": "fc8e91a7-1556-5bb8-ae66-7a1f34e04251",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-09-23",
+          "data_realizada": null,
+          "status": "nao_respondeu"
+        },
+        {
+          "id": "7c8590e8-098a-545a-9230-34c2a2470d5f",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-10-23",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "2c874015-0dcf-5949-b808-3717e9c42064",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-11-22",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "62bd0958-fb7c-57b1-ad90-5bf9dd0f126a",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2026-12-22",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "2ab3991e-845c-5ca7-a3b4-be9c39b633c7",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-01-21",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "consumiu",
+        "highlights": []
+      },
+      "diagnostico": "Engajamento caiu nas últimas semanas e não respondeu ao checkpoint.",
+      "intervencoes": [
+        {
+          "id": "b882e322-b68a-5629-9533-9b3de6824591",
+          "tipo": "outro",
+          "descricao": "Envio de material complementar.",
+          "responsavel": {
+            "tipo": "suporte",
+            "nome": "Diego Alves"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:49:00-03:00"
+        },
+        {
+          "id": "99f0d3a6-cfee-5744-ae8c-d20716165ebb",
+          "tipo": "contato",
+          "descricao": "Ligação para entender a ausência no último checkpoint.",
+          "responsavel": {
+            "tipo": "suporte",
+            "nome": "Diego Alves"
+          },
+          "prazo": "2026-10-11",
+          "criada_em": "2026-10-06T10:50:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "9fdb5e76-1302-5101-bc24-a71174ab0376",
+      "nome": "Isabela Moura",
+      "nivel_inicial": "iniciante",
+      "etapa_atual": "tres_pilares",
+      "proximo_checkpoint": {
+        "nome": "Mês 1",
+        "status": "pendente",
+        "data_prevista": "2026-09-26"
+      },
+      "dias_estagnados": 11,
+      "health_score": 74,
+      "risco": "saudavel",
+      "proxima_acao": {
+        "descricao": "Confirmar o checkpoint do Mês 1",
+        "prazo": "2026-10-18"
+      },
+      "responsavel": {
+        "tipo": "mentor",
+        "nome": "Carla Mendes"
+      },
+      "sinais": [],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-08-27",
+      "data_termino": "2027-02-23",
+      "objetivo": "Estruturar a operação e dobrar o faturamento em 6 meses.",
+      "status_geral": "Em andamento",
+      "etapa_desde": "2026-10-03",
+      "status_financeiro": "adimplente",
+      "ltv": 9000,
+      "checkpoints": [
+        {
+          "id": "1fb14b9f-9ef7-5639-b9c8-43c809845a7c",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-08-27",
+          "data_realizada": "2026-08-28",
+          "status": "realizado"
+        },
+        {
+          "id": "43a175a6-747b-5f93-b3ea-0c2e2835a3bd",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-09-03",
+          "data_realizada": "2026-09-04",
+          "status": "realizado"
+        },
+        {
+          "id": "b7ab7694-3138-5045-a322-4cf1ab27bc88",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-09-26",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "90295cce-4aa7-5bed-a72d-4d6ad121f2fe",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-10-26",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "6de7d8f2-1e58-5366-8b98-22b4ddd6a49c",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-11-25",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "31ec6b7e-b1d9-528a-ada8-5fbdcc76e94b",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-12-25",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "fec8fdf1-32e0-559a-a0d3-96da09985b80",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2027-01-24",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "3a664092-1e8e-564d-957a-6acb264dff91",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-02-23",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "entendeu",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Mostrou clareza nos três pilares e já definiu a meta do trimestre."
+          }
+        ]
+      },
+      "diagnostico": "Aluno engajado, aplicando o método com consistência.",
+      "intervencoes": []
+    },
+    {
+      "id": "e206a516-37ef-5092-8b9b-60b389045320",
+      "nome": "João Vitor Sales",
+      "nivel_inicial": "intermediario",
+      "etapa_atual": "tres_pilares",
+      "proximo_checkpoint": {
+        "nome": "Mês 1",
+        "status": "em_pausa",
+        "data_prevista": "2026-09-25"
+      },
+      "dias_estagnados": 35,
+      "health_score": 42,
+      "risco": "risco",
+      "proxima_acao": null,
+      "responsavel": null,
+      "sinais": [],
+      "mentoria": "Mentoria Black",
+      "data_entrada": "2026-08-26",
+      "data_termino": null,
+      "objetivo": "Sair do zero e fechar os primeiros clientes.",
+      "status_geral": "Em pausa",
+      "etapa_desde": "2026-09-09",
+      "status_financeiro": "inadimplente",
+      "ltv": 12000,
+      "checkpoints": [
+        {
+          "id": "8ac96926-ca18-58e2-ae34-2900ef949f30",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-08-26",
+          "data_realizada": "2026-08-27",
+          "status": "realizado"
+        },
+        {
+          "id": "08e1f676-9952-5cc6-a025-1cb1e203b96b",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-09-02",
+          "data_realizada": "2026-09-03",
+          "status": "realizado"
+        },
+        {
+          "id": "0e77365b-9d6d-5613-8e86-fb29bbf098ad",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-09-25",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "e4e7b50f-68b0-50db-a10c-22a6ae5d5e55",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-10-25",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "f1492aba-8655-5826-a285-d3456137e542",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-11-24",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "9618940c-f7ed-5f4e-bba1-044d9dc9c5b7",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-12-24",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "cdf8ffb7-341f-5b84-b300-9bca00113592",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2027-01-23",
+          "data_realizada": null,
+          "status": "em_pausa"
+        },
+        {
+          "id": "d64e7f59-cb83-559f-a6dc-2080ff1585aa",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-02-22",
+          "data_realizada": null,
+          "status": "em_pausa"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": null,
+        "highlights": []
+      },
+      "diagnostico": "Engajamento caiu nas últimas semanas e não respondeu ao checkpoint.",
+      "intervencoes": [
+        {
+          "id": "2740f4e4-8a89-5aa1-b48a-7dd2fe3cb0ec",
+          "tipo": "reuniao",
+          "descricao": "Reunião de alinhamento do plano da etapa.",
+          "responsavel": {
+            "tipo": "suporte",
+            "nome": "Diego Alves"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:03:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "28657db9-c160-5088-b36c-85ad02ca7420",
+      "nome": "Karina Freitas",
+      "nivel_inicial": "avancado",
+      "etapa_atual": "tres_pilares",
+      "proximo_checkpoint": {
+        "nome": "Mês 1",
+        "status": "realizado",
+        "data_prevista": "2026-09-24"
+      },
+      "dias_estagnados": 4,
+      "health_score": 90,
+      "risco": "saudavel",
+      "proxima_acao": {
+        "descricao": "Avançar para Oferta e Demanda",
+        "prazo": "2026-10-20"
+      },
+      "responsavel": {
+        "tipo": "mentor",
+        "nome": "Rafael Souza"
+      },
+      "sinais": [
+        "upgrade"
+      ],
+      "mentoria": "Mentoria Private",
+      "data_entrada": "2026-08-25",
+      "data_termino": "2027-02-21",
+      "objetivo": "Organizar a rotina e parar de depender de indicação.",
+      "status_geral": "Em andamento",
+      "etapa_desde": "2026-10-10",
+      "status_financeiro": "adimplente",
+      "ltv": 36000,
+      "checkpoints": [
+        {
+          "id": "90623824-af44-5645-88f4-f7127e144a5c",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-08-25",
+          "data_realizada": "2026-08-26",
+          "status": "realizado"
+        },
+        {
+          "id": "197f5645-eea5-59c6-899e-08d06dc47e62",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-09-01",
+          "data_realizada": "2026-09-02",
+          "status": "realizado"
+        },
+        {
+          "id": "471ad334-7136-5204-8d85-12854ab1ae35",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-09-24",
+          "data_realizada": "2026-09-25",
+          "status": "realizado"
+        },
+        {
+          "id": "4dd83814-d1ee-5ca0-82f1-0a83643ea3ad",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-10-24",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "52d6a018-2633-5a2f-ac6d-8bb1b5910459",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-11-23",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "bb2a466a-6664-5745-8fdb-8d7a380f72c5",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2026-12-23",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "6e3e26b2-c712-53b0-bc25-156e316d0466",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2027-01-22",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "61dc76e1-db7b-5404-9073-3ec128287c7e",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-02-21",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "validou",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Dúvida recorrente sobre precificação; vale revisar a aula de oferta."
+          },
+          {
+            "data_aula": "2026-10-03",
+            "texto": "Mostrou clareza nos três pilares e já definiu a meta do trimestre."
+          }
+        ]
+      },
+      "diagnostico": "Aluno engajado, aplicando o método com consistência.",
+      "intervencoes": []
+    },
+    {
+      "id": "7bf9b94e-9a33-5112-9924-0864e4c662a2",
+      "nome": "Lucas Martins",
+      "nivel_inicial": "iniciante",
+      "etapa_atual": "fundamentos_iniciais",
+      "proximo_checkpoint": {
+        "nome": "Semana 1",
+        "status": "pendente",
+        "data_prevista": "2026-09-24"
+      },
+      "dias_estagnados": 9,
+      "health_score": 58,
+      "risco": "atencao",
+      "proxima_acao": {
+        "descricao": "Enviar o roteiro das primeiras aulas",
+        "prazo": "2026-10-21"
+      },
+      "responsavel": {
+        "tipo": "suporte",
+        "nome": "Diego Alves"
+      },
+      "sinais": [],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-09-17",
+      "data_termino": "2027-03-16",
+      "objetivo": null,
+      "status_geral": "Atenção do time",
+      "etapa_desde": "2026-10-05",
+      "status_financeiro": "adimplente",
+      "ltv": 6000,
+      "checkpoints": [
+        {
+          "id": "09b32b14-6bc9-5672-9992-d2def8d5b430",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-09-17",
+          "data_realizada": "2026-09-18",
+          "status": "realizado"
+        },
+        {
+          "id": "9713cc9f-e0c3-5ce0-8faa-2b3fae6b2c42",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-09-24",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "0842e09f-3e52-59ed-b54c-262fd49266cb",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-10-17",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "efd8d081-ef26-5780-ac36-5f289e5a48b3",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-11-16",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "a4c3334b-81bc-5040-bfae-cb2f5f8fb226",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-12-16",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "a5c9b6ad-cae9-5784-8f7c-b0b41209f7d3",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2027-01-15",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "d45006a5-df61-549c-8885-09c349ab6adf",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2027-02-14",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "7bb8fa78-dba0-5f7e-ac2d-ca83630d84f6",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-03-16",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "consumiu",
+        "highlights": []
+      },
+      "diagnostico": "Evolução dentro do esperado, com pontos de atenção na rotina.",
+      "intervencoes": [
+        {
+          "id": "d445ff4d-0c6d-52e7-bb0d-3cfd1ffae64a",
+          "tipo": "outro",
+          "descricao": "Envio de material complementar.",
+          "responsavel": {
+            "tipo": "suporte",
+            "nome": "Diego Alves"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:17:00-03:00"
+        }
+      ]
+    },
+    {
+      "id": "1e25b6a5-b1fa-508e-89be-b114fecc5c1f",
+      "nome": "Mariana Costa",
+      "nivel_inicial": "intermediario",
+      "etapa_atual": "fundamentos_iniciais",
+      "proximo_checkpoint": {
+        "nome": "Semana 1",
+        "status": "realizado",
+        "data_prevista": "2026-09-27"
+      },
+      "dias_estagnados": 3,
+      "health_score": 77,
+      "risco": "saudavel",
+      "proxima_acao": null,
+      "responsavel": {
+        "tipo": "mentor",
+        "nome": "Carla Mendes"
+      },
+      "sinais": [],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-09-20",
+      "data_termino": "2027-03-19",
+      "objetivo": "Estruturar a operação e dobrar o faturamento em 6 meses.",
+      "status_geral": "Em andamento",
+      "etapa_desde": "2026-10-11",
+      "status_financeiro": "adimplente",
+      "ltv": 6000,
+      "checkpoints": [
+        {
+          "id": "c340ab35-f720-5b1d-82d2-066fd57104c9",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-09-20",
+          "data_realizada": "2026-09-21",
+          "status": "realizado"
+        },
+        {
+          "id": "ee1343d0-a9bb-5923-ae25-80eacec892eb",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-09-27",
+          "data_realizada": "2026-09-28",
+          "status": "realizado"
+        },
+        {
+          "id": "438b4cc6-9d4f-51f4-af06-64e62e68251d",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-10-20",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "167b6599-8e9f-539a-9513-7f2ecfb534fd",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-11-19",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "4b8b04ca-b3fc-5ec7-8db1-29ac7b17f518",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-12-19",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "2e8ed439-f067-5bc7-9596-8833c8bd6f40",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2027-01-18",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "62786caa-99ae-5b48-8a0a-ab0ffeee1919",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2027-02-17",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "ece2bc70-e71e-5e23-9c8f-e5e4e275276e",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-03-19",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": "entendeu",
+        "highlights": [
+          {
+            "data_aula": "2026-10-10",
+            "texto": "Aplicou o método no próprio negócio e trouxe números da primeira semana."
+          }
+        ]
+      },
+      "diagnostico": null,
+      "intervencoes": []
+    },
+    {
+      "id": "2ded5885-8b42-5bac-919b-5617f30efed1",
+      "nome": "Nathan Oliveira",
+      "nivel_inicial": "iniciante",
+      "etapa_atual": "fundamentos_iniciais",
+      "proximo_checkpoint": {
+        "nome": "Semana 1",
+        "status": "nao_respondeu",
+        "data_prevista": "2026-09-26"
+      },
+      "dias_estagnados": 16,
+      "health_score": 27,
+      "risco": "risco",
+      "proxima_acao": {
+        "descricao": "Mensagem de reengajamento e nova data",
+        "prazo": "2026-10-17"
+      },
+      "responsavel": {
+        "tipo": "comercial",
+        "nome": "Juliana Prado"
+      },
+      "sinais": [],
+      "mentoria": "Mentoria Prime",
+      "data_entrada": "2026-09-19",
+      "data_termino": "2027-03-18",
+      "objetivo": "Sair do zero e fechar os primeiros clientes.",
+      "status_geral": "Atenção do time",
+      "etapa_desde": "2026-09-28",
+      "status_financeiro": "adimplente",
+      "ltv": 6000,
+      "checkpoints": [
+        {
+          "id": "7b59efb5-f94b-54cd-8a27-ba42dab1971d",
+          "nome": "Dia 0",
+          "ordem": 1,
+          "data_prevista": "2026-09-19",
+          "data_realizada": "2026-09-20",
+          "status": "realizado"
+        },
+        {
+          "id": "5d5f911b-b46e-5a22-bd22-83e2ab9fed54",
+          "nome": "Semana 1",
+          "ordem": 2,
+          "data_prevista": "2026-09-26",
+          "data_realizada": null,
+          "status": "nao_respondeu"
+        },
+        {
+          "id": "9304c9bf-c361-5ec7-9c32-73defa760e9a",
+          "nome": "Mês 1",
+          "ordem": 3,
+          "data_prevista": "2026-10-19",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "b1ec2690-b683-59b5-91fc-c4116f78c6a3",
+          "nome": "Mês 2",
+          "ordem": 4,
+          "data_prevista": "2026-11-18",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "484fb7cf-9cc1-5134-b364-3284d9b8ebb0",
+          "nome": "Mês 3 — Big Win",
+          "ordem": 5,
+          "data_prevista": "2026-12-18",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "98dda9bb-47ec-5f29-b7e8-9aeecfdd0c85",
+          "nome": "Mês 4",
+          "ordem": 6,
+          "data_prevista": "2027-01-17",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "a161bd87-eade-5d37-bcbb-9d4a797b5e66",
+          "nome": "Mês 5",
+          "ordem": 7,
+          "data_prevista": "2027-02-16",
+          "data_realizada": null,
+          "status": "pendente"
+        },
+        {
+          "id": "5ba5295b-f28d-5c23-a31a-c703957fa391",
+          "nome": "Mês 6",
+          "ordem": 8,
+          "data_prevista": "2027-03-18",
+          "data_realizada": null,
+          "status": "pendente"
+        }
+      ],
+      "progresso_metodologico": {
+        "passo_atual": null,
+        "highlights": []
+      },
+      "diagnostico": "Engajamento caiu nas últimas semanas e não respondeu ao checkpoint.",
+      "intervencoes": [
+        {
+          "id": "7304dbbe-3528-55d2-a969-34d4e44fe32f",
+          "tipo": "reuniao",
+          "descricao": "Reunião de alinhamento do plano da etapa.",
+          "responsavel": {
+            "tipo": "comercial",
+            "nome": "Juliana Prado"
+          },
+          "prazo": "2026-10-17",
+          "criada_em": "2026-10-12T10:31:00-03:00"
+        },
+        {
+          "id": "b48158d3-7d7f-5ef4-84ed-8beb1510176a",
+          "tipo": "ajuste_plano",
+          "descricao": "Plano ajustado para a rotina atual do aluno.",
+          "responsavel": {
+            "tipo": "comercial",
+            "nome": "Juliana Prado"
+          },
+          "prazo": "2026-10-11",
+          "criada_em": "2026-10-06T10:32:00-03:00"
+        }
+      ]
+    }
+  ]
+}
