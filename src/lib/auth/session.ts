@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { SessionUserSchema, type SessionUser } from "@/lib/api/contracts";
-import { normalizarAreas } from "./areas";
+import { normalizarAreas, normalizarModulos } from "./areas";
 import { findAccountById } from "@/lib/mock/users";
 import { SESSION_COOKIE } from "./constants";
 
@@ -26,7 +26,8 @@ export async function getServerSession(): Promise<SessionUser | null> {
       const raw = JSON.parse(decodeURIComponent(valor)) as Record<string, unknown> | null;
       const papel = SessionUserSchema.shape.role.safeParse(raw?.role);
       if (!raw || !papel.success) return null;
-      const parsed = SessionUserSchema.safeParse({ ...raw, areas: normalizarAreas(raw.areas, papel.data) });
+      const areas = normalizarAreas(raw.areas, papel.data);
+      const parsed = SessionUserSchema.safeParse({ ...raw, areas, modulos: normalizarModulos(raw.modulos, areas) });
       return parsed.success ? parsed.data : null;
     } catch {
       return null;

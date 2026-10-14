@@ -1,4 +1,13 @@
-import { AREAS, AreaSchema, type Area, type Role, type SessionUser } from "@/lib/api/contracts";
+import {
+  AREAS,
+  AreaSchema,
+  MODULOS,
+  ModuloSchema,
+  type Area,
+  type Modulo,
+  type Role,
+  type SessionUser,
+} from "@/lib/api/contracts";
 
 // ---------------------------------------------------------------------------
 // Acesso por área (desde 30/09/2026). A FONTE é a API: GET /api/me devolve
@@ -18,8 +27,7 @@ export const AREAS_DO_PAPEL: Record<Role, Area[]> = {
   closer: ["dashboard", "leads", "agendamentos", "chat", "salesops"],
   sdr: ["dashboard", "leads", "agendamentos", "chat", "produtividade_sdr", "retencao"],
   marketing: ["retencao"],
-  // Papel válido, área ainda não existe: loga e cai em "Sua área ainda não está disponível".
-  educacional: [],
+  educacional: ["educacional"],
 };
 
 // Lista da API, tolerante: valor desconhecido é ignorado (uma área nova no
@@ -51,6 +59,7 @@ export const ROTA_DA_AREA: Record<Area, string> = {
   produtividade_sdr: "/produtividade-sdr",
   lideranca_pre_venda: "/produtividade-sdr/lideranca",
   retencao: "/retencao",
+  educacional: "/educacional",
 };
 
 export const ROTA_SEM_AREA = "/sem-area";
@@ -63,3 +72,48 @@ export function homeDoUsuario(user: Pick<SessionUser, "areas">): string {
   const primeira = user.areas[0];
   return primeira ? ROTA_DA_AREA[primeira] : ROTA_SEM_AREA;
 }
+
+// ---------------------------------------------------------------------------
+// Módulos (Comercial | Educacional). A API manda `modulos` em GET /api/me; sem
+// o campo (API antiga, cookie antigo), eles são DEDUZIDOS das `areas` que o
+// servidor mandou — nunca do papel: quem não recebeu a área `educacional` não
+// entra no módulo, por mais que o papel sugira.
+// ---------------------------------------------------------------------------
+
+export const AREAS_DO_MODULO_EDUCACIONAL: readonly Area[] = ["educacional"];
+
+export function moduloDaArea(area: Area): Modulo {
+  return AREAS_DO_MODULO_EDUCACIONAL.includes(area) ? "educacional" : "comercial";
+}
+
+export function modulosDeAreas(areas: readonly Area[]): Modulo[] {
+  return MODULOS.filter((m) => areas.some((a) => moduloDaArea(a) === m));
+}
+
+export function normalizarModulos(raw: unknown, areas: readonly Area[]): Modulo[] {
+  if (!Array.isArray(raw)) return modulosDeAreas(areas);
+  const modulos: Modulo[] = [];
+  for (const v of raw) {
+    const r = ModuloSchema.safeParse(typeof v === "string" ? v.trim().toLowerCase() : v);
+    if (r.success && !modulos.includes(r.data)) modulos.push(r.data);
+  }
+  return MODULOS.filter((m) => modulos.includes(m));
+}
+
+export const ROTA_EDUCACIONAL = "/educacional";
+
+// Módulo em que o usuário está: com um módulo só, é ele; com os dois (admin),
+// decide o caminho.
+export function moduloAtivo(user: Pick<SessionUser, "modulos">, pathname: string): Modulo {
+  if (user.modulos.length === 1) return user.modulos[0];
+  return pathname === ROTA_EDUCACIONAL || pathname.startsWith(ROTA_EDUCACIONAL + "/") ? "educacional" : "comercial";
+}
+
+// Home de um módulo: a primeira área do usuário que pertence a ele.
+export function homeDoModulo(user: Pick<SessionUser, "areas">, modulo: Modulo): string {
+  const area = user.areas.find((a) => moduloDaArea(a) === modulo);
+  return area ? ROTA_DA_AREA[area] : ROTA_SEM_AREA;
+}
+
+// Última área escolhida no seletor do admin (só conveniência do navegador).
+export const CHAVE_MODULO_LEMBRADO = "mdc_modulo";

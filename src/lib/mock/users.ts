@@ -1,9 +1,11 @@
 import type { Role, SessionUser } from "@/lib/api/contracts";
-import { AREAS_DO_PAPEL } from "@/lib/auth/areas";
+import { AREAS_DO_PAPEL, modulosDeAreas } from "@/lib/auth/areas";
 
-// No mock não há API: as áreas saem da reserva por papel (lib/auth/areas.ts).
+// No mock não há API: as áreas saem da reserva por papel (lib/auth/areas.ts) e
+// os módulos, das áreas.
 function conta(id: string, nome: string, email: string, role: Role): SessionUser {
-  return { id, nome, email, role, areas: [...AREAS_DO_PAPEL[role]] };
+  const areas = [...AREAS_DO_PAPEL[role]];
+  return { id, nome, email, role, areas, modulos: modulosDeAreas(areas) };
 }
 
 // As 10 contas reais do time (roadmap Parte 2) — usadas só no login mock.

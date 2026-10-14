@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, LogOut, Menu, Search } from "lucide-react";
 import type { SessionUser } from "@/lib/api/contracts";
 import { ROLE_LABEL } from "@/lib/mock/users";
 import { sair } from "@/lib/auth/clientSession";
+import type { Modulo } from "@/lib/api/contracts";
+import { CHAVE_MODULO_LEMBRADO, homeDoModulo, moduloAtivo } from "@/lib/auth/areas";
+import { Alternador } from "@/components/ui/Alternador";
 
 function iniciais(nome: string): string {
   return nome
@@ -38,6 +41,18 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
     router.push(v ? `/leads?busca=${encodeURIComponent(v)}` : "/leads");
   }
 
+  // Seletor de área (admin): leva à home do módulo e lembra a escolha (D1).
+  const pathname = usePathname();
+  const modulo = moduloAtivo(user, pathname);
+  function trocarModulo(m: Modulo) {
+    try {
+      window.localStorage.setItem(CHAVE_MODULO_LEMBRADO, m);
+    } catch {
+      /* sem armazenamento: o seletor segue funcionando, só não lembra */
+    }
+    router.push(homeDoModulo(user, m));
+  }
+
   async function fazerLogout() {
     await sair();
     window.location.href = "/login";
@@ -53,8 +68,21 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
         <Menu className="h-5 w-5" aria-hidden />
       </button>
 
-      {/* A busca abre a fila de leads: só para quem tem a área `leads`. */}
-      {user.areas.includes("leads") ? (
+      {user.modulos.length > 1 && (
+        <Alternador<Modulo>
+          rotulo="Área do painel"
+          valor={modulo}
+          onChange={trocarModulo}
+          opcoes={[
+            { valor: "comercial", label: "Comercial" },
+            { valor: "educacional", label: "Educacional" },
+          ]}
+        />
+      )}
+
+      {/* A busca abre a fila de leads: só para quem tem a área `leads` e está
+          na área comercial. */}
+      {user.areas.includes("leads") && modulo === "comercial" ? (
         <form onSubmit={buscar} className="relative mr-auto max-w-xs flex-1">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec"

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SessionUserSchema, type Role } from "@/lib/api/contracts";
-import { normalizarAreas } from "@/lib/auth/areas";
+import { normalizarAreas, normalizarModulos } from "@/lib/auth/areas";
 
 // ---------------------------------------------------------------------------
 // GET /api/me — proxy server-side para {NEXT_PUBLIC_API_URL}/api/me.
@@ -32,6 +32,10 @@ function normalizarRole(raw: unknown): Role | null {
   return null;
 }
 
+function mockEducacionalLigado(): boolean {
+  return process.env.ME_MOCK_EDUCACIONAL === "1" && process.env.VERCEL !== "1";
+}
+
 function normalizarMe(raw: Record<string, unknown>) {
   const email = texto(raw.email) ?? texto(raw.mail);
   const id =
@@ -45,7 +49,15 @@ function normalizarMe(raw: Record<string, unknown>) {
   const role = normalizarRole(raw.role ?? raw.papel ?? raw.tipo ?? raw.cargo);
 
   if (!email || !id || !nome || !role) return null;
-  return SessionUserSchema.safeParse({ id, nome, email, role, areas: normalizarAreas(raw.areas, role) });
+  let areas = normalizarAreas(raw.areas, role);
+  let modulos = normalizarModulos(raw.modulos, areas);
+  // MOCK LOCAL (ME_MOCK_EDUCACIONAL=1, nunca na Vercel): enquanto o backend não
+  // manda `modulos` nem a área `educacional`, completa para admin e educacional.
+  if (mockEducacionalLigado() && raw.modulos === undefined && (role === "admin" || role === "educacional")) {
+    if (!areas.includes("educacional")) areas = [...areas, "educacional"];
+    modulos = normalizarModulos(undefined, areas);
+  }
+  return SessionUserSchema.safeParse({ id, nome, email, role, areas, modulos });
 }
 
 export async function GET(req: NextRequest) {

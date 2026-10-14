@@ -50,9 +50,17 @@ export const AREAS = [
   "produtividade_sdr",
   "lideranca_pre_venda",
   "retencao",
+  // Módulo Educacional ("Saúde da Jornada"): admin e educacional.
+  "educacional",
 ] as const;
 export const AreaSchema = z.enum(AREAS);
 export type Area = z.infer<typeof AreaSchema>;
+
+// Módulos do painel (GET /api/me → `modulos`): decidem a navegação entre as
+// duas partes do Mapa de Calor (seletor do admin, menu, home).
+export const MODULOS = ["comercial", "educacional"] as const;
+export const ModuloSchema = z.enum(MODULOS);
+export type Modulo = z.infer<typeof ModuloSchema>;
 
 // GET /api/me
 export const SessionUserSchema = z.object({
@@ -61,6 +69,7 @@ export const SessionUserSchema = z.object({
   email: z.string().email(),
   role: RoleSchema,
   areas: z.array(AreaSchema),
+  modulos: z.array(ModuloSchema),
 });
 export type SessionUser = z.infer<typeof SessionUserSchema>;
 

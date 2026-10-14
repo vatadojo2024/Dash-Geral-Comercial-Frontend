@@ -45,7 +45,8 @@ function FormContent({ authMode }: { authMode: AuthMode }) {
     try {
       await loginComEmailSenha(authMode, email, senha);
       const from = searchParams.get("from");
-      router.replace(from && from.startsWith("/") ? from : "/");
+      // `entrada=login`: logo após o login a home não usa o módulo lembrado (D1).
+      router.replace(from && from.startsWith("/") ? from : "/?entrada=login");
       router.refresh();
     } catch (err) {
       setErro(

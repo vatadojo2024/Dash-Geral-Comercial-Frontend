@@ -7,6 +7,7 @@ import {
   CalendarClock,
   Flame,
   Gauge,
+  GraduationCap,
   LayoutDashboard,
   MessageSquare,
   PhoneCall,
@@ -15,14 +16,15 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import type { Area } from "@/lib/api/contracts";
-import { ROTA_DA_AREA } from "@/lib/auth/areas";
+import type { Area, Modulo } from "@/lib/api/contracts";
+import { moduloAtivo, ROTA_DA_AREA } from "@/lib/auth/areas";
 import { cn } from "@/lib/utils/cn";
 
 // Cada item pertence a uma área; aparece se `user.areas` (GET /api/me) contém
 // alguma delas. A Produtividade SDR também abre para quem só tem a Liderança
 // (sub-aba dela) — nesse caso o link vai direto para a sub-aba.
-type NavItem = { href: string; label: string; icon: LucideIcon; areas: Area[] };
+// `modulo`: o menu mostra só os itens do módulo em que o usuário está.
+type NavItem = { href: string; label: string; icon: LucideIcon; areas: Area[]; modulo?: Modulo };
 
 // Visão Geral é a home do admin. Ações, Agenda e Gestão foram REMOVIDAS do menu
 // (spec set/2026, Parte 2.1) — não existe backend para elas.
@@ -47,11 +49,29 @@ const NAV_ITEMS: NavItem[] = [
     areas: ["produtividade_sdr", "lideranca_pre_venda"],
   },
   { href: "/retencao", label: "Retenção da audiência", icon: Activity, areas: ["retencao"] },
+  { href: "/educacional", label: "Saúde da Jornada", icon: GraduationCap, areas: ["educacional"], modulo: "educacional" },
 ];
 
-function NavContent({ areas, onNavigate }: { areas: readonly Area[]; onNavigate?: () => void }) {
+// Subtítulo da marca: neutro no módulo Educacional (qualquer usuário, admin
+// incluso); na área comercial, o de sempre.
+const SUBTITULO: Record<Modulo, string> = {
+  comercial: "Mesa de decisão comercial",
+  educacional: "Saúde da Jornada",
+};
+
+function NavContent({
+  areas,
+  modulos,
+  onNavigate,
+}: {
+  areas: readonly Area[];
+  modulos: readonly Modulo[];
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+  const modulo = moduloAtivo({ modulos: [...modulos] }, pathname);
   const itens = NAV_ITEMS.flatMap((i) => {
+    if ((i.modulo ?? "comercial") !== modulo) return [];
     const area = i.areas.find((a) => areas.includes(a));
     if (!area) return [];
     return [{ ...i, href: area === i.areas[0] ? i.href : ROTA_DA_AREA[area] }];
@@ -65,7 +85,7 @@ function NavContent({ areas, onNavigate }: { areas: readonly Area[]; onNavigate?
         </span>
         <div>
           <p className="font-jakarta text-base font-semibold leading-tight text-texto">Mapa de Calor</p>
-          <p className="text-xs opacity-70">Mesa de decisão comercial</p>
+          <p className="text-xs opacity-70">{SUBTITULO[modulo]}</p>
         </div>
       </div>
 
@@ -98,17 +118,19 @@ function NavContent({ areas, onNavigate }: { areas: readonly Area[]; onNavigate?
 
 export function Sidebar({
   areas,
+  modulos,
   mobileOpen,
   onClose,
 }: {
   areas: readonly Area[];
+  modulos: readonly Modulo[];
   mobileOpen: boolean;
   onClose: () => void;
 }) {
   return (
     <>
       <aside className="ds-nav hidden w-60 flex-col border-r border-white/10 md:flex">
-        <NavContent areas={areas} />
+        <NavContent areas={areas} modulos={modulos} />
       </aside>
 
       {mobileOpen && (
@@ -122,7 +144,7 @@ export function Sidebar({
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
-            <NavContent areas={areas} onNavigate={onClose} />
+            <NavContent areas={areas} modulos={modulos} onNavigate={onClose} />
           </aside>
         </div>
       )}

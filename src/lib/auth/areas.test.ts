@@ -21,12 +21,13 @@ describe("áreas da sessão (GET /api/me → areas)", () => {
   });
 
   it("reserva espelha a tabela do backend (DOCUMENTACAO-FRONT, seção 6)", () => {
-    expect(AREAS_DO_PAPEL.admin).toHaveLength(10);
+    expect(AREAS_DO_PAPEL.admin).toHaveLength(11);
+    expect(AREAS_DO_PAPEL.admin[AREAS_DO_PAPEL.admin.length - 1]).toBe("educacional"); // por último: home do admin não muda
     expect(AREAS_DO_PAPEL.admin).toContain("historico_agendamentos");
     expect(AREAS_DO_PAPEL.closer).toEqual(["dashboard", "leads", "agendamentos", "chat", "salesops"]);
     expect(AREAS_DO_PAPEL.sdr).toEqual(["dashboard", "leads", "agendamentos", "chat", "produtividade_sdr", "retencao"]);
     expect(AREAS_DO_PAPEL.marketing).toEqual(["retencao"]);
-    expect(AREAS_DO_PAPEL.educacional).toEqual([]);
+    expect(AREAS_DO_PAPEL.educacional).toEqual(["educacional"]);
   });
 
   it("home = primeira área da lista; sem área → tela própria, nunca a home de novo", () => {
