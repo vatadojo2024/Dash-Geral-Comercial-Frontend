@@ -10,6 +10,7 @@ export function GET(req: NextRequest) {
   return proxyEventos(req, {
     caminho: "/api/eventos/inscritos",
     rotulo: "inscritos",
+    areas: ["produtividade_sdr"],
     mock: mockInscritos,
   });
 }

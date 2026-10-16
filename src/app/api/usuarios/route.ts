@@ -1,3 +1,4 @@
+import { getServerSession } from "@/lib/auth/session";
 import { NextResponse, type NextRequest } from "next/server";
 import { adaptApiUsuarios } from "@/lib/server/apiUsuarios";
 import { DEMO_ACCOUNTS } from "@/lib/mock/users";
@@ -17,6 +18,10 @@ export async function GET(req: NextRequest) {
   const modo = process.env.LEADS_MODE === "api" ? "api" : "mock";
 
   if (modo === "mock") {
+    // Como no backend: só exige login (sem área), para traduzir id → nome.
+    if (!(await getServerSession())) {
+      return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
+    }
     return NextResponse.json({
       usuarios: DEMO_ACCOUNTS.map((u) => ({ id: u.id, nome: u.nome })),
     });

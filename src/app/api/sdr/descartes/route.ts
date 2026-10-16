@@ -11,6 +11,7 @@ export function GET(req: NextRequest) {
   return proxyEventos(req, {
     caminho: "/api/sdr/descartes",
     rotulo: "descartes",
+    areas: ["produtividade_sdr"],
     mock: mockDescartes,
   });
 }

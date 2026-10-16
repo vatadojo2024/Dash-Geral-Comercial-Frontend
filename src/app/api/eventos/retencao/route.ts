@@ -10,6 +10,7 @@ export function GET(req: NextRequest) {
   return proxyEventos(req, {
     caminho: "/api/eventos/retencao",
     rotulo: "retenção",
+    areas: ["retencao"],
     mock: mockRetencao,
   });
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import rawVendas from "@/lib/mock/vendas_closers.json";
 import { nomeApiVendasPorCloser } from "@/lib/config/salesops";
+import { exigirAreaNaApi } from "@/lib/server/acessoApi";
 import { mapVendasComercial } from "@/lib/server/apiVendas";
 import {
   configComercial,
@@ -30,6 +31,12 @@ type ArquivoMock = {
 };
 
 export async function GET(req: NextRequest) {
+  // Esta rota não passa pela API do Mapa de Calor (é a API comercial, com a
+  // chave do servidor): a trava por área fica aqui, em QUALQUER modo. Quem lê
+  // vendas: Sales Ops e Visão Geral.
+  const { negado } = await exigirAreaNaApi("salesops", "visao_geral");
+  if (negado) return negado;
+
   const { searchParams } = new URL(req.url);
   const closer = (searchParams.get("closer") ?? "").trim();
   const mes = searchParams.get("mes") || mesCorrente();

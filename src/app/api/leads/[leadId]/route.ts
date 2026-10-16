@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
+import { exigirAreaNaApi } from "@/lib/server/acessoApi";
 import { adaptApiLeadDetail, parseCorpoLead } from "@/lib/server/apiLeadDetail";
 import { leadNoEscopo, todosOsLeadsMock } from "@/lib/server/mockLeads";
 
@@ -22,10 +22,9 @@ export async function GET(
     const modo = process.env.LEADS_MODE === "api" ? "api" : "mock";
 
     if (modo === "mock") {
-      const user = await getServerSession();
-      if (!user) {
-        return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
-      }
+      // Mesma trava do backend (área dashboard ou leads), com o mesmo 403.
+      const { user, negado } = await exigirAreaNaApi("dashboard", "leads");
+      if (negado) return negado;
       let lista;
       try {
         lista = todosOsLeadsMock();

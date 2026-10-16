@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { getServerSession } from "@/lib/auth/session";
+import { exigirAreaNaApi } from "@/lib/server/acessoApi";
 import {
   leadNoEscopo,
   marcarDestaqueMock,
@@ -41,10 +41,9 @@ export async function PATCH(
     const modo = process.env.LEADS_MODE === "api" ? "api" : "mock";
 
     if (modo === "mock") {
-      const user = await getServerSession();
-      if (!user) {
-        return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
-      }
+      // Mesma trava do backend (área dashboard ou leads), com o mesmo 403.
+      const { user, negado } = await exigirAreaNaApi("dashboard", "leads");
+      if (negado) return negado;
       if (user.role !== "admin") {
         return NextResponse.json(
           { error: "Apenas o admin pode destacar leads." },

@@ -1,3 +1,4 @@
+import { exigirAreaNaApi } from "@/lib/server/acessoApi";
 import { NextResponse, type NextRequest } from "next/server";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,9 @@ export async function GET(req: NextRequest) {
 
   const modo = process.env.LEADS_MODE === "api" ? "api" : "mock";
   if (modo === "mock") {
+    // Mesma trava do backend (área produtividade_sdr), com o mesmo 403.
+    const { negado } = await exigirAreaNaApi("produtividade_sdr");
+    if (negado) return negado;
     return NextResponse.json(mockAgendamentos(inicio, fim));
   }
 

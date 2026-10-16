@@ -10,6 +10,7 @@ export function GET(req: NextRequest) {
   return proxyEventos(req, {
     caminho: "/api/eventos/presentes-sem-aplicar",
     rotulo: "presentes sem aplicar",
+    areas: ["produtividade_sdr"],
     mock: mockPresentes,
   });
 }

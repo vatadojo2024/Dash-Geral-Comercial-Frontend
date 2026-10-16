@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { Area } from "@/lib/api/contracts";
+import { exigirAreaNaApi } from "./acessoApi";
 
 // ---------------------------------------------------------------------------
 // Proxy comum dos endpoints de evento (/api/eventos/oportunidades e
@@ -33,6 +35,9 @@ export async function proxyEventos(
     // Nome curto para as mensagens de erro do próprio proxy.
     rotulo: string;
     mock: (de: string, ate: string, simular: string | null) => unknown;
+    // Área(s) que o backend exige nesta rota. No modo api quem responde 403 é o
+    // backend; no mock, este proxy, com o MESMO 403 { error: "Sem permissão" }.
+    areas: Area[];
   },
 ): Promise<NextResponse> {
   const { searchParams } = new URL(req.url);
@@ -47,6 +52,8 @@ export async function proxyEventos(
 
   const modo = process.env.LEADS_MODE === "api" ? "api" : "mock";
   if (modo === "mock") {
+    const { negado } = await exigirAreaNaApi(...opcoes.areas);
+    if (negado) return negado;
     const simular = searchParams.get("simular");
     if (simular && ERROS_502.has(simular)) {
       return NextResponse.json({ erro: simular }, { status: 502 });
