@@ -17,7 +17,9 @@ export const ETAPAS = [
 export const EtapaSchema = z.enum(ETAPAS);
 export type Etapa = z.infer<typeof EtapaSchema>;
 
-export const STATUS_CHECKPOINT = ["realizado", "pendente", "nao_respondeu", "em_pausa"] as const;
+// `previsto`: a data do checkpoint ainda não chegou. Vem PRONTO no payload (o
+// front não calcula por data) e não conta em Intervenções SLA.
+export const STATUS_CHECKPOINT = ["realizado", "pendente", "nao_respondeu", "em_pausa", "previsto"] as const;
 export const StatusCheckpointSchema = z.enum(STATUS_CHECKPOINT);
 export type StatusCheckpoint = z.infer<typeof StatusCheckpointSchema>;
 

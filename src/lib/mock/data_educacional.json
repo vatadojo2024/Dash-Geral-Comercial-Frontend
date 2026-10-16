@@ -132,7 +132,7 @@
           "ordem": 8,
           "data_prevista": "2026-11-07",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -273,7 +273,7 @@
           "ordem": 8,
           "data_prevista": "2026-11-06",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -392,7 +392,7 @@
           "ordem": 6,
           "data_prevista": "2026-10-30",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "cc174d01-17b7-5d93-93d1-20d5282174f3",
@@ -400,7 +400,7 @@
           "ordem": 7,
           "data_prevista": "2026-11-29",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "d4d06a75-6741-5446-8502-62dfc28171f2",
@@ -408,7 +408,7 @@
           "ordem": 8,
           "data_prevista": "2026-12-29",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -536,7 +536,7 @@
           "ordem": 6,
           "data_prevista": "2026-10-29",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "833656c4-fbfb-5371-abe2-a1df983495e6",
@@ -544,7 +544,7 @@
           "ordem": 7,
           "data_prevista": "2026-11-28",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "b7759f28-0a2a-5405-9489-22e68a59e4c3",
@@ -552,7 +552,7 @@
           "ordem": 8,
           "data_prevista": "2026-12-28",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -660,7 +660,7 @@
           "ordem": 6,
           "data_prevista": "2026-11-01",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         },
         {
           "id": "f7f91fcd-e1f9-5cb0-ab15-f0e9d0bb5a3c",
@@ -668,7 +668,7 @@
           "ordem": 7,
           "data_prevista": "2026-12-01",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         },
         {
           "id": "5b92b090-ecf9-5896-b3e2-f3a5ddc21336",
@@ -676,7 +676,7 @@
           "ordem": 8,
           "data_prevista": "2026-12-31",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -769,7 +769,7 @@
           "ordem": 5,
           "data_prevista": "2026-10-25",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "e2f71d6f-f9d9-510a-9c20-16f5b20a008f",
@@ -777,7 +777,7 @@
           "ordem": 6,
           "data_prevista": "2026-11-24",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "dd6bd15b-ccac-575c-9ea3-190a7490214b",
@@ -785,7 +785,7 @@
           "ordem": 7,
           "data_prevista": "2026-12-24",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "3ab24c32-ad6a-5b61-aa81-7f898d5ac1b4",
@@ -793,7 +793,7 @@
           "ordem": 8,
           "data_prevista": "2027-01-23",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -896,7 +896,7 @@
           "ordem": 5,
           "data_prevista": "2026-10-24",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "396d7d02-f716-5bdf-a7de-900929d184ab",
@@ -904,7 +904,7 @@
           "ordem": 6,
           "data_prevista": "2026-11-23",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "650ab9dc-6571-55f3-a022-903e00a7d37a",
@@ -912,7 +912,7 @@
           "ordem": 7,
           "data_prevista": "2026-12-23",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "fabfada0-297b-5c87-ae01-f673522fa27c",
@@ -920,7 +920,7 @@
           "ordem": 8,
           "data_prevista": "2027-01-22",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -1012,7 +1012,7 @@
           "ordem": 5,
           "data_prevista": "2026-10-23",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "2c874015-0dcf-5949-b808-3717e9c42064",
@@ -1020,7 +1020,7 @@
           "ordem": 6,
           "data_prevista": "2026-11-22",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "62bd0958-fb7c-57b1-ad90-5bf9dd0f126a",
@@ -1028,7 +1028,7 @@
           "ordem": 7,
           "data_prevista": "2026-12-22",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "2ab3991e-845c-5ca7-a3b4-be9c39b633c7",
@@ -1036,7 +1036,7 @@
           "ordem": 8,
           "data_prevista": "2027-01-21",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -1130,7 +1130,7 @@
           "ordem": 4,
           "data_prevista": "2026-10-26",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "6de7d8f2-1e58-5366-8b98-22b4ddd6a49c",
@@ -1138,7 +1138,7 @@
           "ordem": 5,
           "data_prevista": "2026-11-25",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "31ec6b7e-b1d9-528a-ada8-5fbdcc76e94b",
@@ -1146,7 +1146,7 @@
           "ordem": 6,
           "data_prevista": "2026-12-25",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "fec8fdf1-32e0-559a-a0d3-96da09985b80",
@@ -1154,7 +1154,7 @@
           "ordem": 7,
           "data_prevista": "2027-01-24",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "3a664092-1e8e-564d-957a-6acb264dff91",
@@ -1162,7 +1162,7 @@
           "ordem": 8,
           "data_prevista": "2027-02-23",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -1232,7 +1232,7 @@
           "ordem": 4,
           "data_prevista": "2026-10-25",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         },
         {
           "id": "f1492aba-8655-5826-a285-d3456137e542",
@@ -1240,7 +1240,7 @@
           "ordem": 5,
           "data_prevista": "2026-11-24",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         },
         {
           "id": "9618940c-f7ed-5f4e-bba1-044d9dc9c5b7",
@@ -1248,7 +1248,7 @@
           "ordem": 6,
           "data_prevista": "2026-12-24",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         },
         {
           "id": "cdf8ffb7-341f-5b84-b300-9bca00113592",
@@ -1256,7 +1256,7 @@
           "ordem": 7,
           "data_prevista": "2027-01-23",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         },
         {
           "id": "d64e7f59-cb83-559f-a6dc-2080ff1585aa",
@@ -1264,7 +1264,7 @@
           "ordem": 8,
           "data_prevista": "2027-02-22",
           "data_realizada": null,
-          "status": "em_pausa"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -1292,9 +1292,9 @@
       "nivel_inicial": "avancado",
       "etapa_atual": "tres_pilares",
       "proximo_checkpoint": {
-        "nome": "Mês 1",
-        "status": "realizado",
-        "data_prevista": "2026-09-24"
+        "nome": "Mês 2",
+        "status": "previsto",
+        "data_prevista": "2026-10-24"
       },
       "dias_estagnados": 4,
       "health_score": 90,
@@ -1349,7 +1349,7 @@
           "ordem": 4,
           "data_prevista": "2026-10-24",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "52d6a018-2633-5a2f-ac6d-8bb1b5910459",
@@ -1357,7 +1357,7 @@
           "ordem": 5,
           "data_prevista": "2026-11-23",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "bb2a466a-6664-5745-8fdb-8d7a380f72c5",
@@ -1365,7 +1365,7 @@
           "ordem": 6,
           "data_prevista": "2026-12-23",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "6e3e26b2-c712-53b0-bc25-156e316d0466",
@@ -1373,7 +1373,7 @@
           "ordem": 7,
           "data_prevista": "2027-01-22",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "61dc76e1-db7b-5404-9073-3ec128287c7e",
@@ -1381,7 +1381,7 @@
           "ordem": 8,
           "data_prevista": "2027-02-21",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -1453,7 +1453,7 @@
           "ordem": 3,
           "data_prevista": "2026-10-17",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "efd8d081-ef26-5780-ac36-5f289e5a48b3",
@@ -1461,7 +1461,7 @@
           "ordem": 4,
           "data_prevista": "2026-11-16",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "a4c3334b-81bc-5040-bfae-cb2f5f8fb226",
@@ -1469,7 +1469,7 @@
           "ordem": 5,
           "data_prevista": "2026-12-16",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "a5c9b6ad-cae9-5784-8f7c-b0b41209f7d3",
@@ -1477,7 +1477,7 @@
           "ordem": 6,
           "data_prevista": "2027-01-15",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "d45006a5-df61-549c-8885-09c349ab6adf",
@@ -1485,7 +1485,7 @@
           "ordem": 7,
           "data_prevista": "2027-02-14",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "7bb8fa78-dba0-5f7e-ac2d-ca83630d84f6",
@@ -1493,7 +1493,7 @@
           "ordem": 8,
           "data_prevista": "2027-03-16",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -1565,7 +1565,7 @@
           "ordem": 3,
           "data_prevista": "2026-10-20",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "167b6599-8e9f-539a-9513-7f2ecfb534fd",
@@ -1573,7 +1573,7 @@
           "ordem": 4,
           "data_prevista": "2026-11-19",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "4b8b04ca-b3fc-5ec7-8db1-29ac7b17f518",
@@ -1581,7 +1581,7 @@
           "ordem": 5,
           "data_prevista": "2026-12-19",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "2e8ed439-f067-5bc7-9596-8833c8bd6f40",
@@ -1589,7 +1589,7 @@
           "ordem": 6,
           "data_prevista": "2027-01-18",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "62786caa-99ae-5b48-8a0a-ab0ffeee1919",
@@ -1597,7 +1597,7 @@
           "ordem": 7,
           "data_prevista": "2027-02-17",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "ece2bc70-e71e-5e23-9c8f-e5e4e275276e",
@@ -1605,7 +1605,7 @@
           "ordem": 8,
           "data_prevista": "2027-03-19",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {
@@ -1673,7 +1673,7 @@
           "ordem": 3,
           "data_prevista": "2026-10-19",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "b1ec2690-b683-59b5-91fc-c4116f78c6a3",
@@ -1681,7 +1681,7 @@
           "ordem": 4,
           "data_prevista": "2026-11-18",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "484fb7cf-9cc1-5134-b364-3284d9b8ebb0",
@@ -1689,7 +1689,7 @@
           "ordem": 5,
           "data_prevista": "2026-12-18",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "98dda9bb-47ec-5f29-b7e8-9aeecfdd0c85",
@@ -1697,7 +1697,7 @@
           "ordem": 6,
           "data_prevista": "2027-01-17",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "a161bd87-eade-5d37-bcbb-9d4a797b5e66",
@@ -1705,7 +1705,7 @@
           "ordem": 7,
           "data_prevista": "2027-02-16",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         },
         {
           "id": "5ba5295b-f28d-5c23-a31a-c703957fa391",
@@ -1713,7 +1713,7 @@
           "ordem": 8,
           "data_prevista": "2027-03-18",
           "data_realizada": null,
-          "status": "pendente"
+          "status": "previsto"
         }
       ],
       "progresso_metodologico": {

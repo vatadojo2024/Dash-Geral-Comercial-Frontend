@@ -77,6 +77,17 @@ describe("data_educacional.json — regras da seção 9", () => {
     }
   });
 
+  it("previsto: só checkpoint cuja data ainda não chegou, e NÃO conta em Intervenções SLA", () => {
+    const previstos = alunos.flatMap((a) => a.checkpoints.filter((c) => c.status === "previsto"));
+    expect(previstos.length).toBeGreaterThan(0);
+    expect(previstos.every((c) => c.data_prevista !== null && Date.parse(c.data_prevista) > hoje && c.data_realizada === null)).toBe(true);
+    const comProximoPrevisto = alunos.filter((a) => a.proximo_checkpoint.status === "previsto");
+    expect(comProximoPrevisto.length).toBeGreaterThan(0);
+    const sla = alunos.filter((a) => ["pendente", "nao_respondeu"].includes(a.proximo_checkpoint.status));
+    expect(resumo.kpis.intervencoes_sla).toBe(sla.length);
+    expect(sla.some((a) => a.proximo_checkpoint.status === "previsto")).toBe(false);
+  });
+
   it("próximo checkpoint existe na timeline do aluno, com o mesmo status", () => {
     for (const a of alunos) {
       const cp = a.checkpoints.find((c) => c.nome === a.proximo_checkpoint.nome);

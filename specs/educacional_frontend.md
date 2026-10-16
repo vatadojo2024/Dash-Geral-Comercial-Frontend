@@ -51,7 +51,7 @@ O backend tem especificação própria: Módulo Educacional — Especificação 
 Nesta fase não há fonte de dados; o front roda inteiro sobre um arquivo mock que segue o contrato da seção 8.
 
 - Adapter `apiEducacional.ts` com modo `mock | api`, controlado por `NEXT_PUBLIC_EDU_DATA_SOURCE` (padrão `mock`).
-- Modo `mock`: lê `data_educacional.json`. Mínimo de 12 alunos, cobrindo as 5 etapas, os 4 status de checkpoint, os 3 níveis de risco, alunos adimplentes e inadimplentes, alunos com e sem sinais comerciais.
+- Modo `mock`: lê `data_educacional.json`. Mínimo de 12 alunos, cobrindo as 5 etapas, os 5 status de checkpoint, os 3 níveis de risco, alunos adimplentes e inadimplentes, alunos com e sem sinais comerciais.
 - Modo `api`: chama os endpoints da seção 8.3 com o JWT. Fica pronto no código e desligado.
 - Validação do contrato com Zod e tolerância aluno a aluno: registro inválido é descartado e logado, sem derrubar a tela.
 - `GET /api/me` é real desde já (não é mock): a navegação depende dele.
@@ -98,7 +98,7 @@ Título "Acompanhamento tático · clique em um aluno para abrir o raio-X". Font
 | Aluno | `nome` | Negrito |
 | Nível inicial | `nivel_inicial` | Texto |
 | Etapa atual | `etapa_atual` | Rótulo da etapa |
-| Checkpoint | `proximo_checkpoint.status` | Badge: Realizado (verde), Pendente (âmbar), Não respondeu (vermelho), Em pausa (cinza) |
+| Checkpoint | `proximo_checkpoint.status` | Badge: Realizado (verde), Pendente (âmbar), Não respondeu (vermelho), Em pausa (cinza), Previsto (cinza claro) |
 | Dias estagnados | `dias_estagnados` | Número + "d", negrito |
 | Risco | `risco` | Ponto colorido + texto: Saudável (verde), Atenção (âmbar), Risco (vermelho) |
 | Próxima ação | `proxima_acao.descricao` | Texto truncado em 1 linha, completo no hover |
@@ -139,7 +139,7 @@ Fonte: `AlunoDetalhe` (seção 8.1). Blocos, de cima para baixo:
 **Visual**
 
 - Segue o design system atual do painel.
-- Cores semânticas fixas: verde = saudável/realizado, âmbar = atenção/pendente, vermelho = risco/não respondeu, cinza = em pausa.
+- Cores semânticas fixas: verde = saudável/realizado, âmbar = atenção/pendente, vermelho = risco/não respondeu, cinza = em pausa, cinza claro = previsto (diferente do cinza de "Em pausa").
 - Responsivo: KPIs em 4 colunas no desktop, 2 no tablet, 1 no celular; Funil e Sinais lado a lado no desktop (2/3 e 1/3), empilhados abaixo disso; tabela com rolagem horizontal no celular.
 
 ## 8. Contrato de dados
@@ -156,7 +156,8 @@ type Etapa =
   | 'construcao_operacional'    // Construção do Operacional
   | 'validacao';                // Validação
 
-type StatusCheckpoint = 'realizado' | 'pendente' | 'nao_respondeu' | 'em_pausa';
+type StatusCheckpoint = 'realizado' | 'pendente' | 'nao_respondeu' | 'em_pausa' | 'previsto';
+// previsto: a data do checkpoint ainda não chegou. Vem pronto no payload (o front não calcula por data).
 type NivelRisco = 'saudavel' | 'atencao' | 'risco';
 type NivelInicial = 'iniciante' | 'intermediario' | 'avancado';
 type PassoMetodologico = 'consumiu' | 'entendeu' | 'aplicou' | 'validou';
@@ -263,7 +264,8 @@ O mock precisa ser coerente com estas regras, que o backend vai calcular quando 
 | --- | --- |
 | Health Score | Índice 0–100 (engajamento, presença, progresso) |
 | Em risco | Health Score abaixo de 50; no Raio-X aparece como "Risco de Evasão/Reembolso" |
-| Intervenções SLA | Alunos com próximo checkpoint `pendente` ou `nao_respondeu` |
+| Intervenções SLA | Alunos com próximo checkpoint `pendente` ou `nao_respondeu` (`previsto` não conta) |
+| Previsto | Checkpoint cuja data ainda não chegou; calculado pelo backend, o front só exibe |
 | Funil | Alunos atualmente em cada etapa; a soma das 5 etapas é igual a `alunos_ativos` |
 | Dias estagnados | Dias corridos desde `etapa_desde` até hoje |
 | Termômetro de risco | Verde, amarelo ou vermelho com base nas respostas do aluno nos checkpoints |

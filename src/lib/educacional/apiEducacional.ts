@@ -118,7 +118,13 @@ function alunosDoMock(): AlunoDetalhe[] {
 }
 
 const PESO_RISCO: Record<NivelRisco, number> = { risco: 0, atencao: 1, saudavel: 2 };
-const PESO_CHECKPOINT: Record<StatusCheckpoint, number> = { nao_respondeu: 0, pendente: 1, em_pausa: 2, realizado: 3 };
+const PESO_CHECKPOINT: Record<StatusCheckpoint, number> = {
+  nao_respondeu: 0,
+  pendente: 1,
+  em_pausa: 2,
+  previsto: 3,
+  realizado: 4,
+};
 const ORDEM_ETAPA: Record<Etapa, number> = {
   fundamentos_iniciais: 0,
   tres_pilares: 1,

@@ -27,7 +27,7 @@ const config: Config = {
         verde: cor("verde"),
         rosa: cor("rosa"),
         amarelo: cor("amarelo"),
-        cinza: cor("cinza"),
+        cinza: { DEFAULT: cor("cinza"), claro: cor("cinza-claro") },
         violeta: cor("violeta"),
         // Tags do DS: texto (300) e forte (500) para fundo/borda
         sucesso: { DEFAULT: cor("sucesso"), forte: cor("sucesso-forte") },

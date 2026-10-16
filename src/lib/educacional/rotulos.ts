@@ -14,10 +14,11 @@ import type {
 // Rótulos e cores do módulo Educacional. Só apresentação: nenhum valor é
 // calculado aqui. Cores semânticas FIXAS (spec, seção 7):
 //   verde = saudável / realizado · âmbar = atenção / pendente ·
-//   vermelho = risco / não respondeu · cinza = em pausa
+//   vermelho = risco / não respondeu · cinza = em pausa ·
+//   cinza claro = previsto (data ainda não chegou)
 // ---------------------------------------------------------------------------
 
-export type Tom = "verde" | "ambar" | "vermelho" | "cinza";
+export type Tom = "verde" | "ambar" | "vermelho" | "cinza" | "cinza_claro";
 
 export const ROTULO_ETAPA: Record<Etapa, string> = {
   fundamentos_iniciais: "Fundamentos Iniciais",
@@ -32,12 +33,14 @@ export const ROTULO_STATUS_CHECKPOINT: Record<StatusCheckpoint, string> = {
   pendente: "Pendente",
   nao_respondeu: "Não respondeu",
   em_pausa: "Em pausa",
+  previsto: "Previsto",
 };
 export const TOM_STATUS_CHECKPOINT: Record<StatusCheckpoint, Tom> = {
   realizado: "verde",
   pendente: "ambar",
   nao_respondeu: "vermelho",
   em_pausa: "cinza",
+  previsto: "cinza_claro",
 };
 
 export const ROTULO_RISCO: Record<NivelRisco, string> = {
@@ -95,19 +98,23 @@ export const TAG_DO_TOM: Record<Tom, string> = {
   verde: "tag-success",
   ambar: "tag-warning",
   vermelho: "tag-error",
-  cinza: "text-texto-sec",
+  cinza: "border-cinza/40 bg-cinza/20 text-cinza",
+  // Tracejado e sem fundo: algo que ainda vai acontecer.
+  cinza_claro: "border-dashed border-cinza-claro/40 bg-transparent text-cinza-claro",
 };
 export const PONTO_DO_TOM: Record<Tom, string> = {
   verde: "bg-sucesso",
   ambar: "bg-aviso",
   vermelho: "bg-erro",
   cinza: "bg-cinza",
+  cinza_claro: "bg-cinza-claro",
 };
 export const TEXTO_DO_TOM: Record<Tom, string> = {
   verde: "text-sucesso",
   ambar: "text-aviso",
   vermelho: "text-erro",
-  cinza: "text-texto-sec",
+  cinza: "text-cinza",
+  cinza_claro: "text-cinza-claro",
 };
 
 // ---------------------------------------------------------------------------

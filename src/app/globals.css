@@ -42,6 +42,8 @@
   --c-rosa: 251 113 133;
   --c-amarelo: 250 204 21;
   --c-cinza: 148 163 184;
+  /* Cinza claro: checkpoint "Previsto" do módulo Educacional (≠ cinza de "Em pausa"). */
+  --c-cinza-claro: 226 232 240;
   --c-violeta: 250 176 176; /* secundária clara (ícones em círculo) */
 
   /* Tags do DS (texto = tom 300, forte = tom 500 para fundo/borda) */

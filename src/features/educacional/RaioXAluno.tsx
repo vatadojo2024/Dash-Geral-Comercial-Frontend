@@ -257,17 +257,22 @@ function Timeline({ checkpoints }: { checkpoints: Checkpoint[] }) {
               {ordenados.map((c) => {
                 const bigWin = c.nome === BIG_WIN;
                 const tom = TOM_STATUS_CHECKPOINT[c.status];
+                const previsto = c.status === "previsto";
                 return (
                   <li key={c.id} className="relative flex w-24 flex-col items-center gap-1.5 text-center">
                     <span
                       className={cn(
-                        "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 border-painel",
-                        PONTO_DO_TOM[tom],
+                        "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2",
+                        previsto ? "border-dashed border-cinza-claro bg-painel" : ["border-painel", PONTO_DO_TOM[tom]],
                         bigWin && "h-9 w-9 ring-2 ring-amarelo/70 ring-offset-2 ring-offset-painel",
                       )}
                       title={ROTULO_STATUS_CHECKPOINT[c.status]}
                     >
-                      {bigWin ? <Star className="h-4 w-4 text-noite" aria-hidden /> : <Flag className="h-3.5 w-3.5 text-noite/80" aria-hidden />}
+                      {bigWin ? (
+                        <Star className={cn("h-4 w-4", previsto ? "text-cinza-claro" : "text-noite")} aria-hidden />
+                      ) : (
+                        <Flag className={cn("h-3.5 w-3.5", previsto ? "text-cinza-claro" : "text-noite/80")} aria-hidden />
+                      )}
                     </span>
                     <span className={cn("text-xs font-medium text-texto", bigWin && "text-amarelo")}>{c.nome}</span>
                     <span className="text-[11px] tabular-nums text-texto-sec">{dataCurta(c.data_prevista)}</span>
