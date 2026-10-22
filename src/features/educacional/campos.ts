@@ -144,7 +144,7 @@ export function comCampo<T extends Aluno>(a: T, campo: CampoAjustavel, novo: Cam
   return a;
 }
 
-// Algum campo exibido no card do Kanban tem ajuste manual? (ícone no card)
+// Algum campo EXIBIDO no card do Kanban (faixa, dias na etapa) tem ajuste manual?
 export function temAjusteNoCard(a: AlunoLinha): boolean {
-  return Boolean(a.faixa_saude.ajuste || a.dias_na_etapa.ajuste || a.health_score.ajuste);
+  return Boolean(a.faixa_saude.ajuste || a.dias_na_etapa.ajuste);
 }

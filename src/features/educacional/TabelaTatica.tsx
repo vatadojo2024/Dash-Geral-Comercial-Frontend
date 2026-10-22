@@ -71,8 +71,11 @@ type Props = {
 export function TabelaTatica({ estado, simular, onMudar }: Props) {
   const router = useRouter();
   const kanban = estado.visao === "kanban";
-  // Kanban sem paginação e sem arquivados (Q3: por_pagina=todos).
-  const filtros = kanban ? { ...estado, pagina: 1, por_pagina: "todos" as const, incluir_arquivados: false } : estado;
+  // Kanban: sem paginação (Q3: por_pagina=todos), sem arquivados e na ordem da
+  // spec (faixa de saúde, risco primeiro, depois dias na etapa desc).
+  const filtros = kanban
+    ? { ...estado, pagina: 1, por_pagina: "todos" as const, incluir_arquivados: false, ordem: "risco" as const }
+    : estado;
   const lista = useQuery({
     queryKey: [...CHAVES.alunos, filtros, simular],
     queryFn: () => buscarAlunos(filtros, simular),
