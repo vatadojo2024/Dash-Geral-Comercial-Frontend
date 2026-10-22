@@ -1,40 +1,66 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, X } from "lucide-react";
-import { buscarAlunos, TAMANHO_PAGINA, type ChaveOrdem, type OrdemAlunos, type Simular } from "@/lib/educacional/apiEducacional";
-import { FAIXAS_SAUDE, SINAIS, STATUS_CHECKPOINT, type AlunoLinha, type Etapa } from "@/lib/educacional/contrato";
-import { ROTULO_FAIXA, ROTULO_NIVEL, ROTULO_SINAL, ROTULO_STATUS_CHECKPOINT } from "@/lib/educacional/rotulos";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Plus, RotateCcw, X } from "lucide-react";
+import {
+  arquivarAluno,
+  atualizarAluno,
+  atualizarCheckpoint,
+  buscarAlunos,
+  TAMANHO_PAGINA,
+  type ChaveOrdem,
+  type OrdemAlunos,
+  type Simular,
+} from "@/lib/educacional/apiEducacional";
+import {
+  FAIXAS_SAUDE,
+  NIVEIS_INICIAIS,
+  SINAIS,
+  STATUS_ALUNO,
+  STATUS_CHECKPOINT,
+  type AlunoLinha,
+  type CampoAjustavel,
+  type CamposDiretosAluno,
+  type NivelInicial,
+  type StatusAluno,
+} from "@/lib/educacional/contrato";
+import {
+  dataCurta,
+  ROTULO_FAIXA,
+  ROTULO_NIVEL,
+  ROTULO_SINAL,
+  ROTULO_STATUS_ALUNO,
+  ROTULO_STATUS_CHECKPOINT,
+  ROTULO_TIPO_RESPONSAVEL,
+} from "@/lib/educacional/rotulos";
 import { Alternador } from "@/components/ui/Alternador";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
-import { descreverFiltros, queryDoEstado, semFiltros, temFiltro, type EstadoTabela, type Visao } from "./estado";
+import { formatarValor } from "./campos";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
+import { CelulaEditavel, EditorAcao, EditorCheckpoint, EditorLista, EditorTexto, MarcaAjuste } from "./Edicao";
+import { descreverFiltros, queryDoEstado, semFiltros, temFiltro, type EstadoTabela, type Visao } from "./estado";
+import { FormAjuste } from "./FormAjuste";
+import { Kanban } from "./Kanban";
+import { NovoAluno } from "./NovoAluno";
 import { BadgeCheckpoint, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
+import { COLUNAS_DA_TABELA, SeletorColunas, useColunasVisiveis, type IdColuna } from "./SeletorColunas";
+import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
-// Tabela tática (spec, seção 5). A lista vem do adapter já filtrada, ordenada
-// e paginada (parâmetros da seção 8.3); a tela só desenha. Clique na linha ou
-// no card abre o Raio-X, que volta para esta mesma URL.
+// Tabela tática (spec Fase 2, seção 4). A lista vem do adapter já filtrada,
+// ordenada e paginada; toda célula edita na linha (Enter/clique fora salva,
+// Esc cancela) e grava com atualização otimista. Campo calculado abre o
+// formulário de ajuste. O nome do aluno abre o Raio-X, que volta para esta URL.
 // ---------------------------------------------------------------------------
 
 const SLA = "pendente,nao_respondeu";
-
-const COLUNAS: { rotulo: string; campo: ChaveOrdem }[] = [
-  { rotulo: "Aluno", campo: "nome" },
-  { rotulo: "Nível inicial", campo: "nivel_inicial" },
-  { rotulo: "Etapa atual", campo: "etapa" },
-  { rotulo: "Checkpoint", campo: "checkpoint" },
-  { rotulo: "Dias na etapa", campo: "dias_na_etapa" },
-  { rotulo: "Faixa de saúde", campo: "faixa_saude" },
-  { rotulo: "Próxima ação", campo: "proxima_acao" },
-  { rotulo: "Responsável", campo: "responsavel" },
-];
 
 type Props = {
   estado: EstadoTabela;
@@ -45,8 +71,8 @@ type Props = {
 export function TabelaTatica({ estado, simular, onMudar }: Props) {
   const router = useRouter();
   const kanban = estado.visao === "kanban";
-  // Kanban sem paginação (Q3: por_pagina=todos).
-  const filtros = { ...estado, ...(kanban ? { pagina: 1, por_pagina: "todos" as const } : {}) };
+  // Kanban sem paginação e sem arquivados (Q3: por_pagina=todos).
+  const filtros = kanban ? { ...estado, pagina: 1, por_pagina: "todos" as const, incluir_arquivados: false } : estado;
   const lista = useQuery({
     queryKey: [...CHAVES.alunos, filtros, simular],
     queryFn: () => buscarAlunos(filtros, simular),
@@ -56,19 +82,14 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
   useRedirecionarSeSemPermissao([lista.error, config.error]);
   const etapas = etapasAtivas(config.data);
   const responsaveis = ativos(config.data?.responsaveis);
+  const { visiveis, alternar } = useColunasVisiveis();
+  const [novoAberto, setNovoAberto] = useState(false);
 
   const voltar = queryDoEstado(estado, simular);
-  const abrir = (a: AlunoLinha) =>
-    router.push(`/educacional/alunos/${encodeURIComponent(a.id)}${voltar ? `?voltar=${encodeURIComponent(voltar)}` : ""}`);
-  const hrefDoAluno = (a: AlunoLinha) =>
+  const hrefDoAluno = (a: { id: string }) =>
     `/educacional/alunos/${encodeURIComponent(a.id)}${voltar ? `?voltar=${encodeURIComponent(voltar)}` : ""}`;
 
   const mudar = (parcial: Partial<EstadoTabela>) => onMudar({ ...estado, ...parcial, pagina: parcial.pagina ?? 1 });
-  const ordenar = (campo: ChaveOrdem) => {
-    const atual = estado.ordem;
-    const novo = atual === campo ? (`-${campo}` as OrdemAlunos) : atual === `-${campo}` ? campo : campo;
-    mudar({ ordem: novo });
-  };
 
   const descricao = descreverFiltros(estado, {
     etapa: (id) => config.data?.etapas.find((e) => e.id === id)?.nome,
@@ -81,17 +102,25 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
   return (
     <Card id="tabela-tatica" className="scroll-mt-20">
       <CardHeader
-        title="Acompanhamento tático · clique em um aluno para abrir o raio-X"
+        title="Acompanhamento tático"
+        subtitle="Clique numa célula para editar · clique no nome para abrir o raio-X"
         action={
-          <Alternador<Visao>
-            rotulo="Visualização da tabela"
-            valor={estado.visao}
-            onChange={(v) => onMudar({ ...estado, visao: v })}
-            opcoes={[
-              { valor: "lista", label: "Lista" },
-              { valor: "kanban", label: "Kanban" },
-            ]}
-          />
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!kanban && <SeletorColunas visiveis={visiveis} onAlternar={alternar} />}
+            <Button size="sm" onClick={() => setNovoAberto(true)}>
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              Novo aluno
+            </Button>
+            <Alternador<Visao>
+              rotulo="Visualização da tabela"
+              valor={estado.visao}
+              onChange={(v) => onMudar({ ...estado, visao: v })}
+              opcoes={[
+                { valor: "lista", label: "Lista" },
+                { valor: "kanban", label: "Kanban" },
+              ]}
+            />
+          </div>
         }
       />
       <CardContent className="space-y-4">
@@ -100,7 +129,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             id="filtro-etapa"
             rotulo="Etapa"
             valor={estado.etapa ?? ""}
-            onChange={(v) => mudar({ etapa: (v || null) as EstadoTabela["etapa"] })}
+            onChange={(v) => mudar({ etapa: v || null })}
             opcoes={etapas.map((e) => ({ valor: e.id, label: e.nome }))}
           />
           <Selecao
@@ -135,6 +164,17 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             opcoes={SINAIS.map((s) => ({ valor: s, label: ROTULO_SINAL[s] }))}
           />
         </div>
+        {!kanban && (
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-texto-sec">
+            <input
+              type="checkbox"
+              checked={Boolean(estado.incluir_arquivados)}
+              onChange={(e) => mudar({ incluir_arquivados: e.target.checked })}
+              className="accent-azul"
+            />
+            Mostrar arquivados
+          </label>
+        )}
 
         {descricao.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-azul/40 bg-azul/10 px-3 py-2 text-xs" role="status">
@@ -168,7 +208,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
         ) : !lista.data || lista.data.itens.length === 0 ? (
           <EmptyState
             titulo={temFiltro(estado) ? "Nenhum aluno com esses filtros" : "Nenhum aluno na jornada"}
-            descricao={temFiltro(estado) ? "Limpe ou troque os filtros para ver outros alunos." : "Quando houver alunos ativos, eles aparecem aqui."}
+            descricao={temFiltro(estado) ? "Limpe ou troque os filtros para ver outros alunos." : "Use “Novo aluno” para cadastrar o primeiro."}
           />
         ) : (
           <>
@@ -179,107 +219,404 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
               </p>
             )}
             {!kanban ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[960px] border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-borda text-left text-xs text-texto-sec">
-                      {COLUNAS.map((c) => {
-                        const ativa = estado.ordem === c.campo || estado.ordem === `-${c.campo}`;
-                        const Seta = !ativa ? ArrowUpDown : estado.ordem.startsWith("-") ? ArrowDown : ArrowUp;
-                        return (
-                          <th
-                            key={c.campo}
-                            className="px-2 py-2 font-medium"
-                            aria-sort={ativa ? (estado.ordem.startsWith("-") ? "descending" : "ascending") : "none"}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => ordenar(c.campo)}
-                              className={cn("inline-flex items-center gap-1 text-left hover:text-texto", ativa && "text-texto")}
-                            >
-                              {c.rotulo}
-                              <Seta className={cn("h-3 w-3", !ativa && "opacity-40")} aria-hidden />
-                            </button>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lista.data.itens.map((a) => (
-                      <tr
-                        key={a.id}
-                        onClick={() => abrir(a)}
-                        className="cursor-pointer border-b border-borda/40 transition-colors hover:bg-white/[0.04]"
-                      >
-                        <td className="whitespace-nowrap px-2 py-2.5">
-                          <Link
-                            href={hrefDoAluno(a)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="font-semibold text-texto hover:text-azul-claro hover:underline"
-                          >
-                            {a.nome}
-                          </Link>
-                        </td>
-                        <td className="px-2 py-2.5 text-texto-sec">{ROTULO_NIVEL[a.nivel_inicial]}</td>
-                        <td className="max-w-[150px] px-2 py-2.5 leading-snug text-texto">{a.etapa.nome}</td>
-                        <td className="px-2 py-2.5">
-                          {a.proximo_checkpoint ? <BadgeCheckpoint status={a.proximo_checkpoint.status} /> : <span className="text-texto-sec/60">—</span>}
-                        </td>
-                        <td className="px-2 py-2.5 font-semibold tabular-nums text-texto">
-                          {a.dias_na_etapa.valor != null ? `${a.dias_na_etapa.valor}d` : "—"}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <Faixa faixa={a.faixa_saude.valor} />
-                        </td>
-                        <td className="max-w-[190px] px-2 py-2.5">
-                          <span className="block truncate text-texto" title={a.proxima_acao?.descricao}>
-                            {a.proxima_acao?.descricao ?? <span className="text-texto-sec/60">—</span>}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2.5 text-sm">
-                          <NomeResponsavel responsavel={a.responsavel} empilhado />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Lista itens={lista.data.itens} estado={estado} visiveis={visiveis} hrefDoAluno={hrefDoAluno} onOrdenar={(o) => mudar({ ordem: o })} />
             ) : (
               <Kanban itens={lista.data.itens} etapas={etapas} hrefDoAluno={hrefDoAluno} />
             )}
 
             {!kanban && (
-            <nav className="flex flex-wrap items-center justify-between gap-2 text-xs text-texto-sec" aria-label="Paginação">
-              <span>
-                {total} {total === 1 ? "aluno" : "alunos"} · página {estado.pagina} de {totalPaginas}
-              </span>
-              <span className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={estado.pagina <= 1}
-                  onClick={() => mudar({ pagina: estado.pagina - 1 })}
-                  aria-label="Página anterior"
-                >
-                  <ChevronLeft className="h-4 w-4" aria-hidden />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={estado.pagina >= totalPaginas}
-                  onClick={() => mudar({ pagina: estado.pagina + 1 })}
-                  aria-label="Próxima página"
-                >
-                  <ChevronRight className="h-4 w-4" aria-hidden />
-                </Button>
-              </span>
-            </nav>
+              <nav className="flex flex-wrap items-center justify-between gap-2 text-xs text-texto-sec" aria-label="Paginação">
+                <span>
+                  {total} {total === 1 ? "aluno" : "alunos"} · página {estado.pagina} de {totalPaginas}
+                </span>
+                <span className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={estado.pagina <= 1}
+                    onClick={() => mudar({ pagina: estado.pagina - 1 })}
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={estado.pagina >= totalPaginas}
+                    onClick={() => mudar({ pagina: estado.pagina + 1 })}
+                    aria-label="Próxima página"
+                  >
+                    <ChevronRight className="h-4 w-4" aria-hidden />
+                  </Button>
+                </span>
+              </nav>
             )}
           </>
         )}
       </CardContent>
+
+      <NovoAluno aberto={novoAberto} onFechar={() => setNovoAberto(false)} onCriado={(a) => router.push(hrefDoAluno(a))} />
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Lista editável
+// ---------------------------------------------------------------------------
+
+function Lista({
+  itens,
+  estado,
+  visiveis,
+  hrefDoAluno,
+  onOrdenar,
+}: {
+  itens: AlunoLinha[];
+  estado: EstadoTabela;
+  visiveis: IdColuna[];
+  hrefDoAluno: (a: AlunoLinha) => string;
+  onOrdenar: (o: OrdemAlunos) => void;
+}) {
+  const config = useConfig();
+  const gravar = useGravacao();
+  const [ajuste, setAjuste] = useState<{ aluno: AlunoLinha; campo: CampoAjustavel } | null>(null);
+  const etapas = etapasAtivas(config.data);
+  const responsaveis = ativos(config.data?.responsaveis);
+  const colunas = COLUNAS_DA_TABELA.filter((c) => visiveis.includes(c.id));
+
+  const ordenar = (campo: ChaveOrdem) => {
+    const atual = estado.ordem;
+    onOrdenar(atual === campo ? (`-${campo}` as OrdemAlunos) : campo);
+  };
+
+  // PATCH /alunos/:id com o otimista dos mesmos campos.
+  const salvar = (a: AlunoLinha, campos: CamposDiretosAluno, otimista: (l: AlunoLinha) => AlunoLinha, afetaTotais = false) =>
+    gravar({
+      alunoId: a.id,
+      versao: a.versao,
+      executar: (v) => atualizarAluno(a.id, v, campos),
+      naLinha: otimista,
+      noAluno: (d) => ({ ...d, ...otimista(d) }),
+      afetaTotais,
+    });
+
+  const reativar = (a: AlunoLinha) =>
+    gravar({
+      alunoId: a.id,
+      versao: a.versao,
+      executar: (v) => arquivarAluno(a.id, v, false),
+      naLinha: (l) => ({ ...l, arquivado: false }),
+      afetaTotais: true,
+    });
+
+  function celula(a: AlunoLinha, coluna: IdColuna): ReactNode {
+    const bloqueada = a.arquivado;
+    const ajustavel = (campo: CampoAjustavel, exibir: ReactNode, rotulo: string) => (
+      <CelulaEditavel rotulo={`Ajustar ${rotulo} de ${a.nome}`} bloqueada={bloqueada} onAbrir={() => setAjuste({ aluno: a, campo })} exibir={exibir} />
+    );
+    switch (coluna) {
+      case "nome":
+        return (
+          <CelulaEditavel
+            rotulo={`Editar o nome de ${a.nome}`}
+            bloqueada={bloqueada}
+            exibir={
+              <span className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={hrefDoAluno(a)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="whitespace-nowrap font-semibold text-texto hover:text-azul-claro hover:underline"
+                >
+                  {a.nome}
+                </Link>
+                {a.arquivado && <span className="tag">Arquivado</span>}
+              </span>
+            }
+            editor={({ concluir, cancelar }) => (
+              <EditorTexto
+                rotulo="Nome do aluno"
+                valor={a.nome}
+                obrigatorio
+                onCancelar={cancelar}
+                onSalvar={(nome) => concluir(salvar(a, { nome: nome ?? a.nome }, (l) => ({ ...l, nome: nome ?? l.nome })))}
+              />
+            )}
+          />
+        );
+      case "nivel_inicial":
+        return (
+          <CelulaEditavel
+            rotulo={`Editar o nível inicial de ${a.nome}`}
+            bloqueada={bloqueada}
+            exibir={<span className="text-texto-sec">{ROTULO_NIVEL[a.nivel_inicial]}</span>}
+            editor={({ concluir, cancelar }) => (
+              <EditorLista
+                rotulo="Nível inicial"
+                valor={a.nivel_inicial}
+                opcoes={NIVEIS_INICIAIS.map((n) => ({ valor: n, rotulo: ROTULO_NIVEL[n] }))}
+                onCancelar={cancelar}
+                onSalvar={(v) => {
+                  const nivel = v as NivelInicial;
+                  concluir(salvar(a, { nivel_inicial: nivel }, (l) => ({ ...l, nivel_inicial: nivel })));
+                }}
+              />
+            )}
+          />
+        );
+      case "etapa":
+        return (
+          <CelulaEditavel
+            rotulo={`Mudar a etapa de ${a.nome}`}
+            bloqueada={bloqueada}
+            className="max-w-[170px]"
+            exibir={<span className="leading-snug text-texto">{a.etapa.nome}</span>}
+            editor={({ concluir, cancelar }) => (
+              <EditorLista
+                rotulo="Etapa"
+                valor={a.etapa.id}
+                opcoes={etapas.map((e) => ({ valor: e.id, rotulo: e.nome }))}
+                onCancelar={cancelar}
+                onSalvar={(id) => {
+                  const e = etapas.find((x) => x.id === id);
+                  if (!e) return cancelar();
+                  concluir(salvar(a, { etapa_id: e.id }, (l) => ({ ...l, etapa: { id: e.id, nome: e.nome } }), true));
+                }}
+              />
+            )}
+          />
+        );
+      case "checkpoint": {
+        const cp = a.proximo_checkpoint;
+        if (!cp) return <span className="text-texto-sec/60">—</span>;
+        return (
+          <CelulaEditavel
+            rotulo={`Mudar o status do checkpoint ${cp.nome} de ${a.nome}`}
+            bloqueada={bloqueada}
+            exibir={
+              <span className="flex flex-col items-start gap-0.5">
+                <BadgeCheckpoint status={cp.status} />
+                <span className="text-[11px] text-texto-sec">
+                  {cp.nome} · {dataCurta(cp.data_prevista)}
+                </span>
+              </span>
+            }
+            editor={({ concluir, cancelar }) => (
+              <EditorCheckpoint
+                status={cp.status}
+                onCancelar={cancelar}
+                onSalvar={(campos) =>
+                  concluir(
+                    gravar({
+                      alunoId: a.id,
+                      versao: a.versao,
+                      executar: (v) => atualizarCheckpoint(cp.id, v, campos),
+                      naLinha: (l) => ({ ...l, proximo_checkpoint: l.proximo_checkpoint && { ...l.proximo_checkpoint, status: campos.status } }),
+                      afetaTotais: true,
+                    }),
+                  )
+                }
+              />
+            )}
+          />
+        );
+      }
+      case "dias_na_etapa":
+        return ajustavel(
+          "dias_na_etapa",
+          <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-texto">
+            {a.dias_na_etapa.valor != null ? `${a.dias_na_etapa.valor}d` : "—"}
+            <MarcaAjuste ajuste={a.dias_na_etapa.ajuste} automatico={formatarValor("dias_na_etapa", a.dias_na_etapa.automatico)} />
+          </span>,
+          "dias na etapa",
+        );
+      case "faixa_saude":
+        return ajustavel(
+          "faixa_saude",
+          <span className="inline-flex items-center gap-1">
+            <Faixa faixa={a.faixa_saude.valor} />
+            <MarcaAjuste ajuste={a.faixa_saude.ajuste} automatico={formatarValor("faixa_saude", a.faixa_saude.automatico)} />
+          </span>,
+          "faixa de saúde",
+        );
+      case "health_score":
+        return ajustavel(
+          "health_score",
+          <span className="inline-flex items-center gap-1 tabular-nums text-texto">
+            {a.health_score.valor ?? "—"}
+            <MarcaAjuste ajuste={a.health_score.ajuste} automatico={formatarValor("health_score", a.health_score.automatico)} />
+          </span>,
+          "Health Score",
+        );
+      case "dias_sem_atividade":
+        return ajustavel(
+          "dias_sem_atividade",
+          <span className="inline-flex items-center gap-1 tabular-nums text-texto">
+            {a.dias_sem_atividade.valor != null ? `${a.dias_sem_atividade.valor}d` : "—"}
+            <MarcaAjuste
+              ajuste={a.dias_sem_atividade.ajuste}
+              automatico={formatarValor("dias_sem_atividade", a.dias_sem_atividade.automatico)}
+            />
+          </span>,
+          "dias sem atividade",
+        );
+      case "proxima_acao":
+        return (
+          <CelulaEditavel
+            rotulo={`Editar a próxima ação de ${a.nome}`}
+            bloqueada={bloqueada}
+            className="max-w-[220px]"
+            exibir={
+              a.proxima_acao ? (
+                <span className="block min-w-0">
+                  <span className="block truncate text-texto" title={a.proxima_acao.descricao}>
+                    {a.proxima_acao.descricao}
+                  </span>
+                  {a.proxima_acao.prazo && <span className="text-[11px] text-texto-sec">até {dataCurta(a.proxima_acao.prazo)}</span>}
+                </span>
+              ) : (
+                <span className="text-texto-sec/60">—</span>
+              )
+            }
+            editor={({ concluir, cancelar }) => (
+              <EditorAcao
+                descricao={a.proxima_acao?.descricao ?? ""}
+                prazo={a.proxima_acao?.prazo ?? ""}
+                onCancelar={cancelar}
+                onSalvar={({ descricao, prazo }) =>
+                  concluir(
+                    salvar(a, { proxima_acao: descricao, proxima_acao_prazo: prazo }, (l) => ({
+                      ...l,
+                      proxima_acao: descricao ? { descricao, prazo } : null,
+                    })),
+                  )
+                }
+              />
+            )}
+          />
+        );
+      case "responsavel":
+        return (
+          <CelulaEditavel
+            rotulo={`Mudar o responsável de ${a.nome}`}
+            bloqueada={bloqueada}
+            exibir={<NomeResponsavel responsavel={a.responsavel} empilhado />}
+            editor={({ concluir, cancelar }) => (
+              <EditorLista
+                rotulo="Responsável"
+                valor={a.responsavel?.id ?? ""}
+                vazio="Sem responsável"
+                opcoes={responsaveis.map((r) => ({ valor: r.id, rotulo: `${r.nome} · ${ROTULO_TIPO_RESPONSAVEL[r.tipo]}` }))}
+                onCancelar={cancelar}
+                onSalvar={(id) => {
+                  const r = responsaveis.find((x) => x.id === id);
+                  concluir(
+                    salvar(a, { responsavel_id: r?.id ?? null }, (l) => ({
+                      ...l,
+                      responsavel: r ? { id: r.id, nome: r.nome, tipo: r.tipo } : null,
+                    })),
+                  );
+                }}
+              />
+            )}
+          />
+        );
+      case "status_aluno":
+        return (
+          <CelulaEditavel
+            rotulo={`Mudar o status de ${a.nome}`}
+            bloqueada={bloqueada}
+            exibir={<span className="whitespace-nowrap text-texto-sec">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>}
+            editor={({ concluir, cancelar }) => (
+              <EditorLista
+                rotulo="Status do aluno"
+                valor={a.status_aluno}
+                opcoes={STATUS_ALUNO.map((s) => ({ valor: s, rotulo: ROTULO_STATUS_ALUNO[s] }))}
+                onCancelar={cancelar}
+                onSalvar={(v) => {
+                  const s = v as StatusAluno;
+                  concluir(salvar(a, { status_aluno: s }, (l) => ({ ...l, status_aluno: s }), true));
+                }}
+              />
+            )}
+          />
+        );
+      case "mentoria":
+        return (
+          <CelulaEditavel
+            rotulo={`Editar a mentoria de ${a.nome}`}
+            bloqueada={bloqueada}
+            exibir={<span className="whitespace-nowrap text-texto-sec">{a.mentoria}</span>}
+            editor={({ concluir, cancelar }) => (
+              <EditorTexto
+                rotulo="Mentoria"
+                valor={a.mentoria}
+                obrigatorio
+                onCancelar={cancelar}
+                onSalvar={(m) => concluir(salvar(a, { mentoria: m ?? a.mentoria }, (l) => ({ ...l, mentoria: m ?? l.mentoria })))}
+              />
+            )}
+          />
+        );
+    }
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm" style={{ minWidth: Math.max(640, colunas.length * 125) }}>
+        <thead>
+          <tr className="border-b border-borda text-left text-xs text-texto-sec">
+            {colunas.map((c) => {
+              const ativa = estado.ordem === c.id || estado.ordem === `-${c.id}`;
+              const Seta = !ativa ? ArrowUpDown : estado.ordem.startsWith("-") ? ArrowDown : ArrowUp;
+              return (
+                <th
+                  key={c.id}
+                  className="px-2 py-2 font-medium"
+                  aria-sort={ativa ? (estado.ordem.startsWith("-") ? "descending" : "ascending") : "none"}
+                >
+                  <button
+                    type="button"
+                    onClick={() => ordenar(c.id)}
+                    className={cn("inline-flex items-center gap-1 text-left hover:text-texto", ativa && "text-texto")}
+                  >
+                    {c.rotulo}
+                    <Seta className={cn("h-3 w-3", !ativa && "opacity-40")} aria-hidden />
+                  </button>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {itens.map((a) => (
+            <tr key={a.id} className={cn("border-b border-borda/40 align-top", a.arquivado && "opacity-60")}>
+              {colunas.map((c) => (
+                <td key={c.id} className="px-2 py-1.5">
+                  {c.id === "nome" && a.arquivado ? (
+                    <span className="flex flex-col items-start gap-1">
+                      {celula(a, c.id)}
+                      <Button variant="outline" size="sm" onClick={() => void reativar(a)}>
+                        <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                        Reativar
+                      </Button>
+                    </span>
+                  ) : (
+                    celula(a, c.id)
+                  )}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {ajuste && (
+        <FormAjuste
+          aluno={itens.find((x) => x.id === ajuste.aluno.id) ?? ajuste.aluno}
+          campo={ajuste.campo}
+          onFechar={() => setAjuste(null)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -316,46 +653,5 @@ function Selecao({
         ))}
       </select>
     </label>
-  );
-}
-
-// Kanban: uma coluna por etapa ativa, na ordem da configuração, com todos os alunos.
-function Kanban({ itens, etapas, hrefDoAluno }: { itens: AlunoLinha[]; etapas: Etapa[]; hrefDoAluno: (a: AlunoLinha) => string }) {
-  return (
-    <div className="-mx-1 overflow-x-auto px-1 pb-1">
-      <div className="grid min-w-[1040px] grid-cols-5 gap-3">
-        {etapas.map((etapa) => {
-          const daEtapa = itens.filter((a) => a.etapa.id === etapa.id);
-          return (
-            <section key={etapa.id} aria-label={etapa.nome} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2">
-              <header className="flex items-baseline justify-between gap-2 px-1 pt-1">
-                <h3 className="text-xs font-semibold text-texto">{etapa.nome}</h3>
-                <span className="text-xs tabular-nums text-texto-sec">{daEtapa.length}</span>
-              </header>
-              {daEtapa.length === 0 ? (
-                <p className="px-1 py-3 text-center text-[11px] text-texto-sec/70">Nenhum aluno</p>
-              ) : (
-                daEtapa.map((a) => (
-                  <Link
-                    key={a.id}
-                    href={hrefDoAluno(a)}
-                    className="card-interactive block rounded-lg p-3"
-                  >
-                    <span className="block truncate text-sm font-semibold text-texto">{a.nome}</span>
-                    <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <Faixa faixa={a.faixa_saude.valor} className="text-xs" />
-                      {a.proximo_checkpoint && <BadgeCheckpoint status={a.proximo_checkpoint.status} />}
-                    </span>
-                    <span className="mt-1.5 block text-xs text-texto-sec">
-                      <span className="font-semibold tabular-nums text-texto">{a.dias_na_etapa.valor ?? "—"}d</span> na etapa
-                    </span>
-                  </Link>
-                ))
-              )}
-            </section>
-          );
-        })}
-      </div>
-    </div>
   );
 }
