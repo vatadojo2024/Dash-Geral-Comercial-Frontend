@@ -4,49 +4,83 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, CircleCheck, Flag, Plus, Star } from "lucide-react";
-import { buscarAluno, EducacionalError } from "@/lib/educacional/apiEducacional";
-import { FAIXAS_SAUDE, SINAIS, type AlunoDetalhe, type Checkpoint } from "@/lib/educacional/contrato";
+import { Archive, ArrowLeft, CheckCircle2, PencilLine, Plus, RotateCcw, Undo2 } from "lucide-react";
+import {
+  ajustarCampo,
+  arquivarAluno,
+  arquivarIntervencao,
+  atualizarAluno,
+  atualizarIntervencao,
+  buscarAluno,
+  EducacionalError,
+} from "@/lib/educacional/apiEducacional";
+import {
+  AUTORIZACOES_PROVA_SOCIAL,
+  FAIXAS_SAUDE,
+  MOTIVO_MINIMO,
+  NIVEIS_INICIAIS,
+  SINAIS,
+  STATUS_ALUNO,
+  type AlunoDetalhe,
+  type CampoAjustavel,
+  type CamposDiretosAluno,
+  type Config,
+  type Intervencao,
+} from "@/lib/educacional/contrato";
 import {
   dataCurta,
   dataHoraBr,
   PASSOS,
+  PONTO_DO_TOM,
   reais,
+  ROTULO_AUTORIZACAO,
   ROTULO_FAIXA,
   ROTULO_FINANCEIRO,
   ROTULO_NIVEL,
   ROTULO_PASSO,
   ROTULO_SINAL,
   ROTULO_STATUS_ALUNO,
-  ROTULO_STATUS_CHECKPOINT,
   ROTULO_STATUS_INTERVENCAO,
-  PONTO_DO_TOM,
+  ROTULO_TIPO_RESPONSAVEL,
   TOM_FAIXA,
-  TOM_STATUS_CHECKPOINT,
 } from "@/lib/educacional/rotulos";
+import { Alternador } from "@/components/ui/Alternador";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
+import { useSession } from "@/features/session/SessionProvider";
 import { cn } from "@/lib/utils/cn";
+import { BlocoEditavel, CampoCalculadoView, ConfirmarAcao } from "./Blocos";
+import { AJUSTE_AFETA_TOTAIS, campoDe, comCampo, EDITOR_DO_CAMPO, rotuloDoCampo } from "./campos";
+import { Timeline } from "./Checkpoints";
+import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
+import { CAMPO } from "./Dialogo";
 import { lerSimular } from "./estado";
+import { HistoricoDoAluno } from "./Historico";
 import { NovaIntervencao } from "./NovaIntervencao";
-import { CHAVES } from "./dados";
-import { BadgeCheckpoint, EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
+import { EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
+import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
-// Raio-X do aluno (spec, seção 6) — página /educacional/alunos/[id]. Blocos na
-// ordem da spec. "Voltar" devolve a Tabela tática exatamente como estava
-// (filtros, ordem, página e visão vêm em `?voltar=`).
+// Raio-X do aluno (spec Fase 2, seção 5) — /educacional/alunos/[id]. Todos os
+// blocos têm "Editar"; campos diretos gravam com PATCH, campos calculados
+// viram ajuste manual (motivo obrigatório). Aba Histórico. "Voltar" devolve a
+// Tabela tática exatamente como estava (`?voltar=`).
 // ---------------------------------------------------------------------------
+
+type Aba = "raiox" | "historico";
 
 export function RaioXAluno({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const simular = lerSimular(searchParams);
   const voltar = searchParams.get("voltar");
   const hrefVoltar = `/educacional${voltar ? `?${voltar}` : ""}#tabela-tatica`;
-  const [modalAberto, setModalAberto] = useState(false);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [aba, setAba] = useState<Aba>("raiox");
+  const [intervencao, setIntervencao] = useState<Intervencao | "nova" | null>(null);
+  const [arquivar, setArquivar] = useState(false);
+  const gravar = useGravacao();
+  const config = useConfig();
 
   const consulta = useQuery({
     queryKey: [...CHAVES.aluno(id), simular],
@@ -58,6 +92,16 @@ export function RaioXAluno({ id }: { id: string }) {
 
   const a = consulta.data;
   const naoEncontrado = consulta.error instanceof EducacionalError && consulta.error.status === 404;
+
+  const alternarArquivo = (alvo: AlunoDetalhe, arquivado: boolean) =>
+    void gravar({
+      alunoId: alvo.id,
+      versao: alvo.versao,
+      executar: (v) => arquivarAluno(alvo.id, v, arquivado),
+      noAluno: (d) => ({ ...d, arquivado }),
+      naLinha: (l) => ({ ...l, arquivado }),
+      afetaTotais: true,
+    });
 
   return (
     <>
@@ -91,307 +135,805 @@ export function RaioXAluno({ id }: { id: string }) {
         </Card>
       ) : (
         <div className="space-y-4">
-          {aviso && (
-            <p className="flex items-center gap-2 rounded-xl border border-sucesso-forte/30 bg-sucesso-forte/10 px-4 py-2.5 text-sm text-texto" role="status">
-              <CircleCheck className="h-4 w-4 text-sucesso" aria-hidden />
-              {aviso}
-            </p>
+          {a.arquivado && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm text-texto" role="status">
+              <Archive className="h-4 w-4 text-texto-sec" aria-hidden />
+              Aluno arquivado: não aparece no Cockpit, no Kanban nem na tabela padrão.
+              <Button size="sm" variant="outline" className="ml-auto" onClick={() => alternarArquivo(a, false)}>
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                Reativar
+              </Button>
+            </div>
           )}
-          <Cabecalho a={a} onNovaIntervencao={() => setModalAberto(true)} />
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Indicadores a={a} />
-            <Contrato a={a} />
-            <SinaisAtivos a={a} />
-          </div>
-          <Timeline checkpoints={a.checkpoints} />
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Progresso a={a} />
-            <Diagnostico a={a} />
-          </div>
-          <Intervencoes a={a} />
+          <Cabecalho
+            a={a}
+            config={config.data}
+            acoes={
+              <>
+                <Button size="sm" onClick={() => setIntervencao("nova")}>
+                  <Plus className="h-3.5 w-3.5" aria-hidden />
+                  Nova intervenção
+                </Button>
+                {!a.arquivado && (
+                  <Button size="sm" variant="outline" onClick={() => setArquivar(true)}>
+                    <Archive className="h-3.5 w-3.5" aria-hidden />
+                    Arquivar aluno
+                  </Button>
+                )}
+              </>
+            }
+          />
+          <Alternador<Aba>
+            rotulo="Seção do raio-X"
+            valor={aba}
+            onChange={setAba}
+            opcoes={[
+              { valor: "raiox", label: "Raio-X" },
+              { valor: "historico", label: "Histórico" },
+            ]}
+          />
+          {aba === "historico" ? (
+            <HistoricoDoAluno alunoId={a.id} />
+          ) : (
+            <>
+              <div className="grid gap-4 lg:grid-cols-3">
+                <Indicadores a={a} />
+                <Contrato a={a} />
+                <Sinais a={a} />
+              </div>
+              <Timeline a={a} />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Progresso a={a} />
+                <Diagnostico a={a} config={config.data} />
+              </div>
+              <Intervencoes a={a} onEditar={(i) => setIntervencao(i)} onNova={() => setIntervencao("nova")} />
+            </>
+          )}
         </div>
       )}
 
-      <NovaIntervencao
-        aberto={modalAberto}
-        alunoInicial={a ? { id: a.id, nome: a.nome, versao: a.versao } : null}
-        onFechar={() => setModalAberto(false)}
-        onCriada={() => setAviso("Intervenção registrada. Ela já aparece na lista abaixo.")}
-      />
+      {a && (
+        <>
+          <NovaIntervencao
+            aberto={intervencao !== null}
+            alunoInicial={{ id: a.id, nome: a.nome, versao: a.versao }}
+            intervencao={intervencao === "nova" ? null : intervencao}
+            onFechar={() => setIntervencao(null)}
+          />
+          <ConfirmarAcao
+            aberto={arquivar}
+            titulo="Arquivar aluno?"
+            texto={`${a.nome} sai do Cockpit, do Kanban e da tabela padrão. Nada é apagado: dá para reativar pelo filtro “Mostrar arquivados”.`}
+            confirmar="Arquivar"
+            perigo
+            onConfirmar={() => alternarArquivo(a, true)}
+            onFechar={() => setArquivar(false)}
+          />
+        </>
+      )}
     </>
   );
 }
 
-// 1. Cabeçalho
-function Cabecalho({ a, onNovaIntervencao }: { a: AlunoDetalhe; onNovaIntervencao: () => void }) {
+// ---------------------------------------------------------------------------
+// Edição de bloco: campos diretos (PATCH) + campos calculados (um ajuste por
+// campo alterado, com o mesmo motivo). Grava em sequência, cada escrita com a
+// versão devolvida pela anterior.
+// ---------------------------------------------------------------------------
+
+type Valores = Record<string, string>;
+
+function texto(v: unknown): string {
+  return v == null ? "" : String(v);
+}
+
+function lerAjuste(campo: CampoAjustavel, bruto: string): { ok: true; v: unknown } | { ok: false; erro: string } {
+  const ed = EDITOR_DO_CAMPO[campo];
+  if (ed.tipo === "numero") {
+    const n = Number(bruto.replace(",", "."));
+    if (!Number.isFinite(n) || n < ed.min || (ed.max != null && n > ed.max)) {
+      return { ok: false, erro: `${rotuloDoCampo(campo)}: use ${ed.max != null ? `de ${ed.min} a ${ed.max}` : `${ed.min} ou mais`}.` };
+    }
+    return { ok: true, v: n };
+  }
+  if (ed.tipo === "booleano") return { ok: true, v: bruto === "true" };
+  return { ok: true, v: bruto };
+}
+
+// Otimista dos campos diretos (só o que foi digitado; o resto vem da API).
+function comDiretos(d: AlunoDetalhe, c: CamposDiretosAluno, config: Config | undefined): AlunoDetalhe {
+  const n: AlunoDetalhe = { ...d };
+  for (const [k, v] of Object.entries(c)) {
+    if (k === "etapa_id") {
+      const e = config?.etapas.find((x) => x.id === v);
+      if (e) n.etapa = { id: e.id, nome: e.nome };
+    } else if (k === "responsavel_id") {
+      const r = config?.responsaveis.find((x) => x.id === v);
+      n.responsavel = r ? { id: r.id, nome: r.nome, tipo: r.tipo } : null;
+    } else if (k === "proxima_acao" || k === "proxima_acao_prazo") {
+      const descricao = (c.proxima_acao !== undefined ? c.proxima_acao : d.proxima_acao?.descricao) ?? null;
+      const prazo = (c.proxima_acao_prazo !== undefined ? c.proxima_acao_prazo : d.proxima_acao?.prazo) ?? null;
+      n.proxima_acao = descricao ? { descricao, prazo } : null;
+    } else (n as Record<string, unknown>)[k] = v;
+  }
+  return n;
+}
+
+function useBloco(
+  a: AlunoDetalhe,
+  diretos: (keyof CamposDiretosAluno)[],
+  ajustes: CampoAjustavel[],
+  config?: Config,
+  obrigatorios: (keyof CamposDiretosAluno)[] = [],
+) {
+  const gravar = useGravacao();
+  const user = useSession();
+  const [valores, setValores] = useState<Valores | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  const atuais = (): Valores => {
+    const v: Valores = {};
+    const direto = a as unknown as Record<string, unknown>;
+    for (const k of diretos) {
+      if (k === "etapa_id") v[k] = a.etapa.id;
+      else if (k === "responsavel_id") v[k] = a.responsavel?.id ?? "";
+      else if (k === "proxima_acao") v[k] = a.proxima_acao?.descricao ?? "";
+      else if (k === "proxima_acao_prazo") v[k] = a.proxima_acao?.prazo ?? "";
+      else v[k] = texto(direto[k]);
+    }
+    for (const c of ajustes) v[c] = texto(campoDe(a, c)?.valor);
+    return v;
+  };
+
+  const editar = () => {
+    setValores(atuais());
+    setMotivo("");
+    setErro(null);
+  };
+  const cancelar = () => setValores(null);
+  const set = (k: string, v: string) => setValores((x) => (x ? { ...x, [k]: v } : x));
+
+  async function salvar() {
+    if (!valores) return;
+    const antes = atuais();
+    const campos: CamposDiretosAluno = {};
+    for (const k of diretos) {
+      if (valores[k] === antes[k]) continue;
+      if (obrigatorios.includes(k) && !valores[k].trim()) return setErro("Preencha os campos obrigatórios.");
+      (campos as Record<string, unknown>)[k] = valores[k].trim() === "" ? null : valores[k].trim();
+    }
+    const mudados: { campo: CampoAjustavel; v: unknown }[] = [];
+    for (const c of ajustes) {
+      if (valores[c] === antes[c] || valores[c] === "") continue;
+      const lido = lerAjuste(c, valores[c]);
+      if (!lido.ok) return setErro(lido.erro);
+      mudados.push({ campo: c, v: lido.v });
+    }
+    if (mudados.length && motivo.trim().length < MOTIVO_MINIMO) {
+      return setErro(`Explique o motivo do ajuste (pelo menos ${MOTIVO_MINIMO} caracteres).`);
+    }
+    if (!Object.keys(campos).length && !mudados.length) return cancelar();
+
+    setSalvando(true);
+    setErro(null);
+    let versao = a.versao;
+    let ok = true;
+    const falhou = (e: unknown) => {
+      ok = false;
+      if (e instanceof EducacionalError && e.status === 400) setErro(e.corpo.mensagem ?? e.message);
+      else setValores(null); // 409/rede: o aviso já explica; o aluno foi recarregado
+    };
+    if (Object.keys(campos).length) {
+      const r = await gravar({
+        alunoId: a.id,
+        versao,
+        executar: (v) => atualizarAluno(a.id, v, campos),
+        noAluno: (d) => comDiretos(d, campos, config),
+        naLinha: (l) => ({ ...l, ...comDiretos(l as AlunoDetalhe, campos, config) }),
+        afetaTotais: "etapa_id" in campos || "status_aluno" in campos,
+      });
+      if (r.ok) versao = r.aluno.versao;
+      else falhou(r.erro);
+    }
+    for (const m of mudados) {
+      if (!ok) break;
+      const automatico = campoDe(a, m.campo)?.automatico ?? null;
+      const ajuste = { valor: m.v, motivo: motivo.trim(), ajustado_por: { id: user.id, nome: user.nome }, ajustado_em: new Date().toISOString() };
+      const novo = { valor: m.v, automatico, ajuste };
+      const r = await gravar({
+        alunoId: a.id,
+        versao,
+        executar: (v) => ajustarCampo(a.id, v, m.campo, m.v, motivo.trim()),
+        noAluno: (d) => comCampo(d, m.campo, novo),
+        naLinha: (l) => comCampo(l, m.campo, novo),
+        afetaTotais: AJUSTE_AFETA_TOTAIS.has(m.campo),
+      });
+      if (r.ok) versao = r.aluno.versao;
+      else falhou(r.erro);
+    }
+    setSalvando(false);
+    if (ok) setValores(null);
+  }
+
+  return {
+    editando: valores !== null,
+    valores: valores ?? {},
+    set,
+    motivo,
+    setMotivo,
+    erro,
+    salvando,
+    editar,
+    cancelar,
+    salvar,
+  };
+}
+
+type Bloco = ReturnType<typeof useBloco>;
+
+function props(b: Bloco) {
+  return {
+    editando: b.editando,
+    salvando: b.salvando,
+    erro: b.erro,
+    onEditar: b.editar,
+    onCancelar: b.cancelar,
+    onSalvar: () => void b.salvar(),
+  };
+}
+
+// ---------- entradas ----------
+
+// Nome acessível explícito: o <label> em volta de um <select> somaria o texto das opções.
+const nomeAcessivel = (rotulo: string) => rotulo.replace(/\s*\*$/, "");
+
+function Entrada({ rotulo, children, className }: { rotulo: string; children: ReactNode; className?: string }) {
   return (
-    <Card>
-      <div className="flex flex-col gap-4 p-6 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-azul-claro">Educacional · Raio-X do aluno</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">{a.nome}</h1>
-            <span className="tag">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>
-            <EtiquetaDemonstracao />
-          </div>
-          <dl className="mt-3 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 xl:grid-cols-4">
-            <Dado rotulo="Mentoria">{a.mentoria}</Dado>
-            <Dado rotulo="Entrada">{dataCurta(a.data_entrada)}</Dado>
-            <Dado rotulo="Término">{dataCurta(a.data_termino)}</Dado>
-            <Dado rotulo="Nível inicial">{ROTULO_NIVEL[a.nivel_inicial]}</Dado>
-          </dl>
-          <p className="mt-3 text-sm">
-            <span className="text-texto-sec">Objetivo: </span>
-            <span className="text-texto">{a.objetivo ?? "Não informado"}</span>
-          </p>
-        </div>
-        <Button size="sm" onClick={onNovaIntervencao} className="shrink-0">
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-          Nova intervenção
-        </Button>
-      </div>
-    </Card>
+    <label className={cn("flex min-w-0 flex-col gap-1 text-xs font-medium text-texto-sec", className)}>
+      {rotulo}
+      {children}
+    </label>
+  );
+}
+
+function Texto({
+  b,
+  k,
+  rotulo,
+  area = false,
+  tipo = "text",
+  className,
+}: {
+  b: Bloco;
+  k: string;
+  rotulo: string;
+  area?: boolean;
+  tipo?: string;
+  className?: string;
+}) {
+  return (
+    <Entrada rotulo={rotulo} className={className}>
+      {area ? (
+        <textarea
+          aria-label={nomeAcessivel(rotulo)}
+          rows={3}
+          value={b.valores[k] ?? ""}
+          onChange={(e) => b.set(k, e.target.value)}
+          className={cn(CAMPO, "h-auto py-2")}
+        />
+      ) : (
+        <input aria-label={nomeAcessivel(rotulo)} type={tipo} value={b.valores[k] ?? ""} onChange={(e) => b.set(k, e.target.value)} className={CAMPO} />
+      )}
+    </Entrada>
+  );
+}
+
+function Lista({
+  b,
+  k,
+  rotulo,
+  opcoes,
+  vazio,
+}: {
+  b: Bloco;
+  k: string;
+  rotulo: string;
+  opcoes: { valor: string; rotulo: string }[];
+  vazio?: string;
+}) {
+  return (
+    <Entrada rotulo={rotulo}>
+      <select aria-label={nomeAcessivel(rotulo)} value={b.valores[k] ?? ""} onChange={(e) => b.set(k, e.target.value)} className={CAMPO}>
+        {vazio != null && <option value="">{vazio}</option>}
+        {opcoes.map((o) => (
+          <option key={o.valor} value={o.valor}>
+            {o.rotulo}
+          </option>
+        ))}
+      </select>
+    </Entrada>
+  );
+}
+
+function Ajustavel({ b, campo, rotulo }: { b: Bloco; campo: CampoAjustavel; rotulo?: string }) {
+  const ed = EDITOR_DO_CAMPO[campo];
+  const nome = rotulo ?? rotuloDoCampo(campo);
+  if (ed.tipo === "lista" || ed.tipo === "booleano") {
+    const opcoes =
+      ed.tipo === "lista"
+        ? ed.opcoes
+        : [
+            { valor: "true", rotulo: "Sim" },
+            { valor: "false", rotulo: "Não" },
+          ];
+    return <Lista b={b} k={campo} rotulo={nome} opcoes={opcoes} vazio="Sem cálculo" />;
+  }
+  return (
+    <Entrada rotulo={nome}>
+      <input
+        aria-label={nome}
+        type={ed.tipo === "data" ? "date" : "number"}
+        inputMode={ed.tipo === "numero" ? "decimal" : undefined}
+        min={ed.tipo === "numero" ? ed.min : undefined}
+        max={ed.tipo === "numero" ? ed.max : undefined}
+        step={ed.tipo === "numero" ? (ed.passo ?? 1) : undefined}
+        value={b.valores[campo] ?? ""}
+        onChange={(e) => b.set(campo, e.target.value)}
+        className={CAMPO}
+      />
+    </Entrada>
+  );
+}
+
+function MotivoDoAjuste({ b }: { b: Bloco }) {
+  return (
+    <Entrada rotulo="Motivo do ajuste (obrigatório se mudar um valor calculado)">
+      <textarea aria-label="Motivo do ajuste" rows={2} value={b.motivo} onChange={(e) => b.setMotivo(e.target.value)} className={cn(CAMPO, "h-auto py-2")} />
+    </Entrada>
   );
 }
 
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-[11px] uppercase tracking-wide text-texto-sec">{rotulo}</dt>
       <dd className="text-texto">{children}</dd>
     </div>
   );
 }
 
-// 2. Indicadores: Health Score, termômetro (faixa de saúde), dias na etapa.
-function Indicadores({ a }: { a: AlunoDetalhe }) {
-  const faixa = a.faixa_saude.valor;
-  const emRisco = faixa === "risco";
-  const dias = a.dias_na_etapa.valor;
+// ---------------------------------------------------------------------------
+// Blocos
+// ---------------------------------------------------------------------------
+
+const CABECALHO: (keyof CamposDiretosAluno)[] = [
+  "nome",
+  "mentoria",
+  "data_entrada",
+  "data_termino",
+  "objetivo",
+  "status_aluno",
+  "nivel_inicial",
+  "etapa_id",
+];
+
+function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; acoes: ReactNode }) {
+  const b = useBloco(a, CABECALHO, [], config, ["nome", "mentoria", "data_entrada"]);
+  const etapas = etapasAtivas(config);
+  if (!etapas.some((e) => e.id === a.etapa.id)) etapas.push({ id: a.etapa.id, nome: a.etapa.nome, ordem: 999, ativo: false });
   return (
-    <Card>
-      <CardHeader title="Indicadores" />
-      <CardContent className="space-y-5">
-        <div>
-          <p className="text-xs text-texto-sec">Health Score</p>
-          <p className={cn("text-4xl font-semibold tabular-nums", emRisco ? "text-erro" : "text-texto")}>
-            {a.health_score.valor ?? "—"}
-            <span className="text-base font-normal text-texto-sec">/100</span>
+    <BlocoEditavel
+      titulo="Raio-X do aluno"
+      {...props(b)}
+      acoes={acoes}
+      leitura={
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">{a.nome}</h1>
+            <span className="tag">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>
+            <EtiquetaDemonstracao />
+          </div>
+          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-5">
+            <Dado rotulo="Mentoria">{a.mentoria}</Dado>
+            <Dado rotulo="Entrada">{dataCurta(a.data_entrada)}</Dado>
+            <Dado rotulo="Término">{dataCurta(a.data_termino)}</Dado>
+            <Dado rotulo="Nível inicial">{ROTULO_NIVEL[a.nivel_inicial]}</Dado>
+            <Dado rotulo="Etapa">{a.etapa.nome}</Dado>
+          </dl>
+          <p className="mt-3 text-sm">
+            <span className="text-texto-sec">Objetivo: </span>
+            <span className="text-texto">{a.objetivo ?? "Não informado"}</span>
           </p>
-          {emRisco && <span className="tag tag-error mt-1">Risco de Evasão/Reembolso</span>}
         </div>
-        <div>
-          <p className="mb-1.5 text-xs text-texto-sec">Termômetro de risco</p>
-          <div className="grid grid-cols-3 gap-1" role="img" aria-label={`Faixa de saúde: ${faixa ? ROTULO_FAIXA[faixa] : "sem cálculo"}`}>
-            {[...FAIXAS_SAUDE].reverse().map((n) => (
-              <span
-                key={n}
-                className={cn("h-2.5 rounded-full", PONTO_DO_TOM[TOM_FAIXA[n]], faixa === n ? "opacity-100 ring-2 ring-white/40" : "opacity-25")}
+      }
+      edicao={
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Texto b={b} k="nome" rotulo="Nome *" className="sm:col-span-2" />
+          <Texto b={b} k="mentoria" rotulo="Mentoria *" />
+          <Lista b={b} k="status_aluno" rotulo="Status do aluno" opcoes={STATUS_ALUNO.map((s) => ({ valor: s, rotulo: ROTULO_STATUS_ALUNO[s] }))} />
+          <Texto b={b} k="data_entrada" rotulo="Data de entrada *" tipo="date" />
+          <Texto b={b} k="data_termino" rotulo="Data de término" tipo="date" />
+          <Lista b={b} k="nivel_inicial" rotulo="Nível inicial" opcoes={NIVEIS_INICIAIS.map((n) => ({ valor: n, rotulo: ROTULO_NIVEL[n] }))} />
+          <Lista b={b} k="etapa_id" rotulo="Etapa" opcoes={etapas.map((e) => ({ valor: e.id, rotulo: e.nome }))} />
+          <Texto b={b} k="objetivo" rotulo="Objetivo" className="sm:col-span-2 lg:col-span-4" />
+        </div>
+      }
+    />
+  );
+}
+
+const INDICADORES: CampoAjustavel[] = ["health_score", "faixa_saude", "dias_na_etapa", "ultima_atividade", "dias_sem_atividade"];
+
+function Indicadores({ a }: { a: AlunoDetalhe }) {
+  const b = useBloco(a, ["motivo_risco"], INDICADORES);
+  const faixa = a.faixa_saude.valor;
+  return (
+    <BlocoEditavel
+      titulo="Indicadores"
+      {...props(b)}
+      leitura={
+        <div className="space-y-4">
+          <CampoCalculadoView
+            aluno={a}
+            campo="health_score"
+            rotulo="Health Score"
+            exibir={
+              <p className={cn("text-4xl font-semibold tabular-nums", faixa === "risco" ? "text-erro" : "text-texto")}>
+                {a.health_score.valor ?? "—"}
+                <span className="text-base font-normal text-texto-sec">/100</span>
+              </p>
+            }
+          />
+          <CampoCalculadoView
+            aluno={a}
+            campo="faixa_saude"
+            rotulo="Faixa de saúde"
+            exibir={
+              <>
+                <div className="grid grid-cols-3 gap-1" role="img" aria-label={`Faixa de saúde: ${faixa ? ROTULO_FAIXA[faixa] : "sem cálculo"}`}>
+                  {[...FAIXAS_SAUDE].reverse().map((n) => (
+                    <span
+                      key={n}
+                      className={cn("h-2.5 rounded-full", PONTO_DO_TOM[TOM_FAIXA[n]], faixa === n ? "opacity-100 ring-2 ring-white/40" : "opacity-25")}
+                    />
+                  ))}
+                </div>
+                <span className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <Faixa faixa={faixa} />
+                  {faixa === "risco" && <span className="tag tag-error">Risco de Evasão/Reembolso</span>}
+                </span>
+              </>
+            }
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <CampoCalculadoView aluno={a} campo="dias_na_etapa" rotulo={`Dias em ${a.etapa.nome}`} />
+            <CampoCalculadoView aluno={a} campo="dias_sem_atividade" rotulo="Dias sem atividade" />
+            <CampoCalculadoView aluno={a} campo="ultima_atividade" rotulo="Última atividade" />
+          </div>
+          <div>
+            <p className="text-xs text-texto-sec">Motivo do risco</p>
+            <p className="mt-0.5 text-sm text-texto">{a.motivo_risco ?? <span className="text-texto-sec">Não informado.</span>}</p>
+          </div>
+        </div>
+      }
+      edicao={
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Ajustavel b={b} campo="health_score" />
+            <Ajustavel b={b} campo="faixa_saude" />
+            <Ajustavel b={b} campo="dias_na_etapa" />
+            <Ajustavel b={b} campo="dias_sem_atividade" />
+            <Ajustavel b={b} campo="ultima_atividade" />
+          </div>
+          <MotivoDoAjuste b={b} />
+          <Texto b={b} k="motivo_risco" rotulo="Motivo do risco" area />
+        </div>
+      }
+    />
+  );
+}
+
+function Contrato({ a }: { a: AlunoDetalhe }) {
+  const b = useBloco(a, [], ["status_financeiro", "ltv"]);
+  const financeiro = a.status_financeiro.valor;
+  return (
+    <BlocoEditavel
+      titulo="Contrato"
+      {...props(b)}
+      leitura={
+        <div className="space-y-4">
+          <CampoCalculadoView
+            aluno={a}
+            campo="status_financeiro"
+            rotulo="Status financeiro"
+            exibir={
+              financeiro ? (
+                <span className={cn("tag", financeiro === "inadimplente" ? "tag-error" : "tag-success")}>{ROTULO_FINANCEIRO[financeiro]}</span>
+              ) : (
+                <span className="text-sm text-texto-sec">Sem informação</span>
+              )
+            }
+          />
+          <CampoCalculadoView
+            aluno={a}
+            campo="ltv"
+            rotulo="LTV"
+            exibir={<p className="text-2xl font-semibold tabular-nums text-texto">{a.ltv.valor != null ? reais(a.ltv.valor) : "—"}</p>}
+          />
+        </div>
+      }
+      edicao={
+        <div className="space-y-3">
+          <Ajustavel b={b} campo="status_financeiro" />
+          <Ajustavel b={b} campo="ltv" rotulo="LTV (R$)" />
+          <MotivoDoAjuste b={b} />
+        </div>
+      }
+    />
+  );
+}
+
+const CAMPO_DO_SINAL = { upgrade: "sinal_upgrade", renovacao: "sinal_renovacao", prova_social: "sinal_prova_social" } as const;
+
+function Sinais({ a }: { a: AlunoDetalhe }) {
+  const b = useBloco(a, ["autorizacao_prova_social", "observacoes"], Object.values(CAMPO_DO_SINAL));
+  return (
+    <BlocoEditavel
+      titulo="Sinais e prova social"
+      subtitulo="Sinais para o Comercial."
+      {...props(b)}
+      leitura={
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {SINAIS.map((s) => (
+              <CampoCalculadoView
+                key={s}
+                aluno={a}
+                campo={CAMPO_DO_SINAL[s]}
+                rotulo={ROTULO_SINAL[s]}
+                exibir={
+                  a.sinais[s].valor ? (
+                    <span className="tag tag-info">Sim</span>
+                  ) : (
+                    <span className="text-sm text-texto-sec">{a.sinais[s].valor === false ? "Não" : "Sem cálculo"}</span>
+                  )
+                }
               />
             ))}
           </div>
-          <Faixa faixa={faixa} className="mt-1.5" />
+          <dl className="grid gap-2 text-sm">
+            <Dado rotulo="Autorização de prova social">{ROTULO_AUTORIZACAO[a.autorizacao_prova_social]}</Dado>
+            <Dado rotulo="Observações">{a.observacoes ?? <span className="text-texto-sec">—</span>}</Dado>
+          </dl>
         </div>
-        <p className="text-sm text-texto">
-          Há <span className="font-semibold tabular-nums">{dias ?? "—"} {dias === 1 ? "dia" : "dias"}</span> em {a.etapa.nome}
-        </p>
-      </CardContent>
-    </Card>
+      }
+      edicao={
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Ajustavel b={b} campo="sinal_upgrade" />
+            <Ajustavel b={b} campo="sinal_renovacao" />
+            <Ajustavel b={b} campo="sinal_prova_social" />
+          </div>
+          <MotivoDoAjuste b={b} />
+          <Lista
+            b={b}
+            k="autorizacao_prova_social"
+            rotulo="Autorização de prova social"
+            opcoes={AUTORIZACOES_PROVA_SOCIAL.map((s) => ({ valor: s, rotulo: ROTULO_AUTORIZACAO[s] }))}
+          />
+          <Texto b={b} k="observacoes" rotulo="Observações" area />
+        </div>
+      }
+    />
   );
 }
 
-// 3. Contrato
-function Contrato({ a }: { a: AlunoDetalhe }) {
-  const financeiro = a.status_financeiro.valor;
-  const inadimplente = financeiro === "inadimplente";
-  return (
-    <Card>
-      <CardHeader title="Contrato" />
-      <CardContent className="space-y-4">
-        <div>
-          <p className="text-xs text-texto-sec">Status financeiro</p>
-          {financeiro ? (
-            <span className={cn("tag mt-1", inadimplente ? "tag-error" : "tag-success")}>{ROTULO_FINANCEIRO[financeiro]}</span>
-          ) : (
-            <p className="text-sm text-texto-sec">Sem informação</p>
-          )}
-        </div>
-        <div>
-          <p className="text-xs text-texto-sec">LTV</p>
-          <p className="text-2xl font-semibold tabular-nums text-texto">{a.ltv.valor != null ? reais(a.ltv.valor) : "—"}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+const CAMPO_DO_PASSO = {
+  consumiu: "progresso_consumiu",
+  entendeu: "progresso_entendeu",
+  aplicou: "progresso_aplicou",
+  validou: "progresso_validou",
+} as const;
 
-// 8. Sinais ativos (fica ao lado dos indicadores no desktop)
-function SinaisAtivos({ a }: { a: AlunoDetalhe }) {
-  const ativos = SINAIS.filter((s) => a.sinais[s].valor === true);
+function Progresso({ a }: { a: AlunoDetalhe }) {
+  const b = useBloco(a, [], Object.values(CAMPO_DO_PASSO));
   return (
-    <Card>
-      <CardHeader title="Sinais ativos" subtitle="Sinais para o Comercial em que o aluno está." />
-      <CardContent>
-        {ativos.length === 0 ? (
-          <p className="text-sm text-texto-sec">Nenhum sinal ativo.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {ativos.map((s) => (
-              <span key={s} className="tag tag-info">
-                {ROTULO_SINAL[s]}
-              </span>
+    <BlocoEditavel
+      titulo="Progresso metodológico"
+      subtitulo={`Na etapa atual: ${a.etapa.nome}. Notas de 0 a 100.`}
+      {...props(b)}
+      leitura={
+        <div className="space-y-5">
+          <ul className="space-y-3" aria-label="Notas do progresso">
+            {PASSOS.map((p) => {
+              const c = a.progresso[p];
+              return (
+                <li key={p} className="grid grid-cols-[1fr_auto] items-start gap-x-3">
+                  <CampoCalculadoView
+                    aluno={a}
+                    campo={CAMPO_DO_PASSO[p]}
+                    rotulo={ROTULO_PASSO[p]}
+                    exibir={
+                      <span className="block h-2 overflow-hidden rounded-full bg-white/10">
+                        <span className="block h-full rounded-full bg-sucesso" style={{ width: `${c.valor ?? 0}%` }} />
+                      </span>
+                    }
+                  />
+                  <span className="pt-4 text-right text-sm tabular-nums text-texto">{c.valor ?? "—"}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-texto-sec">Highlights das aulas</p>
+            {a.highlights.length === 0 ? (
+              <p className="text-sm text-texto-sec">Sem análises de aula disponíveis</p>
+            ) : (
+              <ul className="space-y-2">
+                {a.highlights.map((h, i) => (
+                  <li key={i} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
+                    <span className="mr-2 text-xs tabular-nums text-texto-sec">{dataCurta(h.data_aula)}</span>
+                    <span className="text-texto">{h.texto}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      }
+      edicao={
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {PASSOS.map((p) => (
+              <Ajustavel key={p} b={b} campo={CAMPO_DO_PASSO[p]} rotulo={`${ROTULO_PASSO[p]} (0–100)`} />
             ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <MotivoDoAjuste b={b} />
+        </div>
+      }
+    />
   );
 }
 
-// 4. Timeline de checkpoints (Dia 0 → Mês 6), Big Win com marca própria.
-function Timeline({ checkpoints }: { checkpoints: Checkpoint[] }) {
-  const ordenados = [...checkpoints].sort((x, y) => x.ordem - y.ordem);
+function Diagnostico({ a, config }: { a: AlunoDetalhe; config?: Config }) {
+  const b = useBloco(a, ["diagnostico", "proxima_acao", "proxima_acao_prazo", "responsavel_id"], [], config);
+  const responsaveis = ativos(config?.responsaveis);
+  if (a.responsavel && !responsaveis.some((r) => r.id === a.responsavel?.id)) responsaveis.push({ ...a.responsavel, ativo: false });
   return (
-    <Card>
-      <CardHeader title="Timeline de checkpoints" subtitle="Do Dia 0 ao Mês 6, com a data prevista e o status de cada um." />
-      <CardContent>
-        {ordenados.length === 0 ? (
-          <p className="text-sm text-texto-sec">Nenhum checkpoint registrado.</p>
-        ) : (
-          <div className="overflow-x-auto pb-2">
-            <ol className="relative flex min-w-[760px] justify-between">
-              <span className="absolute left-4 right-4 top-4 h-px bg-white/15" aria-hidden />
-              {ordenados.map((c) => {
-                const bigWin = c.big_win;
-                const tom = TOM_STATUS_CHECKPOINT[c.status];
-                const previsto = c.status === "previsto";
-                return (
-                  <li key={c.id} className="relative flex w-24 flex-col items-center gap-1.5 text-center">
-                    <span
-                      className={cn(
-                        "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2",
-                        previsto ? "border-dashed border-cinza-claro bg-painel" : ["border-painel", PONTO_DO_TOM[tom]],
-                        bigWin && "h-9 w-9 ring-2 ring-amarelo/70 ring-offset-2 ring-offset-painel",
-                      )}
-                      title={ROTULO_STATUS_CHECKPOINT[c.status]}
-                    >
-                      {bigWin ? (
-                        <Star className={cn("h-4 w-4", previsto ? "text-cinza-claro" : "text-noite")} aria-hidden />
-                      ) : (
-                        <Flag className={cn("h-3.5 w-3.5", previsto ? "text-cinza-claro" : "text-noite/80")} aria-hidden />
-                      )}
-                    </span>
-                    <span className={cn("text-xs font-medium text-texto", bigWin && "text-amarelo")}>{c.nome}</span>
-                    <span className="text-[11px] tabular-nums text-texto-sec">{dataCurta(c.data_prevista)}</span>
-                    <BadgeCheckpoint status={c.status} />
-                  </li>
-                );
-              })}
-            </ol>
+    <BlocoEditavel
+      titulo="Diagnóstico e próxima ação"
+      {...props(b)}
+      leitura={
+        <div className="space-y-4 text-sm">
+          <div>
+            <p className="text-xs text-texto-sec">Diagnóstico</p>
+            <p className="mt-0.5 text-texto">{a.diagnostico ?? <span className="text-texto-sec">Sem diagnóstico registrado.</span>}</p>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <div>
+            <p className="text-xs text-texto-sec">Próxima ação</p>
+            <p className="mt-0.5 text-texto">{a.proxima_acao?.descricao ?? <span className="text-texto-sec">Nenhuma ação definida.</span>}</p>
+          </div>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <Dado rotulo="Responsável">
+              <NomeResponsavel responsavel={a.responsavel} />
+            </Dado>
+            <Dado rotulo="Prazo">{dataCurta(a.proxima_acao?.prazo)}</Dado>
+          </dl>
+        </div>
+      }
+      edicao={
+        <div className="space-y-3">
+          <Texto b={b} k="diagnostico" rotulo="Diagnóstico" area />
+          <Texto b={b} k="proxima_acao" rotulo="Próxima ação" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Texto b={b} k="proxima_acao_prazo" rotulo="Prazo" tipo="date" />
+            <Lista
+              b={b}
+              k="responsavel_id"
+              rotulo="Responsável"
+              vazio="Sem responsável"
+              opcoes={responsaveis.map((r) => ({ valor: r.id, rotulo: `${r.nome} · ${ROTULO_TIPO_RESPONSAVEL[r.tipo]}` }))}
+            />
+          </div>
+        </div>
+      }
+    />
   );
 }
 
-// 5. Progresso metodológico (4 notas de 0 a 100) + highlights das aulas.
-function Progresso({ a }: { a: AlunoDetalhe }) {
-  const semNotas = PASSOS.every((p) => a.progresso[p].valor == null);
-  return (
-    <Card>
-      <CardHeader title="Progresso metodológico" subtitle={`Na etapa atual: ${a.etapa.nome}`} />
-      <CardContent className="space-y-5">
-        <ul className="space-y-2.5" aria-label="Notas do progresso">
-          {PASSOS.map((p) => {
-            const nota = a.progresso[p].valor;
-            return (
-              <li key={p} className="grid grid-cols-[5.5rem_1fr_2.5rem] items-center gap-2 text-xs">
-                <span className="text-texto">{ROTULO_PASSO[p]}</span>
-                <span className="block h-2 overflow-hidden rounded-full bg-white/10">
-                  <span className="block h-full rounded-full bg-sucesso" style={{ width: `${nota ?? 0}%` }} />
-                </span>
-                <span className="text-right tabular-nums text-texto-sec">{nota ?? "—"}</span>
-              </li>
-            );
-          })}
-        </ul>
-        {semNotas && <p className="text-xs text-texto-sec">Ainda sem notas registradas.</p>}
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-texto-sec">Highlights das aulas</p>
-          {a.highlights.length === 0 ? (
-            <p className="text-sm text-texto-sec">Sem análises de aula disponíveis</p>
-          ) : (
-            <ul className="space-y-2">
-              {a.highlights.map((h, i) => (
-                <li key={i} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
-                  <span className="mr-2 text-xs tabular-nums text-texto-sec">{dataCurta(h.data_aula)}</span>
-                  <span className="text-texto">{h.texto}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// Intervenções: criar, editar, concluir, reabrir, arquivar (mais recente primeiro — ordem da API).
+function Intervencoes({ a, onEditar, onNova }: { a: AlunoDetalhe; onEditar: (i: Intervencao) => void; onNova: () => void }) {
+  const gravar = useGravacao();
+  const [arquivar, setArquivar] = useState<Intervencao | null>(null);
 
-// 6. Diagnóstico e próxima ação
-function Diagnostico({ a }: { a: AlunoDetalhe }) {
-  return (
-    <Card>
-      <CardHeader title="Diagnóstico e próxima ação" />
-      <CardContent className="space-y-4 text-sm">
-        <div>
-          <p className="text-xs text-texto-sec">Diagnóstico</p>
-          <p className="mt-0.5 text-texto">{a.diagnostico ?? <span className="text-texto-sec">Sem diagnóstico registrado.</span>}</p>
-        </div>
-        <div>
-          <p className="text-xs text-texto-sec">Próxima ação</p>
-          <p className="mt-0.5 text-texto">{a.proxima_acao?.descricao ?? <span className="text-texto-sec">Nenhuma ação definida.</span>}</p>
-        </div>
-        <dl className="grid gap-3 sm:grid-cols-2">
-          <Dado rotulo="Responsável">
-            <NomeResponsavel responsavel={a.responsavel} />
-          </Dado>
-          <Dado rotulo="Prazo">{dataCurta(a.proxima_acao?.prazo)}</Dado>
-        </dl>
-      </CardContent>
-    </Card>
-  );
-}
+  const mudarStatus = (i: Intervencao, status: "aberta" | "concluida") =>
+    void gravar({
+      alunoId: a.id,
+      versao: a.versao,
+      executar: (v) => atualizarIntervencao(i.id, v, { status }),
+      noAluno: (d) => ({
+        ...d,
+        intervencoes: d.intervencoes.map((x) =>
+          x.id === i.id ? { ...x, status, concluida_em: status === "concluida" ? new Date().toISOString() : null } : x,
+        ),
+      }),
+    });
 
-// 7. Intervenções (mais recente primeiro — a ordem vem do adapter).
-function Intervencoes({ a }: { a: AlunoDetalhe }) {
+  const confirmarArquivar = (i: Intervencao) =>
+    void gravar({
+      alunoId: a.id,
+      versao: a.versao,
+      executar: (v) => arquivarIntervencao(i.id, v),
+      noAluno: (d) => ({ ...d, intervencoes: d.intervencoes.filter((x) => x.id !== i.id) }),
+    });
+
   return (
     <Card>
-      <CardHeader title="Intervenções" subtitle="Mais recente primeiro." />
+      <CardHeader
+        title="Intervenções"
+        subtitle="Mais recente primeiro."
+        action={
+          <Button variant="secondary" size="sm" onClick={onNova}>
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Nova intervenção
+          </Button>
+        }
+      />
       <CardContent>
         {a.intervencoes.length === 0 ? (
           <p className="text-sm text-texto-sec">Nenhuma intervenção registrada.</p>
         ) : (
           <ul className="divide-y divide-white/10">
             {a.intervencoes.map((i) => (
-              <li key={i.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:gap-4">
+              <li key={i.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 lg:flex-row lg:items-start lg:gap-4">
                 <span className="flex shrink-0 gap-1.5 self-start">
                   <span className="tag">{i.tipo.nome}</span>
-                  <span className={cn("tag", i.status === "concluida" ? "tag-success" : "tag-info")}>
-                    {ROTULO_STATUS_INTERVENCAO[i.status]}
-                  </span>
+                  <span className={cn("tag", i.status === "concluida" ? "tag-success" : "tag-info")}>{ROTULO_STATUS_INTERVENCAO[i.status]}</span>
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-texto">{i.descricao}</p>
+                  <p className={cn("text-sm text-texto", i.status === "concluida" && "text-texto-sec")}>{i.descricao}</p>
                   <p className="mt-0.5 text-xs text-texto-sec">
-                    <NomeResponsavel responsavel={i.responsavel} /> · prazo {dataCurta(i.prazo)}
+                    <NomeResponsavel responsavel={i.responsavel} /> · prazo {dataCurta(i.prazo)} · criada por {i.criada_por.nome} em{" "}
+                    {dataHoraBr(i.criada_em)}
+                    {i.concluida_em && <> · concluída em {dataHoraBr(i.concluida_em)}</>}
                   </p>
                 </div>
-                <span className="shrink-0 text-xs tabular-nums text-texto-sec">{dataHoraBr(i.criada_em)}</span>
+                <span className="flex shrink-0 flex-wrap gap-1">
+                  {i.status === "aberta" ? (
+                    <Button variant="ghost" size="sm" onClick={() => mudarStatus(i, "concluida")}>
+                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                      Concluir
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => mudarStatus(i, "aberta")}>
+                      <Undo2 className="h-3.5 w-3.5" aria-hidden />
+                      Reabrir
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={() => onEditar(i)} aria-label={`Editar intervenção: ${i.descricao}`}>
+                    <PencilLine className="h-3.5 w-3.5" aria-hidden />
+                    Editar
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setArquivar(i)} aria-label={`Arquivar intervenção: ${i.descricao}`}>
+                    <Archive className="h-3.5 w-3.5" aria-hidden />
+                    Arquivar
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>
         )}
       </CardContent>
+      <ConfirmarAcao
+        aberto={arquivar !== null}
+        titulo="Arquivar intervenção?"
+        texto="Ela sai da lista do aluno. Continua no banco e no histórico."
+        confirmar="Arquivar"
+        onConfirmar={() => arquivar && confirmarArquivar(arquivar)}
+        onFechar={() => setArquivar(null)}
+      />
     </Card>
   );
 }

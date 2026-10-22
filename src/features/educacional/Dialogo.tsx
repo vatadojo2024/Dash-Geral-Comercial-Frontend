@@ -54,6 +54,7 @@ export function Dialogo({
 
   function enviar(e: FormEvent) {
     e.preventDefault();
+    e.stopPropagation(); // no portal, o evento ainda sobe pela árvore do React
     onEnviar?.();
   }
 

@@ -451,10 +451,15 @@ export function patchIntervencao(banco: Banco, id: string, campos: CamposInterve
     // Concluir grava a data; reabrir limpa.
     novos.concluida_em = novos.status === "concluida" ? (i.concluida_em ?? ctx.agora) : null;
   }
+  // No histórico, tipo e responsável vão pelo nome (como no aluno).
+  const nomeTipo = (tid: unknown) => banco.config.tipos_intervencao.find((t) => t.id === tid)?.nome ?? null;
+  const nomeResp = (rid: unknown) => banco.config.responsaveis.find((r) => r.id === rid)?.nome ?? null;
   for (const [chave, depois] of Object.entries(novos)) {
     const antes = (i as Record<string, unknown>)[chave];
     if (antes === depois) continue;
-    if (chave !== "concluida_em") registrar(banco, ctx, a, "intervencao", i.id, chave, antes, depois);
+    if (chave === "tipo_id") registrar(banco, ctx, a, "intervencao", i.id, "tipo", nomeTipo(antes), nomeTipo(depois));
+    else if (chave === "responsavel_id") registrar(banco, ctx, a, "intervencao", i.id, "responsavel", nomeResp(antes), nomeResp(depois));
+    else if (chave !== "concluida_em") registrar(banco, ctx, a, "intervencao", i.id, chave, antes, depois);
     (i as Record<string, unknown>)[chave] = depois;
   }
   return fim(banco, a, ctx);

@@ -22,10 +22,13 @@ export function FormAjuste({
   aluno,
   campo,
   onFechar,
+  iniciarVoltando = false,
 }: {
   aluno: AlunoLinha | AlunoDetalhe;
   campo: CampoAjustavel | null;
   onFechar: () => void;
+  // Abre direto na confirmação de "Voltar ao automático".
+  iniciarVoltando?: boolean;
 }) {
   const id = useId();
   const user = useSession();
@@ -44,7 +47,7 @@ export function FormAjuste({
     setValor(v == null ? "" : String(v));
     setMotivo("");
     setErros({});
-    setConfirmarVolta(false);
+    setConfirmarVolta(iniciarVoltando);
     // Só ao abrir: mudanças vindas de fora não apagam o que se digita.
   }, [campo]);
 

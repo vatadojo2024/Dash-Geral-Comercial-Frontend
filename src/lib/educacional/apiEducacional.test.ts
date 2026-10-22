@@ -275,6 +275,16 @@ describe("checkpoints e intervenções", () => {
     const h = await buscarHistorico(a.id, { entidade: "intervencao" });
     expect(h.itens.map((x) => x.campo)).toEqual(["arquivada", "status", "status", "descricao", "criada"]);
   });
+
+  it("histórico da intervenção traz tipo e responsável pelo nome", async () => {
+    const a = await primeiro();
+    const c = await buscarConfig();
+    const i = a.intervencoes[0];
+    const outro = c.tipos_intervencao.find((t) => t.id !== i.tipo.id)!;
+    await atualizarIntervencao(i.id, a.versao, { tipo_id: outro.id });
+    const { itens } = await buscarHistorico(a.id, { entidade: "intervencao" });
+    expect(itens[0]).toMatchObject({ campo: "tipo", valor_antes: i.tipo.nome, valor_depois: outro.nome });
+  });
 });
 
 describe("configuração", () => {
