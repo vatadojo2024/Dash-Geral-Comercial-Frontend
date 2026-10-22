@@ -8,6 +8,7 @@ import { buscarResumo } from "@/lib/educacional/apiEducacional";
 import { dataHoraBr } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { Cockpit } from "./Cockpit";
+import { CHAVES } from "./dados";
 import { lerEstado, lerSimular, queryDoEstado, type EstadoTabela } from "./estado";
 import { NovaIntervencao } from "./NovaIntervencao";
 import { EtiquetaDemonstracao, useRedirecionarSeSemPermissao } from "./partes";
@@ -30,7 +31,7 @@ export function EducacionalView() {
   const [aviso, setAviso] = useState<string | null>(null);
 
   const resumo = useQuery({
-    queryKey: ["edu", "resumo", simular],
+    queryKey: [...CHAVES.resumo, simular],
     queryFn: () => buscarResumo(simular),
     retry: false,
   });
@@ -63,7 +64,7 @@ export function EducacionalView() {
             variant="secondary"
             size="sm"
             loading={resumo.isFetching}
-            onClick={() => queryClient.invalidateQueries({ queryKey: ["edu"] })}
+            onClick={() => queryClient.invalidateQueries({ queryKey: CHAVES.tudo })}
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
             Atualizar
@@ -99,7 +100,10 @@ export function EducacionalView() {
       <NovaIntervencao
         aberto={modalAberto}
         onFechar={() => setModalAberto(false)}
-        onCriada={(aluno) => setAviso(`Intervenção registrada para ${aluno.nome}. Ela aparece no raio-X do aluno.`)}
+        onCriada={(aluno) => {
+          setAviso(`Intervenção registrada para ${aluno.nome}. Ela aparece no raio-X do aluno.`);
+          void queryClient.invalidateQueries({ queryKey: CHAVES.resumo });
+        }}
       />
     </>
   );

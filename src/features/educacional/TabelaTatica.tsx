@@ -4,15 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, X } from "lucide-react";
-import {
-  buscarAlunos,
-  responsaveisDe,
-  TAMANHO_PAGINA,
-  type OrdemAlunos,
-  type Simular,
-} from "@/lib/educacional/apiEducacional";
-import { ETAPAS, NIVEIS_RISCO, SINAIS, STATUS_CHECKPOINT, type AlunoLinha } from "@/lib/educacional/contrato";
-import { ROTULO_ETAPA, ROTULO_NIVEL, ROTULO_RISCO, ROTULO_SINAL, ROTULO_STATUS_CHECKPOINT } from "@/lib/educacional/rotulos";
+import { buscarAlunos, TAMANHO_PAGINA, type ChaveOrdem, type OrdemAlunos, type Simular } from "@/lib/educacional/apiEducacional";
+import { FAIXAS_SAUDE, SINAIS, STATUS_CHECKPOINT, type AlunoLinha, type Etapa } from "@/lib/educacional/contrato";
+import { ROTULO_FAIXA, ROTULO_NIVEL, ROTULO_SINAL, ROTULO_STATUS_CHECKPOINT } from "@/lib/educacional/rotulos";
 import { Alternador } from "@/components/ui/Alternador";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
@@ -20,7 +14,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
 import { descreverFiltros, queryDoEstado, semFiltros, temFiltro, type EstadoTabela, type Visao } from "./estado";
-import { BadgeCheckpoint, mensagemDoErro, NomeResponsavel, Risco, useRedirecionarSeSemPermissao } from "./partes";
+import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
+import { BadgeCheckpoint, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
 
 // ---------------------------------------------------------------------------
 // Tabela tática (spec, seção 5). A lista vem do adapter já filtrada, ordenada
@@ -30,13 +25,13 @@ import { BadgeCheckpoint, mensagemDoErro, NomeResponsavel, Risco, useRedireciona
 
 const SLA = "pendente,nao_respondeu";
 
-const COLUNAS: { rotulo: string; campo: OrdemAlunos }[] = [
+const COLUNAS: { rotulo: string; campo: ChaveOrdem }[] = [
   { rotulo: "Aluno", campo: "nome" },
   { rotulo: "Nível inicial", campo: "nivel_inicial" },
-  { rotulo: "Etapa atual", campo: "etapa_atual" },
+  { rotulo: "Etapa atual", campo: "etapa" },
   { rotulo: "Checkpoint", campo: "checkpoint" },
-  { rotulo: "Dias estagnados", campo: "dias_estagnados" },
-  { rotulo: "Risco", campo: "risco" },
+  { rotulo: "Dias na etapa", campo: "dias_na_etapa" },
+  { rotulo: "Faixa de saúde", campo: "faixa_saude" },
   { rotulo: "Próxima ação", campo: "proxima_acao" },
   { rotulo: "Responsável", campo: "responsavel" },
 ];
@@ -49,18 +44,18 @@ type Props = {
 
 export function TabelaTatica({ estado, simular, onMudar }: Props) {
   const router = useRouter();
+  const kanban = estado.visao === "kanban";
+  // Kanban sem paginação (Q3: por_pagina=todos).
+  const filtros = { ...estado, ...(kanban ? { pagina: 1, por_pagina: "todos" as const } : {}) };
   const lista = useQuery({
-    queryKey: ["edu", "alunos", estado.etapa, estado.risco, estado.checkpoint, estado.responsavel, estado.sinal, estado.health_max, estado.ordem, estado.pagina, simular],
-    queryFn: () => buscarAlunos(estado, simular),
+    queryKey: [...CHAVES.alunos, filtros, simular],
+    queryFn: () => buscarAlunos(filtros, simular),
     retry: false,
   });
-  // Opções do filtro de responsável: os nomes da lista sem filtro (o contrato não tem lista própria).
-  const todos = useQuery({
-    queryKey: ["edu", "alunos", "opcoes", simular],
-    queryFn: () => buscarAlunos({ ordem: "nome" }, simular),
-    retry: false,
-  });
-  useRedirecionarSeSemPermissao([lista.error]);
+  const config = useConfig();
+  useRedirecionarSeSemPermissao([lista.error, config.error]);
+  const etapas = etapasAtivas(config.data);
+  const responsaveis = ativos(config.data?.responsaveis);
 
   const voltar = queryDoEstado(estado, simular);
   const abrir = (a: AlunoLinha) =>
@@ -69,15 +64,16 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
     `/educacional/alunos/${encodeURIComponent(a.id)}${voltar ? `?voltar=${encodeURIComponent(voltar)}` : ""}`;
 
   const mudar = (parcial: Partial<EstadoTabela>) => onMudar({ ...estado, ...parcial, pagina: parcial.pagina ?? 1 });
-  const ordenar = (campo: OrdemAlunos) => {
+  const ordenar = (campo: ChaveOrdem) => {
     const atual = estado.ordem;
     const novo = atual === campo ? (`-${campo}` as OrdemAlunos) : atual === `-${campo}` ? campo : campo;
     mudar({ ordem: novo });
   };
 
-  const responsaveis = responsaveisDe(todos.data?.itens ?? []);
-  if (estado.responsavel && !responsaveis.includes(estado.responsavel)) responsaveis.push(estado.responsavel);
-  const filtros = descreverFiltros(estado);
+  const descricao = descreverFiltros(estado, {
+    etapa: (id) => config.data?.etapas.find((e) => e.id === id)?.nome,
+    responsavel: (id) => config.data?.responsaveis.find((r) => r.id === id)?.nome,
+  });
   const total = lista.data?.total ?? 0;
   const totalPaginas = Math.max(1, Math.ceil(total / TAMANHO_PAGINA));
   const valorCheckpoint = estado.checkpoint?.join(",") ?? "";
@@ -105,14 +101,14 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             rotulo="Etapa"
             valor={estado.etapa ?? ""}
             onChange={(v) => mudar({ etapa: (v || null) as EstadoTabela["etapa"] })}
-            opcoes={ETAPAS.map((e) => ({ valor: e, label: ROTULO_ETAPA[e] }))}
+            opcoes={etapas.map((e) => ({ valor: e.id, label: e.nome }))}
           />
           <Selecao
             id="filtro-risco"
-            rotulo="Risco"
+            rotulo="Faixa de saúde"
             valor={estado.risco ?? ""}
             onChange={(v) => mudar({ risco: (v || null) as EstadoTabela["risco"] })}
-            opcoes={NIVEIS_RISCO.map((r) => ({ valor: r, label: ROTULO_RISCO[r] }))}
+            opcoes={FAIXAS_SAUDE.map((r) => ({ valor: r, label: ROTULO_FAIXA[r] }))}
           />
           <Selecao
             id="filtro-checkpoint"
@@ -129,7 +125,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             rotulo="Responsável"
             valor={estado.responsavel ?? ""}
             onChange={(v) => mudar({ responsavel: v || null })}
-            opcoes={responsaveis.map((r) => ({ valor: r, label: r }))}
+            opcoes={responsaveis.map((r) => ({ valor: r.id, label: r.nome }))}
           />
           <Selecao
             id="filtro-sinal"
@@ -140,11 +136,11 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
           />
         </div>
 
-        {filtros.length > 0 && (
+        {descricao.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-azul/40 bg-azul/10 px-3 py-2 text-xs" role="status">
             <Filter className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
             <span className="font-medium text-texto">Filtro ativo:</span>
-            <span className="text-texto-sec">{filtros.join(" · ")}</span>
+            <span className="text-texto-sec">{descricao.join(" · ")}</span>
             <button
               type="button"
               onClick={() => onMudar(semFiltros(estado))}
@@ -182,7 +178,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
                 {lista.data.descartados === 1 ? " ficou" : " ficaram"} de fora. O motivo está no console.
               </p>
             )}
-            {estado.visao === "lista" ? (
+            {!kanban ? (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[960px] border-collapse text-sm">
                   <thead>
@@ -226,13 +222,15 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
                           </Link>
                         </td>
                         <td className="px-2 py-2.5 text-texto-sec">{ROTULO_NIVEL[a.nivel_inicial]}</td>
-                        <td className="max-w-[150px] px-2 py-2.5 leading-snug text-texto">{ROTULO_ETAPA[a.etapa_atual]}</td>
+                        <td className="max-w-[150px] px-2 py-2.5 leading-snug text-texto">{a.etapa.nome}</td>
                         <td className="px-2 py-2.5">
-                          <BadgeCheckpoint status={a.proximo_checkpoint.status} />
+                          {a.proximo_checkpoint ? <BadgeCheckpoint status={a.proximo_checkpoint.status} /> : <span className="text-texto-sec/60">—</span>}
                         </td>
-                        <td className="px-2 py-2.5 font-semibold tabular-nums text-texto">{a.dias_estagnados}d</td>
+                        <td className="px-2 py-2.5 font-semibold tabular-nums text-texto">
+                          {a.dias_na_etapa.valor != null ? `${a.dias_na_etapa.valor}d` : "—"}
+                        </td>
                         <td className="px-2 py-2.5">
-                          <Risco risco={a.risco} />
+                          <Faixa faixa={a.faixa_saude.valor} />
                         </td>
                         <td className="max-w-[190px] px-2 py-2.5">
                           <span className="block truncate text-texto" title={a.proxima_acao?.descricao}>
@@ -248,9 +246,10 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
                 </table>
               </div>
             ) : (
-              <Kanban itens={lista.data.itens} hrefDoAluno={hrefDoAluno} />
+              <Kanban itens={lista.data.itens} etapas={etapas} hrefDoAluno={hrefDoAluno} />
             )}
 
+            {!kanban && (
             <nav className="flex flex-wrap items-center justify-between gap-2 text-xs text-texto-sec" aria-label="Paginação">
               <span>
                 {total} {total === 1 ? "aluno" : "alunos"} · página {estado.pagina} de {totalPaginas}
@@ -276,6 +275,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
                 </Button>
               </span>
             </nav>
+            )}
           </>
         )}
       </CardContent>
@@ -319,17 +319,17 @@ function Selecao({
   );
 }
 
-// Kanban: uma coluna por etapa, na ordem do funil, com os alunos da página.
-function Kanban({ itens, hrefDoAluno }: { itens: AlunoLinha[]; hrefDoAluno: (a: AlunoLinha) => string }) {
+// Kanban: uma coluna por etapa ativa, na ordem da configuração, com todos os alunos.
+function Kanban({ itens, etapas, hrefDoAluno }: { itens: AlunoLinha[]; etapas: Etapa[]; hrefDoAluno: (a: AlunoLinha) => string }) {
   return (
     <div className="-mx-1 overflow-x-auto px-1 pb-1">
       <div className="grid min-w-[1040px] grid-cols-5 gap-3">
-        {ETAPAS.map((etapa) => {
-          const daEtapa = itens.filter((a) => a.etapa_atual === etapa);
+        {etapas.map((etapa) => {
+          const daEtapa = itens.filter((a) => a.etapa.id === etapa.id);
           return (
-            <section key={etapa} aria-label={ROTULO_ETAPA[etapa]} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2">
+            <section key={etapa.id} aria-label={etapa.nome} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2">
               <header className="flex items-baseline justify-between gap-2 px-1 pt-1">
-                <h3 className="text-xs font-semibold text-texto">{ROTULO_ETAPA[etapa]}</h3>
+                <h3 className="text-xs font-semibold text-texto">{etapa.nome}</h3>
                 <span className="text-xs tabular-nums text-texto-sec">{daEtapa.length}</span>
               </header>
               {daEtapa.length === 0 ? (
@@ -343,11 +343,11 @@ function Kanban({ itens, hrefDoAluno }: { itens: AlunoLinha[]; hrefDoAluno: (a: 
                   >
                     <span className="block truncate text-sm font-semibold text-texto">{a.nome}</span>
                     <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <Risco risco={a.risco} className="text-xs" />
-                      <BadgeCheckpoint status={a.proximo_checkpoint.status} />
+                      <Faixa faixa={a.faixa_saude.valor} className="text-xs" />
+                      {a.proximo_checkpoint && <BadgeCheckpoint status={a.proximo_checkpoint.status} />}
                     </span>
                     <span className="mt-1.5 block text-xs text-texto-sec">
-                      <span className="font-semibold tabular-nums text-texto">{a.dias_estagnados}d</span> estagnado
+                      <span className="font-semibold tabular-nums text-texto">{a.dias_na_etapa.valor ?? "—"}d</span> na etapa
                     </span>
                   </Link>
                 ))

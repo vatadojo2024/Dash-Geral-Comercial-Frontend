@@ -1,32 +1,26 @@
 import type {
-  Etapa,
+  AutorizacaoProvaSocial,
+  CampoAjustavel,
+  EntidadeHistorico,
+  FaixaSaude,
   NivelInicial,
-  NivelRisco,
-  PassoMetodologico,
   Sinal,
+  StatusAluno,
   StatusCheckpoint,
   StatusFinanceiro,
-  TipoIntervencao,
   TipoResponsavel,
 } from "./contrato";
 
 // ---------------------------------------------------------------------------
 // Rótulos e cores do módulo Educacional. Só apresentação: nenhum valor é
-// calculado aqui. Cores semânticas FIXAS (spec, seção 7):
+// calculado aqui. Nomes de etapa, tipo de intervenção e responsável vêm da
+// configuração (Fase 2). Cores semânticas FIXAS:
 //   verde = saudável / realizado · âmbar = atenção / pendente ·
 //   vermelho = risco / não respondeu · cinza = em pausa ·
 //   cinza claro = previsto (data ainda não chegou)
 // ---------------------------------------------------------------------------
 
 export type Tom = "verde" | "ambar" | "vermelho" | "cinza" | "cinza_claro";
-
-export const ROTULO_ETAPA: Record<Etapa, string> = {
-  fundamentos_iniciais: "Fundamentos Iniciais",
-  tres_pilares: "3 Pilares",
-  oferta_e_demanda: "Oferta e Demanda",
-  construcao_operacional: "Construção do Operacional",
-  validacao: "Validação",
-};
 
 export const ROTULO_STATUS_CHECKPOINT: Record<StatusCheckpoint, string> = {
   realizado: "Realizado",
@@ -43,12 +37,12 @@ export const TOM_STATUS_CHECKPOINT: Record<StatusCheckpoint, Tom> = {
   previsto: "cinza_claro",
 };
 
-export const ROTULO_RISCO: Record<NivelRisco, string> = {
+export const ROTULO_FAIXA: Record<FaixaSaude, string> = {
   saudavel: "Saudável",
   atencao: "Atenção",
   risco: "Risco",
 };
-export const TOM_RISCO: Record<NivelRisco, Tom> = { saudavel: "verde", atencao: "ambar", risco: "vermelho" };
+export const TOM_FAIXA: Record<FaixaSaude, Tom> = { saudavel: "verde", atencao: "ambar", risco: "vermelho" };
 
 export const ROTULO_NIVEL: Record<NivelInicial, string> = {
   iniciante: "Iniciante",
@@ -56,7 +50,9 @@ export const ROTULO_NIVEL: Record<NivelInicial, string> = {
   avancado: "Avançado",
 };
 
-export const ROTULO_PASSO: Record<PassoMetodologico, string> = {
+export const PASSOS = ["consumiu", "entendeu", "aplicou", "validou"] as const;
+export type Passo = (typeof PASSOS)[number];
+export const ROTULO_PASSO: Record<Passo, string> = {
   consumiu: "Consumiu",
   entendeu: "Entendeu",
   aplicou: "Aplicou",
@@ -81,16 +77,49 @@ export const ROTULO_TIPO_RESPONSAVEL: Record<TipoResponsavel, string> = {
   comercial: "Comercial",
 };
 
-export const ROTULO_TIPO_INTERVENCAO: Record<TipoIntervencao, string> = {
-  contato: "Contato",
-  reuniao: "Reunião",
-  ajuste_plano: "Ajuste de plano",
-  outro: "Outro",
-};
-
 export const ROTULO_FINANCEIRO: Record<StatusFinanceiro, string> = {
   adimplente: "Adimplente",
   inadimplente: "Inadimplente",
+};
+
+export const ROTULO_STATUS_ALUNO: Record<StatusAluno, string> = {
+  ativo: "Ativo",
+  em_pausa: "Em pausa",
+  concluido: "Concluído",
+  cancelado: "Cancelado",
+  reembolsado: "Reembolsado",
+};
+
+export const ROTULO_AUTORIZACAO: Record<AutorizacaoProvaSocial, string> = {
+  sim: "Autorizada",
+  nao: "Não autorizada",
+  pendente: "Pendente",
+};
+
+export const ROTULO_STATUS_INTERVENCAO = { aberta: "Aberta", concluida: "Concluída" } as const;
+
+export const ROTULO_ENTIDADE: Record<EntidadeHistorico, string> = {
+  aluno: "Aluno",
+  checkpoint: "Checkpoint",
+  intervencao: "Intervenção",
+  ajuste: "Ajuste manual",
+};
+
+export const ROTULO_CAMPO_AJUSTAVEL: Record<CampoAjustavel, string> = {
+  health_score: "Health Score",
+  faixa_saude: "Faixa de saúde",
+  dias_na_etapa: "Dias na etapa",
+  ultima_atividade: "Última atividade",
+  dias_sem_atividade: "Dias sem atividade",
+  status_financeiro: "Status financeiro",
+  ltv: "LTV",
+  progresso_consumiu: "Consumiu",
+  progresso_entendeu: "Entendeu",
+  progresso_aplicou: "Aplicou",
+  progresso_validou: "Validou",
+  sinal_upgrade: "Upgrade",
+  sinal_renovacao: "Renovação",
+  sinal_prova_social: "Prova Social",
 };
 
 // Classes por tom, com os tokens do design system.

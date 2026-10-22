@@ -6,21 +6,22 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, CircleCheck, Flag, Plus, Star } from "lucide-react";
 import { buscarAluno, EducacionalError } from "@/lib/educacional/apiEducacional";
-import { NIVEIS_RISCO, PASSOS, type AlunoDetalhe, type Checkpoint } from "@/lib/educacional/contrato";
+import { FAIXAS_SAUDE, SINAIS, type AlunoDetalhe, type Checkpoint } from "@/lib/educacional/contrato";
 import {
   dataCurta,
   dataHoraBr,
+  PASSOS,
   reais,
-  ROTULO_ETAPA,
+  ROTULO_FAIXA,
   ROTULO_FINANCEIRO,
   ROTULO_NIVEL,
   ROTULO_PASSO,
-  ROTULO_RISCO,
   ROTULO_SINAL,
+  ROTULO_STATUS_ALUNO,
   ROTULO_STATUS_CHECKPOINT,
-  ROTULO_TIPO_INTERVENCAO,
+  ROTULO_STATUS_INTERVENCAO,
   PONTO_DO_TOM,
-  TOM_RISCO,
+  TOM_FAIXA,
   TOM_STATUS_CHECKPOINT,
 } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
@@ -30,15 +31,14 @@ import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
 import { lerSimular } from "./estado";
 import { NovaIntervencao } from "./NovaIntervencao";
-import { BadgeCheckpoint, EtiquetaDemonstracao, mensagemDoErro, NomeResponsavel, Risco, useRedirecionarSeSemPermissao } from "./partes";
+import { CHAVES } from "./dados";
+import { BadgeCheckpoint, EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
 
 // ---------------------------------------------------------------------------
 // Raio-X do aluno (spec, seção 6) — página /educacional/alunos/[id]. Blocos na
 // ordem da spec. "Voltar" devolve a Tabela tática exatamente como estava
 // (filtros, ordem, página e visão vêm em `?voltar=`).
 // ---------------------------------------------------------------------------
-
-const BIG_WIN = "Mês 3 — Big Win";
 
 export function RaioXAluno({ id }: { id: string }) {
   const searchParams = useSearchParams();
@@ -49,7 +49,7 @@ export function RaioXAluno({ id }: { id: string }) {
   const [aviso, setAviso] = useState<string | null>(null);
 
   const consulta = useQuery({
-    queryKey: ["edu", "aluno", id, simular],
+    queryKey: [...CHAVES.aluno(id), simular],
     queryFn: () => buscarAluno(id, simular),
     retry: false,
   });
@@ -114,7 +114,7 @@ export function RaioXAluno({ id }: { id: string }) {
 
       <NovaIntervencao
         aberto={modalAberto}
-        alunoInicial={a ? { id: a.id, nome: a.nome } : null}
+        alunoInicial={a ? { id: a.id, nome: a.nome, versao: a.versao } : null}
         onFechar={() => setModalAberto(false)}
         onCriada={() => setAviso("Intervenção registrada. Ela já aparece na lista abaixo.")}
       />
@@ -131,7 +131,7 @@ function Cabecalho({ a, onNovaIntervencao }: { a: AlunoDetalhe; onNovaIntervenca
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-azul-claro">Educacional · Raio-X do aluno</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">{a.nome}</h1>
-            <span className="tag">{a.status_geral}</span>
+            <span className="tag">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>
             <EtiquetaDemonstracao />
           </div>
           <dl className="mt-3 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2 xl:grid-cols-4">
@@ -163,9 +163,11 @@ function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   );
 }
 
-// 2. Indicadores: Health Score, termômetro de risco, dias estagnados.
+// 2. Indicadores: Health Score, termômetro (faixa de saúde), dias na etapa.
 function Indicadores({ a }: { a: AlunoDetalhe }) {
-  const emRisco = a.health_score < 50;
+  const faixa = a.faixa_saude.valor;
+  const emRisco = faixa === "risco";
+  const dias = a.dias_na_etapa.valor;
   return (
     <Card>
       <CardHeader title="Indicadores" />
@@ -173,26 +175,25 @@ function Indicadores({ a }: { a: AlunoDetalhe }) {
         <div>
           <p className="text-xs text-texto-sec">Health Score</p>
           <p className={cn("text-4xl font-semibold tabular-nums", emRisco ? "text-erro" : "text-texto")}>
-            {a.health_score}
+            {a.health_score.valor ?? "—"}
             <span className="text-base font-normal text-texto-sec">/100</span>
           </p>
           {emRisco && <span className="tag tag-error mt-1">Risco de Evasão/Reembolso</span>}
         </div>
         <div>
           <p className="mb-1.5 text-xs text-texto-sec">Termômetro de risco</p>
-          <div className="grid grid-cols-3 gap-1" role="img" aria-label={`Risco: ${ROTULO_RISCO[a.risco]}`}>
-            {NIVEIS_RISCO.map((n) => (
+          <div className="grid grid-cols-3 gap-1" role="img" aria-label={`Faixa de saúde: ${faixa ? ROTULO_FAIXA[faixa] : "sem cálculo"}`}>
+            {[...FAIXAS_SAUDE].reverse().map((n) => (
               <span
                 key={n}
-                className={cn("h-2.5 rounded-full", PONTO_DO_TOM[TOM_RISCO[n]], a.risco === n ? "opacity-100 ring-2 ring-white/40" : "opacity-25")}
+                className={cn("h-2.5 rounded-full", PONTO_DO_TOM[TOM_FAIXA[n]], faixa === n ? "opacity-100 ring-2 ring-white/40" : "opacity-25")}
               />
             ))}
           </div>
-          <Risco risco={a.risco} className="mt-1.5" />
+          <Faixa faixa={faixa} className="mt-1.5" />
         </div>
         <p className="text-sm text-texto">
-          Há <span className="font-semibold tabular-nums">{a.dias_estagnados} {a.dias_estagnados === 1 ? "dia" : "dias"}</span> em{" "}
-          {ROTULO_ETAPA[a.etapa_atual]}
+          Há <span className="font-semibold tabular-nums">{dias ?? "—"} {dias === 1 ? "dia" : "dias"}</span> em {a.etapa.nome}
         </p>
       </CardContent>
     </Card>
@@ -201,18 +202,23 @@ function Indicadores({ a }: { a: AlunoDetalhe }) {
 
 // 3. Contrato
 function Contrato({ a }: { a: AlunoDetalhe }) {
-  const inadimplente = a.status_financeiro === "inadimplente";
+  const financeiro = a.status_financeiro.valor;
+  const inadimplente = financeiro === "inadimplente";
   return (
     <Card>
       <CardHeader title="Contrato" />
       <CardContent className="space-y-4">
         <div>
           <p className="text-xs text-texto-sec">Status financeiro</p>
-          <span className={cn("tag mt-1", inadimplente ? "tag-error" : "tag-success")}>{ROTULO_FINANCEIRO[a.status_financeiro]}</span>
+          {financeiro ? (
+            <span className={cn("tag mt-1", inadimplente ? "tag-error" : "tag-success")}>{ROTULO_FINANCEIRO[financeiro]}</span>
+          ) : (
+            <p className="text-sm text-texto-sec">Sem informação</p>
+          )}
         </div>
         <div>
           <p className="text-xs text-texto-sec">LTV</p>
-          <p className="text-2xl font-semibold tabular-nums text-texto">{reais(a.ltv)}</p>
+          <p className="text-2xl font-semibold tabular-nums text-texto">{a.ltv.valor != null ? reais(a.ltv.valor) : "—"}</p>
         </div>
       </CardContent>
     </Card>
@@ -221,15 +227,16 @@ function Contrato({ a }: { a: AlunoDetalhe }) {
 
 // 8. Sinais ativos (fica ao lado dos indicadores no desktop)
 function SinaisAtivos({ a }: { a: AlunoDetalhe }) {
+  const ativos = SINAIS.filter((s) => a.sinais[s].valor === true);
   return (
     <Card>
       <CardHeader title="Sinais ativos" subtitle="Sinais para o Comercial em que o aluno está." />
       <CardContent>
-        {a.sinais.length === 0 ? (
+        {ativos.length === 0 ? (
           <p className="text-sm text-texto-sec">Nenhum sinal ativo.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {a.sinais.map((s) => (
+            {ativos.map((s) => (
               <span key={s} className="tag tag-info">
                 {ROTULO_SINAL[s]}
               </span>
@@ -255,7 +262,7 @@ function Timeline({ checkpoints }: { checkpoints: Checkpoint[] }) {
             <ol className="relative flex min-w-[760px] justify-between">
               <span className="absolute left-4 right-4 top-4 h-px bg-white/15" aria-hidden />
               {ordenados.map((c) => {
-                const bigWin = c.nome === BIG_WIN;
+                const bigWin = c.big_win;
                 const tom = TOM_STATUS_CHECKPOINT[c.status];
                 const previsto = c.status === "previsto";
                 return (
@@ -288,32 +295,35 @@ function Timeline({ checkpoints }: { checkpoints: Checkpoint[] }) {
   );
 }
 
-// 5. Progresso metodológico + highlights das aulas.
+// 5. Progresso metodológico (4 notas de 0 a 100) + highlights das aulas.
 function Progresso({ a }: { a: AlunoDetalhe }) {
-  const atual = a.progresso_metodologico.passo_atual;
-  const alcancado = atual ? PASSOS.indexOf(atual) : -1;
+  const semNotas = PASSOS.every((p) => a.progresso[p].valor == null);
   return (
     <Card>
-      <CardHeader title="Progresso metodológico" subtitle={`Na etapa atual: ${ROTULO_ETAPA[a.etapa_atual]}`} />
+      <CardHeader title="Progresso metodológico" subtitle={`Na etapa atual: ${a.etapa.nome}`} />
       <CardContent className="space-y-5">
-        <ol className="grid grid-cols-4 gap-1.5" aria-label="Passos da etapa">
-          {PASSOS.map((p, i) => (
-            <li key={p} className="space-y-1.5">
-              <span className={cn("block h-2 rounded-full", i <= alcancado ? "bg-sucesso" : "bg-white/10")} />
-              <span className={cn("block text-center text-xs", i === alcancado ? "font-semibold text-texto" : i < alcancado ? "text-texto" : "text-texto-sec")}>
-                {ROTULO_PASSO[p]}
-              </span>
-            </li>
-          ))}
-        </ol>
-        {alcancado < 0 && <p className="text-xs text-texto-sec">Ainda sem passo registrado nesta etapa.</p>}
+        <ul className="space-y-2.5" aria-label="Notas do progresso">
+          {PASSOS.map((p) => {
+            const nota = a.progresso[p].valor;
+            return (
+              <li key={p} className="grid grid-cols-[5.5rem_1fr_2.5rem] items-center gap-2 text-xs">
+                <span className="text-texto">{ROTULO_PASSO[p]}</span>
+                <span className="block h-2 overflow-hidden rounded-full bg-white/10">
+                  <span className="block h-full rounded-full bg-sucesso" style={{ width: `${nota ?? 0}%` }} />
+                </span>
+                <span className="text-right tabular-nums text-texto-sec">{nota ?? "—"}</span>
+              </li>
+            );
+          })}
+        </ul>
+        {semNotas && <p className="text-xs text-texto-sec">Ainda sem notas registradas.</p>}
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-texto-sec">Highlights das aulas</p>
-          {a.progresso_metodologico.highlights.length === 0 ? (
+          {a.highlights.length === 0 ? (
             <p className="text-sm text-texto-sec">Sem análises de aula disponíveis</p>
           ) : (
             <ul className="space-y-2">
-              {a.progresso_metodologico.highlights.map((h, i) => (
+              {a.highlights.map((h, i) => (
                 <li key={i} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
                   <span className="mr-2 text-xs tabular-nums text-texto-sec">{dataCurta(h.data_aula)}</span>
                   <span className="text-texto">{h.texto}</span>
@@ -364,7 +374,12 @@ function Intervencoes({ a }: { a: AlunoDetalhe }) {
           <ul className="divide-y divide-white/10">
             {a.intervencoes.map((i) => (
               <li key={i.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:gap-4">
-                <span className="tag shrink-0 self-start">{ROTULO_TIPO_INTERVENCAO[i.tipo]}</span>
+                <span className="flex shrink-0 gap-1.5 self-start">
+                  <span className="tag">{i.tipo.nome}</span>
+                  <span className={cn("tag", i.status === "concluida" ? "tag-success" : "tag-info")}>
+                    {ROTULO_STATUS_INTERVENCAO[i.status]}
+                  </span>
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-texto">{i.descricao}</p>
                   <p className="mt-0.5 text-xs text-texto-sec">

@@ -1,34 +1,43 @@
-import mock from "@/lib/mock/data_educacional.json";
 import {
   AlunoLinhaSchema,
-  IntervencaoSchema,
-  NovaIntervencaoSchema,
+  CheckpointModeloSchema,
+  EtapaSchema,
+  ItemHistoricoSchema,
+  ResponsavelSchema,
   ResumoEducacionalSchema,
-  STATUS_CHECKPOINT,
+  TipoIntervencaoSchema,
   validarAlunoDetalhe,
   validarLista,
   type AlunoDetalhe,
   type AlunoLinha,
-  type Etapa,
-  type Intervencao,
-  type NivelRisco,
-  type NovaIntervencao,
+  type CampoAjustavel,
+  type CamposCheckpoint,
+  type CamposDiretosAluno,
+  type CamposIntervencao,
+  type Config,
+  type EntidadeHistorico,
+  type FaixaSaude,
+  type ItemHistorico,
+  type NovoAluno,
   type ResumoEducacional,
   type Sinal,
+  type StatusAluno,
   type StatusCheckpoint,
+  type Usuario,
 } from "./contrato";
 
 // ---------------------------------------------------------------------------
-// ÚNICA porta de dados do módulo Educacional (spec, seção 3). Não importa nada
-// do comercial e não chama nenhuma rota comercial.
-//   - "mock" (padrão): lê src/lib/mock/data_educacional.json (contrato da
-//     seção 8, coerente com as regras da seção 9 — conferido em mock.test.ts).
-//     Filtro, ordem e página de 25 seguem os parâmetros da seção 8.3, como o
-//     backend fará. Intervenções novas ficam em memória até recarregar.
-//   - "api": chama /api/educacional/* (proxies com o JWT da sessão). Pronto e
-//     DESLIGADO até o backend ter fonte de dados.
-// Modo por NEXT_PUBLIC_EDU_DATA_SOURCE. Validação Zod com tolerância aluno a
-// aluno em qualquer modo.
+// ÚNICA porta de dados do módulo Educacional (Fase 2). Não importa nada do
+// comercial e não chama nenhuma rota comercial. Mesmas rotas nos dois modos
+// (seção 4 do backend da Fase 2, relativas a /api/educacional); muda só o
+// transporte:
+//   - "mock" (padrão): o "servidor" do modo demonstração (mock/servidor.ts)
+//     sobre o banco do navegador (localStorage). Imita o backend: versão, 409,
+//     400, histórico, ajuste manual e checkpoints de aluno novo.
+//     Desenvolvimento: ?simular_gravacao=409|400|rede força a resposta das escritas.
+//   - "api": proxy /api/educacional/[...caminho] com o JWT da sessão. Pronto e
+//     DESLIGADO até o backend da Fase 2.
+// Validação Zod com tolerância item a item nos dois modos.
 // ---------------------------------------------------------------------------
 
 export type FonteEducacional = "mock" | "api";
@@ -36,50 +45,77 @@ export const FONTE_EDUCACIONAL: FonteEducacional =
   process.env.NEXT_PUBLIC_EDU_DATA_SOURCE === "api" ? "api" : "mock";
 
 export const TAMANHO_PAGINA = 25;
+export const TAMANHO_PAGINA_HISTORICO = 20;
 
+export type CorpoDoErro = {
+  error: string;
+  campo?: string;
+  mensagem?: string;
+  aluno?: unknown;
+  alunos?: number;
+};
+
+// status 0 = erro de rede (sem resposta do servidor).
 export class EducacionalError extends Error {
+  readonly corpo: CorpoDoErro;
   constructor(
     message: string,
     public readonly status: number,
+    corpo?: CorpoDoErro,
   ) {
     super(message);
+    this.corpo = corpo ?? { error: message };
+  }
+  get rede() {
+    return this.status === 0;
+  }
+  // 409 de versão: o aluno como está agora no servidor.
+  get alunoAtual(): AlunoDetalhe | null {
+    return this.status === 409 && this.corpo.error === "versao" ? validarAlunoDetalhe(this.corpo.aluno) : null;
   }
 }
 
-export type OrdemAlunos =
-  | "risco"
-  | "nome"
-  | "-nome"
-  | "nivel_inicial"
-  | "-nivel_inicial"
-  | "etapa_atual"
-  | "-etapa_atual"
-  | "checkpoint"
-  | "-checkpoint"
-  | "dias_estagnados"
-  | "-dias_estagnados"
-  | "-risco"
-  | "proxima_acao"
-  | "-proxima_acao"
-  | "responsavel"
-  | "-responsavel";
+const CHAVES_ORDEM = [
+  "risco",
+  "nome",
+  "mentoria",
+  "nivel_inicial",
+  "status_aluno",
+  "etapa",
+  "checkpoint",
+  "dias_na_etapa",
+  "dias_sem_atividade",
+  "health_score",
+  "faixa_saude",
+  "proxima_acao",
+  "responsavel",
+] as const;
+export type ChaveOrdem = (typeof CHAVES_ORDEM)[number];
+export type OrdemAlunos = ChaveOrdem | `-${ChaveOrdem}`;
+export function ehOrdem(v: string): v is OrdemAlunos {
+  return (CHAVES_ORDEM as readonly string[]).includes(v.replace(/^-/, ""));
+}
 
 export type FiltrosAlunos = {
-  etapa?: Etapa | null;
-  risco?: NivelRisco | null;
+  etapa?: string | null; // id da etapa
+  risco?: FaixaSaude | null; // faixa de saúde efetiva
   checkpoint?: StatusCheckpoint[];
-  responsavel?: string | null; // nome do responsável
+  responsavel?: string | null; // id do responsável
   sinal?: Sinal | null;
-  // EXCLUSIVO: health_max=50 → Health Score abaixo de 50 (alinhar com o back).
+  // EXCLUSIVO: health_max=50 → Health Score efetivo abaixo de 50.
   health_max?: number | null;
+  status_aluno?: StatusAluno | null;
+  incluir_arquivados?: boolean;
   ordem?: OrdemAlunos;
   pagina?: number;
+  por_pagina?: number | "todos";
 };
 
-// `simular`: só no mock, para ver os estados (erro, vazio, sem permissão).
+// `simular`: só no mock, para ver os estados de leitura (erro, vazio, sem permissão).
 export type Simular = "erro" | "vazio" | "sem_permissao" | null | undefined;
 
 export type PaginaAlunos = { itens: AlunoLinha[]; total: number; descartados: number };
+export type PaginaHistorico = { itens: ItemHistorico[]; total: number };
 
 export function queryDosFiltros(f: FiltrosAlunos): string {
   const qs = new URLSearchParams();
@@ -89,101 +125,117 @@ export function queryDosFiltros(f: FiltrosAlunos): string {
   if (f.responsavel) qs.set("responsavel", f.responsavel);
   if (f.sinal) qs.set("sinal", f.sinal);
   if (f.health_max != null) qs.set("health_max", String(f.health_max));
+  if (f.status_aluno) qs.set("status_aluno", f.status_aluno);
+  if (f.incluir_arquivados) qs.set("incluir_arquivados", "1");
   if (f.ordem && f.ordem !== "risco") qs.set("ordem", f.ordem);
+  if (f.por_pagina != null) qs.set("por_pagina", String(f.por_pagina));
   if (f.pagina && f.pagina > 1) qs.set("pagina", String(f.pagina));
   return qs.toString();
 }
 
 // ---------------------------------------------------------------------------
-// Mock
+// Transporte
 // ---------------------------------------------------------------------------
 
-const ESPERA_MS = 350;
+type Metodo = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+type Pedido = { metodo: Metodo; caminho: string; query?: string; corpo?: unknown };
+
+// Usuário que aparece no histórico do modo demonstração (no modo api, o backend usa o JWT).
+let usuarioDemo: Usuario = { id: "demo", nome: "Demonstração" };
+export function definirUsuarioDaSessao(u: Usuario) {
+  usuarioDemo = { id: u.id, nome: u.nome };
+}
+
+const ESPERA_MS = 300;
 const esperar = () => new Promise((r) => setTimeout(r, process.env.NODE_ENV === "test" ? 0 : ESPERA_MS));
 
-function falhaSimulada(simular: Simular): void {
-  if (simular === "erro") throw new EducacionalError("Não foi possível falar com o serviço educacional.", 502);
-  if (simular === "sem_permissao") throw new EducacionalError("Sem permissão", 403);
+export type SimularGravacao = "409" | "400" | "rede" | null;
+let simularGravacaoTeste: SimularGravacao = null;
+export function _simularGravacaoEmTeste(v: SimularGravacao) {
+  simularGravacaoTeste = v;
+}
+function simularGravacao(): SimularGravacao {
+  if (simularGravacaoTeste) return simularGravacaoTeste;
+  if (typeof window === "undefined") return null;
+  const v = new URLSearchParams(window.location.search).get("simular_gravacao");
+  return v === "409" || v === "400" || v === "rede" ? v : null;
 }
 
-// Intervenções criadas no modo mock (memória da sessão do navegador).
-const intervencoesEmMemoria = new Map<string, Intervencao[]>();
+const ERRO_DE_REDE = "Sem conexão com o servidor. Verifique a internet e tente de novo.";
 
-function alunosDoMock(): AlunoDetalhe[] {
-  const brutos = Array.isArray((mock as { alunos?: unknown }).alunos) ? (mock as { alunos: unknown[] }).alunos : [];
-  return brutos.flatMap((b) => {
-    const a = validarAlunoDetalhe(b);
-    return a ? [a] : [];
-  });
+async function transporteMock(p: Pedido): Promise<unknown> {
+  const [{ carregarBanco, salvarBanco }, { atender }, { hojeBR }, { ErroDaApi }] = await Promise.all([
+    import("./mock/banco"),
+    import("./mock/servidor"),
+    import("./mock/motor"),
+    import("./mock/tipos"),
+  ]);
+  await esperar();
+  const hoje = hojeBR();
+  const agora = new Date().toISOString();
+  const banco = carregarBanco(hoje);
+  const escrita = p.metodo !== "GET";
+  const forcar = escrita ? simularGravacao() : null;
+  if (forcar === "rede") throw new EducacionalError(ERRO_DE_REDE, 0, { error: "rede", mensagem: ERRO_DE_REDE });
+  if (forcar === "400") {
+    const mensagem = "Erro de validação simulado (simular_gravacao=400).";
+    throw new EducacionalError(mensagem, 400, { error: "validacao", campo: "simulado", mensagem });
+  }
+  if (forcar === "409") {
+    // "Outra pessoa" grava antes: a versão do aluno sobe e a escrita cai no 409 de verdade.
+    const id = alunoDoPedido(banco, p);
+    const aluno = id ? banco.alunos.find((a) => a.id === id) : null;
+    if (aluno) {
+      aluno.versao += 1;
+      salvarBanco(banco, hoje);
+    }
+  }
+  try {
+    const resposta = atender(
+      banco,
+      { metodo: p.metodo, caminho: p.caminho, query: new URLSearchParams(p.query ?? ""), corpo: p.corpo },
+      { usuario: usuarioDemo, hoje, agora },
+    );
+    if (escrita) salvarBanco(banco, hoje);
+    return JSON.parse(JSON.stringify(resposta)) as unknown;
+  } catch (e) {
+    if (e instanceof ErroDaApi) throw new EducacionalError(e.corpo.mensagem ?? e.corpo.error, e.status, e.corpo);
+    throw e;
+  }
 }
 
-const PESO_RISCO: Record<NivelRisco, number> = { risco: 0, atencao: 1, saudavel: 2 };
-const PESO_CHECKPOINT: Record<StatusCheckpoint, number> = {
-  nao_respondeu: 0,
-  pendente: 1,
-  em_pausa: 2,
-  previsto: 3,
-  realizado: 4,
-};
-const ORDEM_ETAPA: Record<Etapa, number> = {
-  fundamentos_iniciais: 0,
-  tres_pilares: 1,
-  oferta_e_demanda: 2,
-  construcao_operacional: 3,
-  validacao: 4,
-};
-const ORDEM_NIVEL = { iniciante: 0, intermediario: 1, avancado: 2 } as const;
-
-function comparar(ordem: OrdemAlunos): (a: AlunoLinha, b: AlunoLinha) => number {
-  // Padrão (spec, seção 5): Risco → Atenção → Saudável, depois dias estagnados desc.
-  const padrao = (a: AlunoLinha, b: AlunoLinha) =>
-    PESO_RISCO[a.risco] - PESO_RISCO[b.risco] || b.dias_estagnados - a.dias_estagnados || a.nome.localeCompare(b.nome, "pt-BR");
-  const desc = ordem.startsWith("-");
-  const campo = desc ? ordem.slice(1) : ordem;
-  const texto = (v: string | null | undefined) => v ?? "￿"; // vazio por último
-  const base: Record<string, (a: AlunoLinha, b: AlunoLinha) => number> = {
-    risco: padrao,
-    nome: (a, b) => a.nome.localeCompare(b.nome, "pt-BR"),
-    nivel_inicial: (a, b) => ORDEM_NIVEL[a.nivel_inicial] - ORDEM_NIVEL[b.nivel_inicial],
-    etapa_atual: (a, b) => ORDEM_ETAPA[a.etapa_atual] - ORDEM_ETAPA[b.etapa_atual],
-    checkpoint: (a, b) => PESO_CHECKPOINT[a.proximo_checkpoint.status] - PESO_CHECKPOINT[b.proximo_checkpoint.status],
-    dias_estagnados: (a, b) => a.dias_estagnados - b.dias_estagnados,
-    proxima_acao: (a, b) => texto(a.proxima_acao?.descricao).localeCompare(texto(b.proxima_acao?.descricao), "pt-BR"),
-    responsavel: (a, b) => texto(a.responsavel?.nome).localeCompare(texto(b.responsavel?.nome), "pt-BR"),
-  };
-  const f = base[campo] ?? padrao;
-  return (a, b) => (desc ? -f(a, b) : f(a, b)) || padrao(a, b);
+// Aluno dono de uma escrita (para o 409 simulado).
+function alunoDoPedido(
+  banco: { checkpoints: { id: string; aluno_id: string }[]; intervencoes: { id: string; aluno_id: string }[] },
+  p: Pedido,
+): string | null {
+  const s = p.caminho.split("/");
+  if (s[0] === "alunos" && s[1]) return s[1];
+  if (s[0] === "checkpoints") return banco.checkpoints.find((c) => c.id === s[1])?.aluno_id ?? null;
+  if (s[0] === "intervencoes" && s[1]) return banco.intervencoes.find((i) => i.id === s[1])?.aluno_id ?? null;
+  if (s[0] === "intervencoes") return (p.corpo as { aluno_id?: string } | undefined)?.aluno_id ?? null;
+  return null;
 }
 
-function filtrarMock(alunos: AlunoLinha[], f: FiltrosAlunos): AlunoLinha[] {
-  return alunos.filter((a) => {
-    if (f.etapa && a.etapa_atual !== f.etapa) return false;
-    if (f.risco && a.risco !== f.risco) return false;
-    if (f.checkpoint?.length && !f.checkpoint.includes(a.proximo_checkpoint.status)) return false;
-    if (f.responsavel && a.responsavel?.nome !== f.responsavel) return false;
-    if (f.sinal && !a.sinais.includes(f.sinal)) return false;
-    if (f.health_max != null && !(a.health_score < f.health_max)) return false;
-    return true;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Modo api (desligado): proxies /api/educacional/* com o JWT da sessão.
-// ---------------------------------------------------------------------------
-
-async function headersComToken(): Promise<HeadersInit> {
+async function headersComToken(): Promise<Record<string, string>> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return {};
   const { getSupabaseClient } = await import("@/lib/auth/supabase");
   const { data } = await getSupabaseClient().auth.getSession();
   return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
 }
 
-async function chamarApi(caminho: string, init?: RequestInit): Promise<unknown> {
-  const res = await fetch(caminho, {
-    ...init,
-    headers: { ...(await headersComToken()), ...(init?.body ? { "Content-Type": "application/json" } : {}) },
-  });
-  const corpo = (await res.json().catch(() => null)) as { error?: string } | null;
+async function transporteApi(p: Pedido): Promise<unknown> {
+  let res: Response;
+  try {
+    res = await fetch(`/api/educacional/${p.caminho}${p.query ? `?${p.query}` : ""}`, {
+      method: p.metodo,
+      headers: { ...(await headersComToken()), ...(p.corpo !== undefined ? { "Content-Type": "application/json" } : {}) },
+      body: p.corpo !== undefined ? JSON.stringify(p.corpo) : undefined,
+    });
+  } catch {
+    throw new EducacionalError(ERRO_DE_REDE, 0, { error: "rede", mensagem: ERRO_DE_REDE });
+  }
+  const corpo = (await res.json().catch(() => null)) as CorpoDoErro | null;
   if (!res.ok) {
     // 401 → login (limpa o cookie antes, para não cair em loop com o middleware).
     if (res.status === 401 && typeof window !== "undefined") {
@@ -191,107 +243,197 @@ async function chamarApi(caminho: string, init?: RequestInit): Promise<unknown> 
       limparCookieSessao();
       window.location.href = "/login";
     }
-    throw new EducacionalError(corpo?.error ?? `O serviço educacional respondeu ${res.status}.`, res.status);
+    const mensagem = corpo?.mensagem ?? corpo?.error ?? `O serviço educacional respondeu ${res.status}.`;
+    throw new EducacionalError(mensagem, res.status, corpo ?? { error: mensagem });
   }
   return corpo;
 }
 
+function chamar(p: Pedido): Promise<unknown> {
+  return FONTE_EDUCACIONAL === "api" ? transporteApi(p) : transporteMock(p);
+}
+
+function falhaSimulada(simular: Simular): void {
+  if (FONTE_EDUCACIONAL === "api") return;
+  if (simular === "erro") throw new EducacionalError("Não foi possível falar com o serviço educacional.", 502);
+  if (simular === "sem_permissao") throw new EducacionalError("Sem permissão", 403);
+}
+
+const id = (v: string) => encodeURIComponent(v);
+
+// Toda escrita em aluno devolve o AlunoDetalhe recalculado.
+async function escreverAluno(p: Pedido): Promise<AlunoDetalhe> {
+  const a = validarAlunoDetalhe(await chamar(p));
+  if (!a) throw new EducacionalError("Gravado, mas a resposta veio fora do contrato.", 502);
+  return a;
+}
+
 // ---------------------------------------------------------------------------
-// Funções públicas
+// Leitura
 // ---------------------------------------------------------------------------
 
 export async function buscarResumo(simular?: Simular): Promise<ResumoEducacional> {
-  if (FONTE_EDUCACIONAL === "api") {
-    const r = ResumoEducacionalSchema.safeParse(await chamarApi("/api/educacional/resumo"));
-    if (!r.success) throw new EducacionalError("Resumo educacional fora do contrato.", 502);
-    return r.data;
-  }
-  await esperar();
   falhaSimulada(simular);
-  const resumo = ResumoEducacionalSchema.parse((mock as { resumo: unknown }).resumo);
-  if (simular === "vazio") {
+  const r = ResumoEducacionalSchema.safeParse(await chamar({ metodo: "GET", caminho: "resumo" }));
+  if (!r.success) throw new EducacionalError("Resumo educacional fora do contrato.", 502);
+  if (simular === "vazio" && FONTE_EDUCACIONAL === "mock") {
     return {
-      ...resumo,
-      kpis: { health_score_medio: 0, alunos_ativos: 0, intervencoes_sla: 0, em_risco: 0 },
-      funil: resumo.funil.map((e) => ({ ...e, alunos: 0 })),
+      ...r.data,
+      kpis: { health_score_medio: null, alunos_ativos: 0, intervencoes_sla: 0, em_risco: 0 },
+      funil: r.data.funil.map((e) => ({ ...e, alunos: 0 })),
       sinais: { upgrade: 0, renovacao: 0, prova_social: 0 },
     };
   }
-  return resumo;
+  return r.data;
 }
 
 export async function buscarAlunos(f: FiltrosAlunos, simular?: Simular): Promise<PaginaAlunos> {
+  falhaSimulada(simular);
+  if (simular === "vazio" && FONTE_EDUCACIONAL === "mock") return { itens: [], total: 0, descartados: 0 };
   const pagina = Math.max(1, f.pagina ?? 1);
-  if (FONTE_EDUCACIONAL === "api") {
-    const qs = queryDosFiltros({ ...f, pagina });
-    const corpo = (await chamarApi(`/api/educacional/alunos${qs ? `?${qs}` : ""}`)) as { itens?: unknown; total?: unknown } | null;
-    const { validos, descartados } = validarLista(corpo?.itens, AlunoLinhaSchema, "aluno");
-    const total = typeof corpo?.total === "number" ? corpo.total : validos.length;
-    return { itens: validos, total, descartados };
-  }
-  await esperar();
+  const corpo = (await chamar({ metodo: "GET", caminho: "alunos", query: queryDosFiltros({ ...f, pagina }) })) as {
+    itens?: unknown;
+    total?: unknown;
+  } | null;
+  const { validos, descartados } = validarLista(corpo?.itens, AlunoLinhaSchema, "aluno");
+  const total = typeof corpo?.total === "number" ? corpo.total : validos.length;
+  return { itens: validos, total, descartados };
+}
+
+export async function buscarAluno(alunoId: string, simular?: Simular): Promise<AlunoDetalhe> {
   falhaSimulada(simular);
-  if (simular === "vazio") return { itens: [], total: 0, descartados: 0 };
-  const brutos = (mock as { alunos: unknown[] }).alunos;
-  const { validos, descartados } = validarLista(brutos, AlunoLinhaSchema, "aluno");
-  const todos = filtrarMock(validos, f).sort(comparar(f.ordem ?? "risco"));
+  const a = validarAlunoDetalhe(await chamar({ metodo: "GET", caminho: `alunos/${id(alunoId)}` }));
+  if (!a) throw new EducacionalError("Aluno fora do contrato.", 502);
+  return a;
+}
+
+export async function buscarHistorico(
+  alunoId: string,
+  opcoes: { pagina?: number; entidade?: EntidadeHistorico | null } = {},
+): Promise<PaginaHistorico> {
+  const qs = new URLSearchParams();
+  if (opcoes.pagina && opcoes.pagina > 1) qs.set("pagina", String(opcoes.pagina));
+  if (opcoes.entidade) qs.set("entidade", opcoes.entidade);
+  const corpo = (await chamar({ metodo: "GET", caminho: `alunos/${id(alunoId)}/historico`, query: qs.toString() })) as {
+    itens?: unknown;
+    total?: unknown;
+  } | null;
+  const { validos } = validarLista(corpo?.itens, ItemHistoricoSchema, "histórico");
+  return { itens: validos, total: typeof corpo?.total === "number" ? corpo.total : validos.length };
+}
+
+// Config com tolerância item a item (inclui inativos; quem mostra listas de escolha filtra `ativo`).
+function validarConfig(bruto: unknown): Config {
+  const c = (bruto && typeof bruto === "object" ? bruto : {}) as Record<string, unknown>;
   return {
-    // A validação já devolve só os campos de AlunoLinha (o detalhe fica de fora).
-    itens: todos.slice((pagina - 1) * TAMANHO_PAGINA, pagina * TAMANHO_PAGINA),
-    total: todos.length,
-    descartados,
+    etapas: validarLista(c.etapas, EtapaSchema, "etapa").validos.sort((a, b) => a.ordem - b.ordem),
+    checkpoints_modelo: validarLista(c.checkpoints_modelo, CheckpointModeloSchema, "checkpoint modelo").validos.sort(
+      (a, b) => a.ordem - b.ordem,
+    ),
+    tipos_intervencao: validarLista(c.tipos_intervencao, TipoIntervencaoSchema, "tipo de intervenção").validos,
+    responsaveis: validarLista(c.responsaveis, ResponsavelSchema, "responsável").validos,
+    sync_planilha_erros: typeof c.sync_planilha_erros === "number" ? c.sync_planilha_erros : 0,
   };
 }
 
-export async function buscarAluno(id: string, simular?: Simular): Promise<AlunoDetalhe> {
-  if (FONTE_EDUCACIONAL === "api") {
-    const a = validarAlunoDetalhe(await chamarApi(`/api/educacional/alunos/${encodeURIComponent(id)}`));
-    if (!a) throw new EducacionalError("Aluno fora do contrato.", 502);
-    return a;
-  }
-  await esperar();
-  falhaSimulada(simular);
-  const aluno = alunosDoMock().find((a) => a.id === id);
-  if (!aluno) throw new EducacionalError("Aluno não encontrado.", 404);
-  const novas = intervencoesEmMemoria.get(id) ?? [];
-  const intervencoes = [...novas, ...aluno.intervencoes].sort((a, b) => b.criada_em.localeCompare(a.criada_em));
-  return { ...aluno, intervencoes };
+export async function buscarConfig(): Promise<Config> {
+  return validarConfig(await chamar({ metodo: "GET", caminho: "config" }));
 }
 
-// Lista enxuta para a busca de aluno do modal (no mock, todos; no api, a 1ª página).
-export async function buscarNomesDeAlunos(): Promise<{ id: string; nome: string }[]> {
-  const { itens } = await buscarAlunos({ ordem: "nome" });
-  return itens.map((a) => ({ id: a.id, nome: a.nome }));
+// Lista enxuta para a busca de aluno do modal de intervenção.
+export async function buscarNomesDeAlunos(): Promise<{ id: string; nome: string; versao: number }[]> {
+  const { itens } = await buscarAlunos({ ordem: "nome", por_pagina: "todos" });
+  return itens.map((a) => ({ id: a.id, nome: a.nome, versao: a.versao }));
 }
 
-export async function criarIntervencao(dados: NovaIntervencao): Promise<Intervencao> {
-  const corpo = NovaIntervencaoSchema.parse(dados);
-  if (FONTE_EDUCACIONAL === "api") {
-    const r = IntervencaoSchema.safeParse(
-      await chamarApi("/api/educacional/intervencoes", { method: "POST", body: JSON.stringify(corpo) }),
-    );
-    if (!r.success) throw new EducacionalError("Intervenção criada, mas a resposta veio fora do contrato.", 502);
-    return r.data;
-  }
-  await esperar();
-  if (!alunosDoMock().some((a) => a.id === corpo.aluno_id)) throw new EducacionalError("Aluno não encontrado.", 404);
-  const nova: Intervencao = {
-    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `mock-${Date.now()}`,
-    tipo: corpo.tipo,
-    descricao: corpo.descricao.trim(),
-    responsavel: corpo.responsavel,
-    prazo: corpo.prazo,
-    criada_em: new Date().toISOString(),
-  };
-  intervencoesEmMemoria.set(corpo.aluno_id, [nova, ...(intervencoesEmMemoria.get(corpo.aluno_id) ?? [])]);
-  return nova;
+// ---------------------------------------------------------------------------
+// Escrita em alunos (toda escrita envia a versão do aluno — Q5)
+// ---------------------------------------------------------------------------
+
+export function criarAluno(dados: NovoAluno): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: "alunos", corpo: dados });
 }
 
-// Responsáveis presentes no mock/página, para o filtro (o contrato não tem lista própria).
-export function responsaveisDe(alunos: readonly AlunoLinha[]): string[] {
-  return [...new Set(alunos.flatMap((a) => (a.responsavel ? [a.responsavel.nome] : [])))].sort((a, b) =>
-    a.localeCompare(b, "pt-BR"),
-  );
+export function atualizarAluno(alunoId: string, versao: number, campos: CamposDiretosAluno): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "PATCH", caminho: `alunos/${id(alunoId)}`, corpo: { ...campos, versao } });
 }
 
-export const TODOS_STATUS_CHECKPOINT = STATUS_CHECKPOINT;
+export function arquivarAluno(alunoId: string, versao: number, arquivar = true): Promise<AlunoDetalhe> {
+  const acao = arquivar ? "arquivar" : "reativar";
+  return escreverAluno({ metodo: "POST", caminho: `alunos/${id(alunoId)}/${acao}`, corpo: { versao } });
+}
+
+export function ajustarCampo(
+  alunoId: string,
+  versao: number,
+  campo: CampoAjustavel,
+  valor: unknown,
+  motivo: string,
+): Promise<AlunoDetalhe> {
+  return escreverAluno({
+    metodo: "PUT",
+    caminho: `alunos/${id(alunoId)}/ajustes/${campo}`,
+    corpo: { valor, motivo, versao },
+  });
+}
+
+export function voltarAoAutomatico(alunoId: string, versao: number, campo: CampoAjustavel): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "DELETE", caminho: `alunos/${id(alunoId)}/ajustes/${campo}`, corpo: { versao } });
+}
+
+export function criarCheckpoint(alunoId: string, versao: number, campos: CamposCheckpoint): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: `alunos/${id(alunoId)}/checkpoints`, corpo: { ...campos, versao } });
+}
+
+export function atualizarCheckpoint(checkpointId: string, versao: number, campos: CamposCheckpoint): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "PATCH", caminho: `checkpoints/${id(checkpointId)}`, corpo: { ...campos, versao } });
+}
+
+export function arquivarCheckpoint(checkpointId: string, versao: number): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: `checkpoints/${id(checkpointId)}/arquivar`, corpo: { versao } });
+}
+
+export type NovaIntervencao = {
+  aluno_id: string;
+  tipo_id: string;
+  descricao: string;
+  responsavel_id?: string | null;
+  prazo?: string | null;
+};
+
+export function criarIntervencao(versao: number, dados: NovaIntervencao): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: "intervencoes", corpo: { ...dados, versao } });
+}
+
+export function atualizarIntervencao(intervencaoId: string, versao: number, campos: CamposIntervencao): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "PATCH", caminho: `intervencoes/${id(intervencaoId)}`, corpo: { ...campos, versao } });
+}
+
+export function arquivarIntervencao(intervencaoId: string, versao: number): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: `intervencoes/${id(intervencaoId)}/arquivar`, corpo: { versao } });
+}
+
+// ---------------------------------------------------------------------------
+// Escrita em configuração (sem versão: não é escrita em aluno)
+// ---------------------------------------------------------------------------
+
+export type ColecaoConfig = "etapas" | "checkpoints-modelo" | "tipos-intervencao" | "responsaveis";
+
+export async function criarItemConfig(colecao: ColecaoConfig, campos: Record<string, unknown>): Promise<Config> {
+  return validarConfig(await chamar({ metodo: "POST", caminho: `config/${colecao}`, corpo: campos }));
+}
+
+export async function atualizarItemConfig(
+  colecao: ColecaoConfig,
+  itemId: string,
+  campos: Record<string, unknown>,
+): Promise<Config> {
+  return validarConfig(await chamar({ metodo: "PATCH", caminho: `config/${colecao}/${id(itemId)}`, corpo: campos }));
+}
+
+// Só no modo demonstração: volta o banco do navegador à semente.
+export async function restaurarDemonstracao(): Promise<void> {
+  if (FONTE_EDUCACIONAL !== "mock") return;
+  const [{ restaurarBanco }, { hojeBR }] = await Promise.all([import("./mock/banco"), import("./mock/motor")]);
+  restaurarBanco(hojeBR());
+}

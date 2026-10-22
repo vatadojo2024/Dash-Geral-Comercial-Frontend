@@ -4,10 +4,10 @@ import { descreverFiltros, hrefDoFiltro, lerEstado, queryDoEstado, semFiltros, t
 describe("estado da Tabela tática na URL", () => {
   it("lê os parâmetros válidos e ignora o resto", () => {
     const e = lerEstado(
-      new URLSearchParams("etapa=validacao&risco=xx&checkpoint=pendente,nao_respondeu,lixo&health_max=50&ordem=-nome&pagina=2&visao=kanban"),
+      new URLSearchParams("etapa=etapa-1&risco=xx&checkpoint=pendente,nao_respondeu,lixo&health_max=50&ordem=-nome&pagina=2&visao=kanban"),
     );
     expect(e).toMatchObject({
-      etapa: "validacao",
+      etapa: "etapa-1",
       risco: null,
       checkpoint: ["pendente", "nao_respondeu"],
       health_max: 50,
@@ -18,12 +18,12 @@ describe("estado da Tabela tática na URL", () => {
   });
 
   it("ida e volta pela URL não perde nada (é o que o Raio-X usa para voltar)", () => {
-    const e = lerEstado(new URLSearchParams("sinal=upgrade&responsavel=Carla%20Mendes&visao=kanban&pagina=3"));
+    const e = lerEstado(new URLSearchParams("sinal=upgrade&responsavel=resp-7&risco=atencao&incluir_arquivados=1&visao=kanban&pagina=3"));
     expect(lerEstado(new URLSearchParams(queryDoEstado(e)))).toEqual(e);
   });
 
   it("clique do Cockpit troca os filtros, mantém a visão e desce até a tabela", () => {
-    const atual = lerEstado(new URLSearchParams("etapa=validacao&visao=kanban&pagina=2"));
+    const atual = lerEstado(new URLSearchParams("etapa=etapa-1&visao=kanban&pagina=2"));
     expect(hrefDoFiltro(atual, { checkpoint: ["pendente", "nao_respondeu"] })).toBe(
       "/educacional?checkpoint=pendente%2Cnao_respondeu&visao=kanban#tabela-tatica",
     );
@@ -35,5 +35,16 @@ describe("estado da Tabela tática na URL", () => {
     expect(temFiltro(e)).toBe(true);
     expect(descreverFiltros(e)).toEqual(["Checkpoint: Pendente + Não respondeu", "Health Score abaixo de 50"]);
     expect(temFiltro(semFiltros(e))).toBe(false);
+    const nomes = { etapa: () => "Validação", responsavel: () => "Carla Mendes" };
+    expect(descreverFiltros(lerEstado(new URLSearchParams("etapa=x&responsavel=y&risco=risco")), nomes)).toEqual([
+      "Etapa: Validação",
+      "Faixa: Risco",
+      "Responsável: Carla Mendes",
+    ]);
+  });
+
+  it("id com caractere estranho na URL é ignorado", () => {
+    expect(lerEstado(new URLSearchParams("etapa=../x&responsavel=a%20b")).etapa).toBeNull();
+    expect(lerEstado(new URLSearchParams("responsavel=a%20b")).responsavel).toBeNull();
   });
 });

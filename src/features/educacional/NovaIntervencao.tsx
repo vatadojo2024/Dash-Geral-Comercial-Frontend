@@ -3,26 +3,22 @@
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { buscarNomesDeAlunos, criarIntervencao, FONTE_EDUCACIONAL } from "@/lib/educacional/apiEducacional";
-import {
-  TIPOS_INTERVENCAO,
-  TIPOS_RESPONSAVEL,
-  type Intervencao,
-  type TipoIntervencao,
-  type TipoResponsavel,
-} from "@/lib/educacional/contrato";
-import { ROTULO_TIPO_INTERVENCAO, ROTULO_TIPO_RESPONSAVEL } from "@/lib/educacional/rotulos";
+import { buscarNomesDeAlunos, criarIntervencao } from "@/lib/educacional/apiEducacional";
+import type { AlunoDetalhe } from "@/lib/educacional/contrato";
+import { ROTULO_TIPO_RESPONSAVEL } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { ativos, CHAVES, useConfig } from "./dados";
 import { mensagemDoErro } from "./partes";
 
 // ---------------------------------------------------------------------------
-// Modal "Nova intervenção" (spec, seção 7). Obrigatórios: aluno, tipo,
-// responsável e descrição. Modo mock: fica em memória e aparece no Raio-X do
-// aluno até recarregar a página. Modo api: POST /api/educacional/intervencoes.
+// Modal "Nova intervenção". Obrigatórios: aluno, tipo, responsável e descrição.
+// Tipos e responsáveis vêm da configuração (só os ativos). Grava com
+// POST /intervencoes (com a versão do aluno) e usa o aluno devolvido.
 // ---------------------------------------------------------------------------
 
 type Erros = Partial<Record<"aluno" | "tipo" | "responsavel" | "descricao" | "envio", string>>;
+type AlunoEscolhido = { id: string; nome: string; versao: number };
 
 const CAMPO =
   "h-9 w-full rounded-lg border border-borda bg-painel-claro px-2 text-sm text-texto focus:border-azul/50";
@@ -35,19 +31,21 @@ export function NovaIntervencao({
 }: {
   aberto: boolean;
   onFechar: () => void;
-  onCriada: (aluno: { id: string; nome: string }, intervencao: Intervencao) => void;
-  alunoInicial?: { id: string; nome: string } | null;
+  onCriada: (aluno: AlunoDetalhe) => void;
+  alunoInicial?: AlunoEscolhido | null;
 }) {
   const queryClient = useQueryClient();
   const id = useId();
   const primeiro = useRef<HTMLInputElement>(null);
-  const alunos = useQuery({ queryKey: ["edu", "nomes"], queryFn: buscarNomesDeAlunos, enabled: aberto, retry: false });
+  const alunos = useQuery({ queryKey: [...CHAVES.alunos, "nomes"], queryFn: buscarNomesDeAlunos, enabled: aberto, retry: false });
+  const config = useConfig();
+  const tipos = ativos(config.data?.tipos_intervencao);
+  const responsaveis = ativos(config.data?.responsaveis);
 
   const [busca, setBusca] = useState("");
-  const [aluno, setAluno] = useState<{ id: string; nome: string } | null>(null);
-  const [tipo, setTipo] = useState<TipoIntervencao | "">("");
-  const [tipoResp, setTipoResp] = useState<TipoResponsavel | "">("");
-  const [nomeResp, setNomeResp] = useState("");
+  const [aluno, setAluno] = useState<AlunoEscolhido | null>(null);
+  const [tipo, setTipo] = useState("");
+  const [responsavel, setResponsavel] = useState("");
   const [prazo, setPrazo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [erros, setErros] = useState<Erros>({});
@@ -59,8 +57,7 @@ export function NovaIntervencao({
     setAluno(alunoInicial ?? null);
     setBusca(alunoInicial?.nome ?? "");
     setTipo("");
-    setTipoResp("");
-    setNomeResp("");
+    setResponsavel("");
     setPrazo("");
     setDescricao("");
     setErros({});
@@ -89,22 +86,24 @@ export function NovaIntervencao({
     const novos: Erros = {};
     if (!aluno) novos.aluno = "Escolha um aluno da lista.";
     if (!tipo) novos.tipo = "Escolha o tipo.";
-    if (!tipoResp || !nomeResp.trim()) novos.responsavel = "Informe o tipo e o nome do responsável.";
+    if (!responsavel) novos.responsavel = "Escolha o responsável.";
     if (!descricao.trim()) novos.descricao = "Descreva a intervenção.";
     setErros(novos);
-    if (Object.keys(novos).length > 0 || !aluno || !tipo || !tipoResp) return;
+    if (Object.keys(novos).length > 0 || !aluno) return;
 
     setEnviando(true);
     try {
-      const criada = await criarIntervencao({
+      const atualizado = await criarIntervencao(aluno.versao, {
         aluno_id: aluno.id,
-        tipo,
+        tipo_id: tipo,
         descricao: descricao.trim(),
-        responsavel: { tipo: tipoResp, nome: nomeResp.trim() },
+        responsavel_id: responsavel,
         prazo: prazo || null,
       });
-      await queryClient.invalidateQueries({ queryKey: ["edu", "aluno", aluno.id] });
-      onCriada(aluno, criada);
+      queryClient.setQueriesData({ queryKey: CHAVES.aluno(aluno.id) }, atualizado);
+      void queryClient.invalidateQueries({ queryKey: CHAVES.alunos });
+      void queryClient.invalidateQueries({ queryKey: CHAVES.historico(aluno.id) });
+      onCriada(atualizado);
       onFechar();
     } catch (err) {
       setErros({ envio: mensagemDoErro(err) });
@@ -126,9 +125,6 @@ export function NovaIntervencao({
             <h2 id={`${id}-titulo`} className="font-jakarta text-xl font-semibold tracking-tight text-texto">
               Nova intervenção
             </h2>
-            {FONTE_EDUCACIONAL === "mock" && (
-              <p className="mt-0.5 text-xs text-texto-sec">Demonstração: a intervenção fica só nesta sessão e some ao recarregar.</p>
-            )}
           </div>
           <button type="button" onClick={onFechar} aria-label="Fechar" className="icon-button">
             <X className="h-4 w-4" aria-hidden />
@@ -178,41 +174,25 @@ export function NovaIntervencao({
           </Campo>
 
           <Campo id={`${id}-tipo`} rotulo="Tipo" obrigatorio erro={erros.tipo}>
-            <select id={`${id}-tipo`} value={tipo} onChange={(e) => setTipo(e.target.value as TipoIntervencao)} className={CAMPO}>
+            <select id={`${id}-tipo`} value={tipo} onChange={(e) => setTipo(e.target.value)} className={CAMPO}>
               <option value="">Escolha…</option>
-              {TIPOS_INTERVENCAO.map((t) => (
-                <option key={t} value={t}>
-                  {ROTULO_TIPO_INTERVENCAO[t]}
+              {tipos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
                 </option>
               ))}
             </select>
           </Campo>
 
-          <Campo id={`${id}-resp-tipo`} rotulo="Responsável" obrigatorio erro={erros.responsavel}>
-            <div className="grid gap-2 sm:grid-cols-[10rem_1fr]">
-              <select
-                id={`${id}-resp-tipo`}
-                aria-label="Tipo do responsável"
-                value={tipoResp}
-                onChange={(e) => setTipoResp(e.target.value as TipoResponsavel)}
-                className={CAMPO}
-              >
-                <option value="">Tipo…</option>
-                {TIPOS_RESPONSAVEL.map((t) => (
-                  <option key={t} value={t}>
-                    {ROTULO_TIPO_RESPONSAVEL[t]}
-                  </option>
-                ))}
-              </select>
-              <input
-                id={`${id}-resp-nome`}
-                aria-label="Nome do responsável"
-                value={nomeResp}
-                onChange={(e) => setNomeResp(e.target.value)}
-                placeholder="Nome"
-                className={CAMPO}
-              />
-            </div>
+          <Campo id={`${id}-resp`} rotulo="Responsável" obrigatorio erro={erros.responsavel}>
+            <select id={`${id}-resp`} value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={CAMPO}>
+              <option value="">Escolha…</option>
+              {responsaveis.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nome} · {ROTULO_TIPO_RESPONSAVEL[r.tipo]}
+                </option>
+              ))}
+            </select>
           </Campo>
 
           <Campo id={`${id}-prazo`} rotulo="Prazo">

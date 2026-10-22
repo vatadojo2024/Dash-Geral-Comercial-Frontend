@@ -4,15 +4,15 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { EducacionalError, FONTE_EDUCACIONAL } from "@/lib/educacional/apiEducacional";
-import type { NivelRisco, Responsavel, StatusCheckpoint } from "@/lib/educacional/contrato";
+import type { AlunoLinha, FaixaSaude, StatusCheckpoint } from "@/lib/educacional/contrato";
 import {
   PONTO_DO_TOM,
-  ROTULO_RISCO,
+  ROTULO_FAIXA,
   ROTULO_STATUS_CHECKPOINT,
   ROTULO_TIPO_RESPONSAVEL,
   TAG_DO_TOM,
   TEXTO_DO_TOM,
-  TOM_RISCO,
+  TOM_FAIXA,
   TOM_STATUS_CHECKPOINT,
 } from "@/lib/educacional/rotulos";
 import { cn } from "@/lib/utils/cn";
@@ -26,18 +26,26 @@ export function BadgeCheckpoint({ status }: { status: StatusCheckpoint }) {
   return <span className={cn("tag", TAG_DO_TOM[TOM_STATUS_CHECKPOINT[status]])}>{ROTULO_STATUS_CHECKPOINT[status]}</span>;
 }
 
-export function Risco({ risco, className }: { risco: NivelRisco; className?: string }) {
-  const tom = TOM_RISCO[risco];
+// Faixa de saúde (valor efetivo). Sem Health Score ainda → "Sem cálculo".
+export function Faixa({ faixa, className }: { faixa: FaixaSaude | null; className?: string }) {
+  if (!faixa) return <span className={cn("whitespace-nowrap text-sm text-texto-sec/70", className)}>Sem cálculo</span>;
+  const tom = TOM_FAIXA[faixa];
   return (
     <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap text-sm", TEXTO_DO_TOM[tom], className)}>
       <span className={cn("h-2 w-2 shrink-0 rounded-full", PONTO_DO_TOM[tom])} aria-hidden />
-      {ROTULO_RISCO[risco]}
+      {ROTULO_FAIXA[faixa]}
     </span>
   );
 }
 
 // `empilhado`: nome e tipo em duas linhas (cabe na coluna da tabela).
-export function NomeResponsavel({ responsavel, empilhado = false }: { responsavel: Responsavel | null; empilhado?: boolean }) {
+export function NomeResponsavel({
+  responsavel,
+  empilhado = false,
+}: {
+  responsavel: AlunoLinha["responsavel"];
+  empilhado?: boolean;
+}) {
   if (!responsavel) return <span className="text-texto-sec/60">Sem responsável</span>;
   if (empilhado) {
     return (
@@ -59,7 +67,7 @@ export function NomeResponsavel({ responsavel, empilhado = false }: { responsave
 export function EtiquetaDemonstracao() {
   if (FONTE_EDUCACIONAL !== "mock") return null;
   return (
-    <span className="tag tag-warning" title="O módulo está lendo dados fictícios (data_educacional.json), não alunos reais.">
+    <span className="tag tag-warning" title="O módulo está usando dados fictícios, salvos só neste navegador — não são alunos reais.">
       <FlaskConical className="h-3 w-3" aria-hidden />
       Dados de demonstração
     </span>

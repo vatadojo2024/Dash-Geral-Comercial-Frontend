@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AlarmClock, HeartPulse, Megaphone, RefreshCw, ShieldAlert, TrendingUp, Users, type LucideIcon } from "lucide-react";
 import type { Simular } from "@/lib/educacional/apiEducacional";
 import type { ResumoEducacional, Sinal } from "@/lib/educacional/contrato";
-import { ROTULO_ETAPA, TITULO_SINAL } from "@/lib/educacional/rotulos";
+import { TITULO_SINAL } from "@/lib/educacional/rotulos";
 import { KpiChip } from "@/features/sdr/KpiChip";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -72,7 +72,7 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
         <KpiChip
           icon={HeartPulse}
           rotulo="Health Score médio"
-          valor={semAlunos ? "—" : String(k.health_score_medio)}
+          valor={semAlunos || k.health_score_medio == null ? "—" : String(k.health_score_medio)}
           detalhe="Saúde geral da turma"
         />
         <KpiChip icon={Users} rotulo="Alunos ativos" valor={String(k.alunos_ativos)} detalhe="Na jornada atual" href={limpar} />
@@ -88,8 +88,8 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
           icon={ShieldAlert}
           rotulo="Em risco"
           valor={String(k.em_risco)}
-          detalhe="Health Score abaixo de 50"
-          href={link({ health_max: 50 })}
+          detalhe="Faixa de saúde Risco"
+          href={link({ risco: "risco" })}
         />
       </div>
 
@@ -105,18 +105,18 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
             ) : (
               <ol className="space-y-3">
                 {resumo.funil.map((f, i) => (
-                  <li key={f.etapa}>
+                  <li key={f.etapa_id}>
                     <Link
-                      href={link({ etapa: f.etapa })}
+                      href={link({ etapa: f.etapa_id })}
                       className={cn(
                         "group block rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] focus-visible:bg-white/[0.06]",
-                        estado.etapa === f.etapa && "bg-azul/10 ring-1 ring-azul/40",
+                        estado.etapa === f.etapa_id && "bg-azul/10 ring-1 ring-azul/40",
                       )}
                     >
                       <span className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
                         <span className="text-texto">
                           <span className="mr-2 text-xs tabular-nums text-texto-sec">{i + 1}</span>
-                          {ROTULO_ETAPA[f.etapa]}
+                          {f.nome}
                         </span>
                         <span className="font-semibold tabular-nums text-texto">
                           {f.alunos} <span className="text-xs font-normal text-texto-sec">{f.alunos === 1 ? "aluno" : "alunos"}</span>
