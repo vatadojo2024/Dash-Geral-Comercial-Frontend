@@ -6,5 +6,5 @@
 - [x] 4. Cockpit e tabela editável, seletor de colunas, arquivados, novo aluno.
 - [x] 5. Kanban com @dnd-kit e "Mover para…".
 - [x] 6. Raio-X editável, ajuste manual, checkpoints, intervenções, arquivar, Histórico.
-- [ ] 7. Configurações (4 abas) e "Restaurar dados de demonstração".
+- [x] 7. Configurações (4 abas) e "Restaurar dados de demonstração".
 - [ ] 8. Verificação, regressão, screenshots, relatório. Push só com ok.

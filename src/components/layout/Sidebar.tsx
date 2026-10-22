@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   PhoneCall,
+  Settings,
   Users,
   Wallet,
   X,
@@ -50,6 +51,13 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: "/retencao", label: "Retenção da audiência", icon: Activity, areas: ["retencao"] },
   { href: "/educacional", label: "Saúde da Jornada", icon: GraduationCap, areas: ["educacional"], modulo: "educacional" },
+  {
+    href: "/educacional/configuracoes",
+    label: "Configurações",
+    icon: Settings,
+    areas: ["educacional"],
+    modulo: "educacional",
+  },
 ];
 
 // Subtítulo da marca: neutro no módulo Educacional (qualquer usuário, admin
@@ -77,6 +85,13 @@ function NavContent({
     return [{ ...i, href: area === i.areas[0] ? i.href : ROTA_DA_AREA[area] }];
   });
 
+  // Item ativo: o de caminho mais específico que casa com a URL (em
+  // /educacional/configuracoes, só "Configurações" acende, não "Saúde da Jornada").
+  const casa = (href: string) => pathname === href || pathname.startsWith(href + "/");
+  const hrefAtivo = itens
+    .filter((i) => casa(i.href))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
   return (
     <>
       <div className="flex items-center gap-3 px-4 py-5">
@@ -92,7 +107,7 @@ function NavContent({
       <nav className="flex-1 space-y-1 px-3" aria-label="Navegação principal">
         {itens.map((item) => {
           const Icon = item.icon;
-          const ativo = pathname === item.href || pathname.startsWith(item.href + "/");
+          const ativo = item.href === hrefAtivo;
           return (
             <Link
               key={item.href}
