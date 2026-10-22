@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { exigirArea } from "@/lib/auth/acesso";
+import { ModuloEducacional } from "@/features/educacional/ModuloEducacional";
 
 // Guarda do módulo Educacional, no servidor e antes de qualquer conteúdo: sem a
 // área `educacional`, vai para "/" (que manda à home do módulo permitido). As
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 
 export default async function EducacionalLayout({ children }: { children: ReactNode }) {
   await exigirArea("educacional");
-  return <>{children}</>;
+  return <ModuloEducacional>{children}</ModuloEducacional>;
 }
