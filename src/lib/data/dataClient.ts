@@ -13,6 +13,7 @@ import {
   AgendamentosResponseSchema,
   type Agendamento,
 } from "@/lib/sdr/agendamentos";
+import { ComissoesResponseSchema, type ComissoesResponse } from "@/lib/sdr/comissoes";
 import {
   OportunidadesResponseSchema,
   type CodigoErroOportunidades,
@@ -175,6 +176,20 @@ export async function fetchAgendamentos(
     );
   }
   return parsed.data.agendamentos;
+}
+
+// Aba "Comissões": total oficial do mês por SDR, calculado pelo Financeiro
+// (GET /api/sdr/comissoes?mes=AAAA-MM). Erro aqui NUNCA cai no cálculo local.
+export async function fetchComissoesSdr(mes: string): Promise<ComissoesResponse> {
+  const json = await buscar(`/api/sdr/comissoes?mes=${encodeURIComponent(mes)}`);
+  const parsed = ComissoesResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new DataError(
+      `Resposta de /api/sdr/comissoes fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
+      "invalid_contract",
+    );
+  }
+  return parsed.data;
 }
 
 // Aba "Levantou a Mão": erro tipado com o STATUS e o CÓDIGO do backend

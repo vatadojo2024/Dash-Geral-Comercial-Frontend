@@ -1,6 +1,12 @@
 // ---------------------------------------------------------------------------
 // Comissão dos SDRs (roadmap 7.1.4 — regras oficiais jun/2026). Função PURA.
 //
+// ATENÇÃO (out/2026): o TOTAL oficial do mês NÃO sai daqui — vem pronto do
+// Financeiro via GET /api/sdr/comissoes (ver lib/sdr/comissoes.ts), com a
+// comissão sobre vendas calculada sobre o CAIXA que entrou no mês. Esta função
+// segue valendo para o patamar, a comissão de reuniões, o bônus QC e a base da
+// projeção da próxima meta; `comissaoVendas`/`total` daqui são só referência.
+//
 //  - Bônus por reunião: R$ por reunião QUALIFICADA realizada (lead compareceu
 //    E foi qualificado). Conta as qualificadas SEM o bônus de meta.
 //  - QC: R$ 20 a cada 3 calls QC (⌊qc/3⌋ × 20). NÃO confundir com o bônus de
@@ -14,7 +20,8 @@
 //      atingiu M2   → R$ 80/reunião + 1,8% por venda
 //      atingiu M3   → R$ 100/reunião + 2,5% por venda
 //    A taxa do patamar aplica sobre TODAS as reuniões e vendas do mês.
-//  - Bônus por venda: % sobre o valor das vendas originadas dos agendamentos.
+//  - Bônus por venda: % sobre o caixa que entrou no mês (calculado pelo
+//    Financeiro). Aqui `volumeVendas` ainda é o volume vendido — aproximação.
 //  - Hana: sem comissão (linha informativa, fora dos totais).
 // ---------------------------------------------------------------------------
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Bot, Banknote, Info, TrendingUp, Wallet } from "lucide-react";
 import {
   vendasDoMesPorSdr,
@@ -12,9 +13,19 @@ import {
   calcularComissaoSdr,
   type ResultadoComissaoSdr,
 } from "@/lib/salesops/comissaoSdr";
+import { fetchComissoesSdr } from "@/lib/data/dataClient";
+import {
+  comissoesPorSdr,
+  numerosDoCard,
+  totalDoTime,
+  type NumerosComissao,
+} from "@/lib/sdr/comissoes";
+import { dataHora } from "@/lib/formatters/date";
 import { rotuloProduto } from "@/lib/config/salesops";
 import { formatarBRL, formatarBRLExato, formatarPct } from "@/lib/formatters/moeda";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
 
 const ROTULO_PATAMAR = ["Abaixo da M1", "M1 batida", "M2 batida", "M3 batida"] as const;
@@ -42,12 +53,14 @@ function Linha({
 function CardComissaoSdr({
   m,
   resultado,
+  numeros,
   volumeVendas,
   qtdVendas,
   destaque,
 }: {
   m: SdrMetrics;
   resultado: ResultadoComissaoSdr;
+  numeros: NumerosComissao;
   volumeVendas: number;
   qtdVendas: number;
   destaque: boolean;
@@ -123,10 +136,11 @@ function CardComissaoSdr({
             detalhe={`${m.produtos.qc} calls QC → ${Math.floor(m.produtos.qc / 3)} × R$ 20`}
             valor={formatarBRLExato(resultado.bonusQC)}
           />
+          {/* Total do Financeiro − reuniões − QC (a % incide sobre o caixa). */}
           <Linha
             rotulo="Comissão de vendas"
-            detalhe={`${formatarPct(resultado.taxaVenda)} × ${formatarBRL(volumeVendas)} (${qtdVendas} ${qtdVendas === 1 ? "venda" : "vendas"})`}
-            valor={formatarBRLExato(resultado.comissaoVendas)}
+            detalhe="sobre o caixa do mês (Financeiro)"
+            valor={numeros.comissaoVendas === null ? "—" : formatarBRLExato(numeros.comissaoVendas)}
           />
         </div>
 
@@ -135,22 +149,26 @@ function CardComissaoSdr({
             <Wallet className="h-4 w-4 text-verde" aria-hidden />
             Total do mês
           </span>
-          <span className="text-lg font-bold tabular-nums text-texto">
-            {formatarBRLExato(resultado.total)}
-          </span>
+          {numeros.total === null ? (
+            <span className="text-sm text-texto-sec">Sem comissão registrada</span>
+          ) : (
+            <span className="text-lg font-bold tabular-nums text-texto">
+              {formatarBRLExato(numeros.total)}
+            </span>
+          )}
         </p>
 
-        {resultado.proximaMeta && (
+        {numeros.projecao && (
           <p className="mt-2 flex items-start gap-2 rounded-lg border border-azul/30 bg-azul/10 px-3 py-2 text-xs text-azul-claro">
             <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
             <span>
-              Se bater a meta de {resultado.proximaMeta.meta} qualificados, o mês
+              Se bater a meta de {numeros.projecao.meta} qualificados, o mês
               recalcula retroativamente para{" "}
               <span className="font-bold">
-                {formatarBRLExato(resultado.proximaMeta.total)}
+                {formatarBRLExato(numeros.projecao.total)}
               </span>{" "}
-              (R$ {resultado.proximaMeta.valorPorReuniao}/reunião +{" "}
-              {formatarPct(resultado.proximaMeta.taxaVenda)} das vendas).
+              (R$ {numeros.projecao.valorPorReuniao}/reunião +{" "}
+              {formatarPct(numeros.projecao.taxaVenda)} do caixa).
             </span>
           </p>
         )}
@@ -172,6 +190,17 @@ export function ComissoesPanel({
 }) {
   const vendasPorSdr = useMemo(() => vendasDoMesPorSdr(payload, mes), [payload, mes]);
 
+  // Total oficial do Financeiro. Em erro NÃO há fallback para o cálculo local
+  // (seria um número errado com cara de certo): a aba mostra o aviso.
+  const financeiro = useQuery({
+    queryKey: ["sdr-comissoes", mes],
+    queryFn: () => fetchComissoesSdr(mes),
+  });
+  const totaisFinanceiro = useMemo(
+    () => (financeiro.data ? comissoesPorSdr(financeiro.data) : null),
+    [financeiro.data],
+  );
+
   const calculados = sdrs.map((m) => {
     const vendas = vendasPorSdr.get(m.sdr) ?? [];
     const volumeVendas = vendas.reduce((a, v) => a + v.valor, 0);
@@ -185,40 +214,70 @@ export function ComissoesPanel({
       volumeVendas,
       metas: m.metas,
     });
-    return { m, vendas, volumeVendas, qtdVendas, resultado };
+    const numeros = numerosDoCard(resultado, m.qualificadosBase, totaisFinanceiro?.get(m.sdr));
+    return { m, vendas, volumeVendas, qtdVendas, resultado, numeros };
   });
 
-  const totalTime = calculados
-    .filter((c) => !c.resultado.semComissao)
-    .reduce((a, c) => a + c.resultado.total, 0);
+  const totalTime = totaisFinanceiro ? totalDoTime(calculados.map((c) => c.numeros)) : null;
 
   return (
     <div className="space-y-4">
       <p className="text-xs text-texto-sec" role="status">
         Regras oficiais: R$ 40/60/80/100 por reunião qualificada realizada conforme o
-        patamar da meta (retroativo) · R$ 20 a cada 3 calls QC · % sobre as vendas
-        originadas dos agendamentos. Total do time:{" "}
-        <span className="font-semibold text-texto">{formatarBRLExato(totalTime)}</span>
+        patamar da meta (retroativo) · R$ 20 a cada 3 calls QC · % sobre o caixa que
+        entrou no mês (calculado pelo Financeiro).
+        {totalTime !== null && (
+          <>
+            {" "}Total do time:{" "}
+            <span className="font-semibold text-texto">{formatarBRLExato(totalTime)}</span>
+          </>
+        )}
+        {financeiro.data?.atualizado_em && (
+          <span className="block">
+            Atualizado pelo Financeiro em{" "}
+            <time dateTime={financeiro.data.atualizado_em} className="text-texto">
+              {dataHora(financeiro.data.atualizado_em)}
+            </time>
+          </span>
+        )}
       </p>
 
-      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
-        {calculados.map(({ m, resultado, volumeVendas, qtdVendas }) => (
-          <CardComissaoSdr
-            key={m.sdr}
-            m={m}
-            resultado={resultado}
-            volumeVendas={volumeVendas}
-            qtdVendas={qtdVendas}
-            destaque={destaqueSdr === m.sdr}
+      {financeiro.isLoading ? (
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4" aria-label="Carregando comissões" aria-busy>
+          {calculados.map(({ m }) => (
+            <Skeleton key={m.sdr} className="h-72 rounded-xl" />
+          ))}
+        </div>
+      ) : financeiro.isError || !totaisFinanceiro ? (
+        <Card>
+          <ErrorState
+            titulo="Não foi possível carregar as comissões do Financeiro"
+            error={financeiro.error}
+            descricao={financeiro.error instanceof Error ? financeiro.error.message : "Tente novamente."}
+            onRetry={() => financeiro.refetch()}
           />
-        ))}
-      </div>
+        </Card>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+          {calculados.map(({ m, resultado, numeros, volumeVendas, qtdVendas }) => (
+            <CardComissaoSdr
+              key={m.sdr}
+              m={m}
+              resultado={resultado}
+              numeros={numeros}
+              volumeVendas={volumeVendas}
+              qtdVendas={qtdVendas}
+              destaque={destaqueSdr === m.sdr}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Vendas do mês por SDR */}
       <Card>
         <CardHeader
           title="Vendas originadas no mês"
-          subtitle="Vendas atribuídas aos agendamentos de cada SDR — base do bônus por venda"
+          subtitle="Vendas atribuídas aos agendamentos de cada SDR (informativo; a comissão sobre vendas usa o caixa do mês)"
         />
         <CardContent className="overflow-x-auto">
           {calculados.every((c) => c.vendas.length === 0) ? (
