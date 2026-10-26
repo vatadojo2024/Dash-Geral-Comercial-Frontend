@@ -9,7 +9,6 @@ import {
   type SessionUser,
   type Usuario,
 } from "@/lib/api/contracts";
-import { getSupabaseClient } from "@/lib/auth/supabase";
 import {
   AgendamentosResponseSchema,
   type Agendamento,
@@ -65,8 +64,7 @@ async function headersComToken(): Promise<HeadersInit> {
   ) {
     return {};
   }
-  // Cliente importado junto com a página (antes vinha por import() na 1ª
-  // chamada, o que punha o download do Supabase em série antes de cada tela).
+  const { getSupabaseClient } = await import("@/lib/auth/supabase");
   const { data } = await getSupabaseClient().auth.getSession();
   return data.session
     ? { Authorization: `Bearer ${data.session.access_token}` }
