@@ -1,6 +1,6 @@
 # Módulo Educacional — Fase 3 — Frontend
 
-Oct 22, 2026 · @Vata Dojo
+Oct 22, 2026 · @Vata Dojo · atualizada em 26/10/2026 (foco no computador e decisões D1–D6 do plano)
 
 ## 1. Objetivo e ordem de entrega
 
@@ -16,6 +16,7 @@ A Fase 3 deixa o módulo pronto para uso real. Entram quatro frentes no front, n
 - Só admin e educacional. Nada muda para os papéis comerciais, exceto as melhorias de desempenho, sempre com regressão comprovada.
 - O front não calcula regra de negócio. Exibe o que a API devolve. O modo demonstração continua imitando o backend.
 - Os endereços do backend estão na spec do backend da Fase 3.
+- **Foco no computador** (26/10): medições, regressão visual e screenshots são só no desktop. As telas novas mantêm o layout responsivo que o design system já dá, sem trabalho nem teste extra para celular.
 
 ## 2. Desempenho
 
@@ -40,10 +41,12 @@ Só as que o diagnóstico justificar:
 - Alinhar a região das funções da Vercel com a da VPS e do Supabase.
 - Paralelizar chamadas em sequência.
 - Ajustar o cache do React Query: tempo de validade e não recarregar o que não mudou.
-- Carregar sob demanda as partes pesadas (Kanban, biblioteca de arrastar, telas pouco usadas).
-- Lista longa com rolagem virtual.
+- ~~Carregar sob demanda as partes pesadas~~ (correção 4: fora do plano em 26/10).
+- ~~Lista longa com rolagem virtual~~ (não justificada pelo diagnóstico).
 - Memorizar componentes que redesenham à toa.
-- No modo demonstração, gravar no `localStorage` com atraso e agrupado.
+- ~~No modo demonstração, gravar no `localStorage` com atraso e agrupado~~ (não justificada pelo diagnóstico).
+
+Diagnóstico e correção 1 (região `gru1`, publicada em `2a5e0ec`): https://claude.ai/artifact/Dx2zq5KQruFPo3MEpf7SX7. Aprovadas: correções 2, 3, 6, 7 e 8. Cada uma vai para produção só depois da regressão das telas de closer e SDR passar e do resumo enviado ao Vata.
 
 ### 2.3 Entrega
 
@@ -66,7 +69,7 @@ Só as que o diagnóstico justificar:
 
 - KPIs, funil e sinais continuam como estão.
 - A tabela completa sai do Cockpit e vai para a aba Alunos.
-- No lugar dela entra **"Precisam de atenção"**: até 10 alunos, ordenados por faixa de saúde (risco primeiro) e depois por dias sem atividade, com o link "Ver todos os alunos".
+- No lugar dela entra **"Precisam de atenção"**: até 10 alunos, ordenados por faixa de saúde efetiva (risco, atenção, saudável) e depois por dias sem atividade decrescente, nulos no fim (`ordem=atencao`, D3), com o link "Ver todos os alunos".
 - Os cliques nos KPIs, no funil e nos sinais levam à aba Alunos com o filtro correspondente já aplicado.
 
 ### 3.3 Aba Alunos
@@ -74,7 +77,8 @@ Só as que o diagnóstico justificar:
 Funciona como a aba Leads do comercial.
 
 - **Busca por nome** no topo, com espera de 300 ms ao digitar e mínimo de 2 caracteres (`busca`).
-- **Filtros:** etapa, faixa de saúde, status do checkpoint, status do aluno, mentoria, responsável (inclusive "Sem responsável"), sinal e "Mostrar arquivados".
+- **Filtros:** etapa, faixa de saúde, status do checkpoint, status do aluno, mentoria, responsável (inclusive "Sem responsável"), sinal e "Mostrar arquivados". As mentorias vêm de `mentorias` no `GET /config` (D2).
+- **Campo mentoria** (novo aluno e edição): sugere as mentorias existentes enquanto a pessoa digita, para evitar variações de grafia (D2).
 - **Visualização:** Lista ou Kanban, com o mesmo funcionamento da Fase 2 e os mesmos filtros.
 - **Ordenação e seletor de colunas** da Fase 2.
 - **Botão "+ Novo aluno".**
@@ -149,7 +153,7 @@ Tela nova em `/educacional/analises`, no mesmo espírito do playbook do comercia
 1. **Aluno:** campo com busca (`alunos/opcoes`). Quando a tela é aberta pelo Raio-X, o aluno já vem preenchido.
 2. **Data da aula:** padrão hoje.
 3. **Etapa:** padrão a etapa atual do aluno; pode trocar.
-4. **Transcrição:** arrastar o arquivo (`.txt`, `.vtt`, `.srt`, `.docx`, até 5 MB) ou colar o texto. Mostra o nome do arquivo e o tamanho antes de enviar.
+4. **Transcrição:** arrastar o arquivo (`.txt`, `.vtt`, `.srt`, `.docx`, até **4 MB**) ou colar o texto. Mostra o nome do arquivo e o tamanho antes de enviar. Acima de 4 MB, mensagem clara antes de enviar (D1: a Vercel recusa requisições acima de 4,5 MB).
 5. **Enviar para análise:** a análise entra na fila e a tela volta para a lista com o aviso "Análise enviada. Você pode continuar usando o painel; avisamos quando estiver pronta."
 
 Quando uma análise fica pronta, aparece um aviso discreto em qualquer tela do módulo: "Análise de Fulana pronta para revisar", com link. Ele vem da mesma consulta periódica da lista, que só roda enquanto houver análises pendentes.
@@ -283,9 +287,9 @@ Endereços: seção 3 (lote), seção 4 (alunos e opções) e seção 5.2 (anál
 **Desempenho**
 
 - [ ] Relatório de diagnóstico entregue antes das correções.
-- [ ] Relatório final com números antes e depois por tela, no desktop e no celular.
+- [ ] Relatório final com números antes e depois por tela, no desktop.
 - [ ] Cada correção num commit separado.
-- [ ] Regressão visual das telas comerciais idêntica, salvo melhoria de carregamento.
+- [ ] Regressão visual das telas comerciais idêntica no desktop, salvo melhoria de carregamento e o botão "Atualizar" novo.
 
 **Menu e aba Alunos**
 
@@ -314,6 +318,6 @@ Endereços: seção 3 (lote), seção 4 (alunos e opções) e seção 5.2 (anál
 
 **Geral**
 
-- [ ] Celular em 390 px em todas as telas novas.
+- [ ] Telas novas com o layout responsivo do design system (sem teste extra de celular).
 - [ ] Nenhuma rota comercial chamada pelo módulo.
 - [ ] Commits por frente. Push só com o ok do Vata.
