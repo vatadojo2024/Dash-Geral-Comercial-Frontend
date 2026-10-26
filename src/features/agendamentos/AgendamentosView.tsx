@@ -120,11 +120,14 @@ export function AgendamentosView() {
       fila.data?.agendamentos.find((a) => chaveDoCloser(a) === closerDoFiltro)?.closer_nome ??
       null)
     : null;
+  // A conferência NÃO espera a fila: começa com a janela de hoje até hoje+13
+  // (a mesma de sempre quando nenhuma call passa disso). Se a fila trouxer
+  // call depois, a janela cresce e a consulta é refeita — como antes.
   const conferencia = useConferencia(
     listaDaConferencia,
     hoje ?? "2000-01-01",
     nomeDoCloserFiltrado,
-    visao === "fila" && !!hoje && fila.isSuccess,
+    visao === "fila" && !!hoje,
   );
 
   // Fila: só o que ainda vai acontecer (recalcula a cada minuto com `agora`).
