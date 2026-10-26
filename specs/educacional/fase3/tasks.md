@@ -5,7 +5,7 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
 ## Desempenho
 - [x] Correção 1 — Região `gru1` (`vercel.json`) — publicada em `2a5e0ec`, medida antes e depois.
 - [x] Correção 2 — `sdr-dashboard` numa onda só + pacote só nas abas que usam. Teste de payload idêntico.
-- [ ] Correção 3 — Cliente do Supabase carregado com a página (fim do `import()` por chamada).
+- [x] Correção 3 — Cliente do Supabase carregado com a página (fim do `import()` por chamada).
 - ~~Correção 4 — Sob demanda~~: fora do plano (26/10).
 - [ ] Correção 6 — Conferência de Agendamentos em paralelo com a fila, mesma janela e mesmos dados (teste).
 - [ ] Correção 7 — Cache por tipo de dado (1 min / 5 min), sem recarga com dado válido, botão "Atualizar" nas telas comerciais.
