@@ -146,9 +146,12 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
   const hojeISO = new Date().toISOString().slice(0, 10);
   const [mesSelecionado, setMesSelecionado] = useState<string | null>(null);
 
+  // O pacote do Dashboard SDR só é buscado nas abas que o usam (Dashboard SDR,
+  // Comissões e Liderança); Calls por Ciclo e Oportunidades têm fontes próprias.
   const { data: payload, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["sdr-dashboard"],
     queryFn: fetchSdrPayload,
+    enabled: aba !== "agendamentos" && aba !== "levantou",
   });
 
   const meses = useMemo(() => (payload ? mesesDisponiveis(payload) : []), [payload]);

@@ -103,43 +103,17 @@ export async function GET() {
     return mapearLinhas(await res.json(), rota.campoTotal);
   }
 
-  // Carga SDR: se falhar, a tela inteira mostra erro (502 com mensagem).
-  let payload: Record<string, unknown>;
-  try {
-    const entradas = Object.entries(ROTAS_SDR);
-    const respostas = await Promise.all(entradas.map(([, rota]) => buscar(rota)));
-    payload = Object.fromEntries(entradas.map(([nome], i) => [nome, respostas[i]]));
-  } catch (e) {
-    return NextResponse.json(
-      { error: `Falha ao consultar a API externa: ${e instanceof Error ? e.message : "erro"}` },
-      { status: 502 },
-    );
-  }
-
-  // Carga da liderança: falha NÃO derruba a aba SDR (erro isolado).
-  try {
-    const entradas = Object.entries(ROTAS_LIDERANCA);
-    const respostas = await Promise.all(entradas.map(([, rota]) => buscar(rota)));
-    entradas.forEach(([nome], i) => {
-      payload[nome] = respostas[i];
-    });
-    payload.lideranca_erro = null;
-  } catch (e) {
-    payload.lideranca_erro = `Falha ao carregar dados da liderança: ${e instanceof Error ? e.message : "erro"}`;
-  }
-
   // Vendas originadas por SDR (aba Comissões) — agora da Dashboard Comercial
   // REAL (/api/sdr/vendas-por-produto), não mais do mock. total_faturado = valor
-  // da venda; total_vendas = quantidade. Erro isolado (como a liderança): se a
-  // busca falhar, a aba mostra vazio — NÃO injeta mock em modo api (seria número
-  // fictício). Tolerância linha a linha fica no mapVendasComercial.
-  try {
+  // da venda; total_vendas = quantidade. Tolerância linha a linha fica no
+  // mapVendasComercial.
+  async function buscarVendas() {
     const res = await fetch(
       `${base!.replace(/\/$/, "")}/api/sdr/vendas-por-produto`,
       { headers, cache: "no-store" },
     );
     if (!res.ok) throw new Error(`/api/sdr/vendas-por-produto respondeu ${res.status}`);
-    payload.vendas_por_sdr = mapVendasComercial(
+    return mapVendasComercial(
       await res.json().catch(() => null),
       "sdr",
       "/api/sdr/vendas-por-produto",
@@ -152,7 +126,46 @@ export async function GET() {
         valor: l.faturado,
         quantidade: l.quantidade,
       }));
-  } catch (e) {
+  }
+
+  // As três cargas saem JUNTAS (uma onda só: não dependem uma da outra). A
+  // montagem abaixo mantém exatamente a regra de antes, inclusive a ordem dos
+  // campos do payload.
+  const sdr = Object.entries(ROTAS_SDR);
+  const lideranca = Object.entries(ROTAS_LIDERANCA);
+  const [rSdr, rLideranca, rVendas] = await Promise.allSettled([
+    Promise.all(sdr.map(([, rota]) => buscar(rota))),
+    Promise.all(lideranca.map(([, rota]) => buscar(rota))),
+    buscarVendas(),
+  ]);
+
+  // Carga SDR: se falhar, a tela inteira mostra erro (502 com mensagem).
+  if (rSdr.status === "rejected") {
+    const e = rSdr.reason;
+    return NextResponse.json(
+      { error: `Falha ao consultar a API externa: ${e instanceof Error ? e.message : "erro"}` },
+      { status: 502 },
+    );
+  }
+  const payload: Record<string, unknown> = Object.fromEntries(sdr.map(([nome], i) => [nome, rSdr.value[i]]));
+
+  // Carga da liderança: falha NÃO derruba a aba SDR (erro isolado).
+  if (rLideranca.status === "fulfilled") {
+    lideranca.forEach(([nome], i) => {
+      payload[nome] = rLideranca.value[i];
+    });
+    payload.lideranca_erro = null;
+  } else {
+    const e = rLideranca.reason;
+    payload.lideranca_erro = `Falha ao carregar dados da liderança: ${e instanceof Error ? e.message : "erro"}`;
+  }
+
+  // Vendas: erro isolado (como a liderança). Se a busca falhar, a aba mostra
+  // vazio — NÃO injeta mock em modo api (seria número fictício).
+  if (rVendas.status === "fulfilled") {
+    payload.vendas_por_sdr = rVendas.value;
+  } else {
+    const e = rVendas.reason;
     console.error(
       "[/api/sdr-dashboard] vendas_por_sdr:",
       e instanceof Error ? e.message : e,
