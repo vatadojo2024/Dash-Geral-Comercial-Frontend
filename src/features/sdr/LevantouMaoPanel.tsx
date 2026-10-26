@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -218,6 +219,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const oportunidades = useQuery({
     queryKey: ["oportunidades", periodo.de, periodo.ate],
     queryFn: () => fetchOportunidades(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled:
       !erroIntervalo &&
       recorte !== "nao_abordados" &&
@@ -231,6 +233,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const naoAbordados = useQuery({
     queryKey: ["nao-abordados", periodo.de, periodo.ate],
     queryFn: () => fetchNaoAbordados(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled: !erroIntervalo && ehNaoAbordados,
     retry: false,
   });
@@ -238,6 +241,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const incognitas = useQuery({
     queryKey: ["incognitas", periodo.de, periodo.ate],
     queryFn: () => fetchIncognitas(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled: !erroIntervalo && ehIncognitas,
     retry: false,
   });
@@ -245,6 +249,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const abordagem = useQuery({
     queryKey: ["abordagem", periodo.de, periodo.ate],
     queryFn: () => fetchAbordagem(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled: !erroIntervalo && ehAbordagem,
     retry: false,
   });
@@ -256,18 +261,21 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const descartes = useQuery({
     queryKey: ["sdr-descartes", periodo.de, periodo.ate],
     queryFn: () => fetchDescartes(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled: !erroIntervalo && ehDescartes,
     retry: false,
   });
   const ausentes = useQuery({
     queryKey: ["ausentes", periodo.de, periodo.ate],
     queryFn: () => fetchAusentes(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled: !erroIntervalo && ehAusentes,
     retry: false,
   });
   const presentes = useQuery({
     queryKey: ["presentes-sem-aplicar", periodo.de, periodo.ate],
     queryFn: () => fetchPresentes(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled: !erroIntervalo && ehPresentes,
     retry: false,
   });
@@ -278,6 +286,7 @@ export function LevantouMaoPanel({ recorte }: { recorte: RecorteLevantou }) {
   const inscritos = useQuery({
     queryKey: ["inscritos", periodo.de, periodo.ate],
     queryFn: () => fetchInscritos(periodo.de, periodo.ate),
+    staleTime: VALIDADE.eventos,
     enabled: !erroIntervalo && ehGeral,
     retry: false,
   });

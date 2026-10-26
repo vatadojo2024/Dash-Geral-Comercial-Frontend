@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -77,6 +78,7 @@ export function VisaoGeralView() {
   const leadsQuery = useQuery({
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
+    staleTime: VALIDADE.leads,
   });
   const vendasQuery = useQuery({
     queryKey: ["vendas", "todos-closers"],
@@ -86,8 +88,9 @@ export function VisaoGeralView() {
       );
       return new Map<string, VendasDoMes>(porCloser);
     },
+    staleTime: VALIDADE.vendas,
   });
-  const sdrQuery = useQuery({ queryKey: ["sdr-dashboard"], queryFn: fetchSdrPayload });
+  const sdrQuery = useQuery({ queryKey: ["sdr-dashboard"], queryFn: fetchSdrPayload, staleTime: VALIDADE.pacoteSdr });
 
   const ativos = useMemo(
     () => (leadsQuery.data ?? []).filter(leadAtivo),

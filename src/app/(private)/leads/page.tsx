@@ -1,3 +1,4 @@
+import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { exigirArea } from "@/lib/auth/acesso";
@@ -10,6 +11,7 @@ export default async function LeadsPage() {
       <PageHeader
         titulo="Fila de prioridade"
         descricao="Quem atacar agora: leads ativos ordenados por score, com motivo e próxima ação."
+        acoes={<BotaoAtualizar chaves={[["leads"]]} />}
       />
       <Suspense>
         <LeadsView />

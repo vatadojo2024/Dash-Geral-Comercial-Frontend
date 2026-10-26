@@ -1,5 +1,7 @@
 "use client";
 
+import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
+import { VALIDADE } from "@/lib/data/validade";
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -211,6 +213,7 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
   const { data: lead, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["lead", user.id, leadId],
     queryFn: () => fetchLeadDetail(user, leadId),
+    staleTime: VALIDADE.leads,
     retry: (count, err) =>
       !(err instanceof DataError && err.code === "not_found") && count < 1,
   });
@@ -245,13 +248,20 @@ export function LeadDetailView({ leadId }: { leadId: string }) {
 
   return (
     <div className="space-y-4">
-      <Link
-        href="/leads"
-        className="inline-flex items-center gap-1.5 text-sm text-texto-sec hover:text-texto"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden />
-        Voltar para a fila
-      </Link>
+      {/* O botão fica sobre a linha do "Voltar", à direita, sem mudar a altura
+          dela: o link e o card abaixo continuam exatamente no mesmo lugar. */}
+      <div className="relative">
+        <Link
+          href="/leads"
+          className="inline-flex items-center gap-1.5 text-sm text-texto-sec hover:text-texto"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Voltar para a fila
+        </Link>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2">
+          <BotaoAtualizar chaves={[["lead", user.id, leadId]]} />
+        </div>
+      </div>
 
       <Card>
         <CardContent>

@@ -1,3 +1,4 @@
+import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { exigirArea } from "@/lib/auth/acesso";
 import { DashboardView } from "@/features/dashboard/DashboardView";
@@ -9,6 +10,7 @@ export default async function DashboardPage() {
       <PageHeader
         titulo="Dashboard"
         descricao="Visão geral do funil: onde os leads estão concentrados e o que merece atenção."
+        acoes={<BotaoAtualizar chaves={[["leads"]]} />}
       />
       <DashboardView />
     </>

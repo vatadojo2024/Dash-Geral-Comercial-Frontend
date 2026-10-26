@@ -1,5 +1,7 @@
 "use client";
 
+import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
+import { VALIDADE } from "@/lib/data/validade";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -94,12 +96,14 @@ export function AgendamentosView() {
   const fila = useQuery({
     queryKey: ["agendamentos-primeira-call", "fila", user.id],
     queryFn: () => fetchAgendamentosPrimeiraCall(),
+    staleTime: VALIDADE.agendamentos,
   });
 
   const janela = ancora ? intervaloVisivel(visaoCal, ancora) : null;
   const calendario = useQuery({
     queryKey: ["agendamentos-primeira-call", "calendario", user.id, janela?.de, janela?.ate],
     queryFn: () => fetchAgendamentosPrimeiraCall({ de: janela!.de, ate: janela!.ate }),
+    staleTime: VALIDADE.agendamentos,
     enabled: visao === "calendario" && janela != null,
     placeholderData: keepPreviousData,
   });
@@ -204,6 +208,7 @@ export function AgendamentosView() {
                 { valor: "calendario", label: "Calendário" },
               ]}
             />
+            <BotaoAtualizar chaves={[["agendamentos-primeira-call"], ["agendamentos-conferencia"]]} />
           </>
         }
       />

@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -64,6 +65,7 @@ export function RetencaoPanel() {
   const { data, error, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["retencao", periodo.de, periodo.ate],
     queryFn: () => fetchRetencao(periodo.de, periodo.ate),
+    staleTime: VALIDADE.retencao,
     enabled: !erroIntervalo,
     retry: false,
   });

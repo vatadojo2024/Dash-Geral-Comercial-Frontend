@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -151,6 +152,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
   const { data: payload, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["sdr-dashboard"],
     queryFn: fetchSdrPayload,
+    staleTime: VALIDADE.pacoteSdr,
     enabled: aba !== "agendamentos" && aba !== "levantou",
   });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Inbox, Search, Star, X } from "lucide-react";
@@ -68,6 +69,7 @@ export function DashboardView() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
+    staleTime: VALIDADE.leads,
   });
 
   // 6.1.1: os filtros acima do mapa filtram o PRÓPRIO mapa (e os cards e as

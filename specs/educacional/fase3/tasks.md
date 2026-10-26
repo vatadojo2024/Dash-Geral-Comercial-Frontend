@@ -8,7 +8,7 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
 - [x] Correção 3 — Cliente do Supabase carregado com a página (fim do `import()` por chamada).
 - ~~Correção 4 — Sob demanda~~: fora do plano (26/10).
 - [x] Correção 6 — Conferência de Agendamentos em paralelo com a fila, mesma janela e mesmos dados (teste).
-- [ ] Correção 7 — Cache por tipo de dado (1 min / 5 min), sem recarga com dado válido, botão "Atualizar" nas telas comerciais.
+- [x] Correção 7 — Cache por tipo de dado (1 min / 5 min), sem recarga com dado válido, botão "Atualizar" nas telas comerciais.
 - [ ] Correção 8 — Educacional: linhas e cards memorizados, tabela sem empurrar a tela.
 - Regressão de cada uma: 8 telas de closer e SDR, desktop, pixel a pixel no mock local; resumo ao Vata antes do push.
 

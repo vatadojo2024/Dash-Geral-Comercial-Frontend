@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Check, Info } from "lucide-react";
@@ -48,7 +49,7 @@ export function useConferencia(
     queryFn: () => buscarConferencia(janela.de, janela.ate),
     enabled: habilitada,
     retry: false,
-    staleTime: 5 * 60_000,
+    staleTime: VALIDADE.agendamentos,
   });
   const dias = useMemo(
     () =>

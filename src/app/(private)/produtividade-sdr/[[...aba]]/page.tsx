@@ -1,6 +1,7 @@
+import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ABAS_SDR, RECORTES_LEVANTOU, ROTA_SDR } from "@/features/sdr/abas";
+import { ABAS_SDR, RECORTES_LEVANTOU, ROTA_SDR, type AbaSdr } from "@/features/sdr/abas";
 import { SdrView } from "@/features/sdr/SdrView";
 import { exigirArea } from "@/lib/auth/acesso";
 import { ROTA_DA_AREA, temArea } from "@/lib/auth/areas";
@@ -17,6 +18,15 @@ import { ROTA_DA_AREA, temArea } from "@/lib/auth/areas";
 // Cada sub-aba exige a área dela (abas.ts); as demais são produtividade_sdr.
 // (/sdr antigo redireciona para cá — next.config.mjs.)
 // ---------------------------------------------------------------------------
+
+// O que o "Atualizar" do cabeçalho busca de novo em cada aba (Oportunidades do
+// Evento já tem o próprio botão, no rodapé).
+const CHAVES_DA_ABA: Partial<Record<AbaSdr, string[][]>> = {
+  dashboard: [["sdr-dashboard"]],
+  agendamentos: [["agendamentos"]],
+  comissoes: [["sdr-dashboard"], ["sdr-comissoes"]],
+  lideranca: [["sdr-dashboard"]],
+};
 
 export default async function ProdutividadeSdrPage({
   params,
@@ -45,6 +55,7 @@ export default async function ProdutividadeSdrPage({
       <PageHeader
         titulo="Produtividade SDR"
         descricao="Calls, qualificados, produtos e metas escalonadas — espelho do Dashboard SDR."
+        acoes={CHAVES_DA_ABA[def.aba] && <BotaoAtualizar chaves={CHAVES_DA_ABA[def.aba]!} />}
       />
       <SdrView aba={def.aba} recorte={recorte.recorte} />
     </>

@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -258,11 +259,13 @@ function PainelCloser({ closerId }: { closerId: string }) {
   const vendasQuery = useQuery({
     queryKey: ["vendas", slug],
     queryFn: () => fetchVendasDoMes(slug!),
+    staleTime: VALIDADE.vendas,
     enabled: !!slug,
   });
   const leadsQuery = useQuery({
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
+    staleTime: VALIDADE.leads,
   });
 
   // O closer_id dos leads é UUID; já temos o slug resolvido acima. Resolvemos

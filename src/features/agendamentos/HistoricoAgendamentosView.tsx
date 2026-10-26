@@ -1,5 +1,7 @@
 "use client";
 
+import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
+import { VALIDADE } from "@/lib/data/validade";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -77,6 +79,7 @@ export function HistoricoAgendamentosView() {
     initialPageParam: null as string | null,
     getNextPageParam: (ultima) => ultima.proximo_cursor ?? undefined,
     enabled: !!hoje,
+    staleTime: VALIDADE.agendamentos,
     retry: false,
   });
 
@@ -111,6 +114,7 @@ export function HistoricoAgendamentosView() {
       <PageHeader
         titulo="Agendamentos"
         descricao="Histórico: todas as primeiras calls agendadas, de todos os closers, na ordem em que foram marcadas — a mais recente no topo."
+        acoes={<BotaoAtualizar chaves={[["agendamentos-historico"], ["agendamentos-historico-novos"]]} />}
       />
 
       <div className="space-y-4">

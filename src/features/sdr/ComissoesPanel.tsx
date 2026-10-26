@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bot, Banknote, Info, TrendingUp, Wallet } from "lucide-react";
@@ -195,6 +196,7 @@ export function ComissoesPanel({
   const financeiro = useQuery({
     queryKey: ["sdr-comissoes", mes],
     queryFn: () => fetchComissoesSdr(mes),
+    staleTime: VALIDADE.vendas,
   });
   const totaisFinanceiro = useMemo(
     () => (financeiro.data ? comissoesPorSdr(financeiro.data) : null),

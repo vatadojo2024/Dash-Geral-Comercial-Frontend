@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +25,7 @@ export function LeadsView() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["leads", user.id],
     queryFn: () => fetchLeads(user),
+    staleTime: VALIDADE.leads,
   });
 
   // URL como fonte de verdade: todo filtro deriva da query string. O escopo do

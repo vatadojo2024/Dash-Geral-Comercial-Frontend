@@ -1,5 +1,6 @@
 "use client";
 
+import { VALIDADE } from "@/lib/data/validade";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -46,6 +47,7 @@ export function AgendamentosPanel() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["agendamentos", cicloSel.inicio, cicloSel.fim],
     queryFn: () => fetchAgendamentos(cicloSel.inicio, cicloSel.fim),
+    staleTime: VALIDADE.agendamentos,
   });
 
   const ag = useMemo<Agregado | null>(
