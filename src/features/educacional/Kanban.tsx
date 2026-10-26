@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -81,17 +81,21 @@ export function Kanban({
   const nomeDaEtapa = (id: unknown) => etapas.find((e) => e.id === id)?.nome ?? "";
   const nomeDoAluno = (id: unknown) => itens.find((a) => a.id === id)?.nome ?? "";
 
-  function mover(a: AlunoLinha, etapa: Etapa) {
-    if (a.etapa.id === etapa.id) return;
-    void gravar({
-      alunoId: a.id,
-      versao: a.versao,
-      executar: (v) => atualizarAluno(a.id, v, { etapa_id: etapa.id }),
-      naLinha: (l) => ({ ...l, etapa: { id: etapa.id, nome: etapa.nome } }),
-      noAluno: (d) => ({ ...d, etapa: { id: etapa.id, nome: etapa.nome } }),
-      afetaTotais: true,
-    });
-  }
+  // Estável: os cartões são memorizados e só redesenham quando o aluno deles muda.
+  const mover = useCallback(
+    (a: AlunoLinha, etapa: Etapa) => {
+      if (a.etapa.id === etapa.id) return;
+      void gravar({
+        alunoId: a.id,
+        versao: a.versao,
+        executar: (v) => atualizarAluno(a.id, v, { etapa_id: etapa.id }),
+        naLinha: (l) => ({ ...l, etapa: { id: etapa.id, nome: etapa.nome } }),
+        noAluno: (d) => ({ ...d, etapa: { id: etapa.id, nome: etapa.nome } }),
+        afetaTotais: true,
+      });
+    },
+    [gravar],
+  );
 
   const aoComecar = (e: DragStartEvent) => setArrastando(itens.find((a) => a.id === e.active.id) ?? null);
   const aoSoltar = (e: DragEndEvent) => {
@@ -196,7 +200,7 @@ type PropsCartao = {
   onMover: (a: AlunoLinha, e: Etapa) => void;
 };
 
-function CartaoArrastavel(props: PropsCartao) {
+const CartaoArrastavel = memo(function CartaoArrastavel(props: PropsCartao) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.aluno.id });
   return (
     <div
@@ -211,9 +215,12 @@ function CartaoArrastavel(props: PropsCartao) {
       <Cartao {...props} />
     </div>
   );
-}
+});
 
-function Cartao({ aluno: a, etapas, hrefDoAluno, onMover, flutuando = false }: PropsCartao & { flutuando?: boolean }) {
+// Parte visual do cartão, memorizada à parte: o arrasto re-renderiza os
+// useDraggable a cada medição das colunas, mas o conteúdo só redesenha quando
+// o aluno muda.
+const Cartao = memo(function Cartao({ aluno: a, etapas, hrefDoAluno, onMover, flutuando = false }: PropsCartao & { flutuando?: boolean }) {
   const router = useRouter();
   return (
     <div
@@ -248,7 +255,7 @@ function Cartao({ aluno: a, etapas, hrefDoAluno, onMover, flutuando = false }: P
       {!flutuando && <MoverPara aluno={a} etapas={etapas} onMover={onMover} />}
     </div>
   );
-}
+});
 
 // "Mover para…": a alternativa garantida sem arrastar (teclado e celular). O
 // menu vai para o <body> (a coluna rola e cortaria o menu), na posição do botão.

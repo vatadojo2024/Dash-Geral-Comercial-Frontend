@@ -9,7 +9,7 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
 - ~~Correção 4 — Sob demanda~~: fora do plano (26/10).
 - [x] Correção 6 — Conferência de Agendamentos em paralelo com a fila, mesma janela e mesmos dados (teste).
 - [x] Correção 7 — Cache por tipo de dado (1 min / 5 min), sem recarga com dado válido, botão "Atualizar" nas telas comerciais.
-- [ ] Correção 8 — Educacional: linhas e cards memorizados, tabela sem empurrar a tela.
+- [x] Correção 8 — Educacional: linhas e cards memorizados, tabela sem empurrar a tela.
 - Regressão de cada uma: 8 telas de closer e SDR, desktop, pixel a pixel no mock local; resumo ao Vata antes do push.
 
 ## Módulo

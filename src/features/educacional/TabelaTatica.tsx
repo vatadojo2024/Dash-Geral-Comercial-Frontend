@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -24,7 +24,9 @@ import {
   type AlunoLinha,
   type CampoAjustavel,
   type CamposDiretosAluno,
+  type Etapa,
   type NivelInicial,
+  type Responsavel,
   type StatusAluno,
 } from "@/lib/educacional/contrato";
 import {
@@ -83,14 +85,16 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
   });
   const config = useConfig();
   useRedirecionarSeSemPermissao([lista.error, config.error]);
-  const etapas = etapasAtivas(config.data);
+  const etapas = useMemo(() => etapasAtivas(config.data), [config.data]);
   const responsaveis = ativos(config.data?.responsaveis);
   const { visiveis, alternar } = useColunasVisiveis();
   const [novoAberto, setNovoAberto] = useState(false);
 
   const voltar = queryDoEstado(estado, simular);
-  const hrefDoAluno = (a: { id: string }) =>
-    `/educacional/alunos/${encodeURIComponent(a.id)}${voltar ? `?voltar=${encodeURIComponent(voltar)}` : ""}`;
+  const hrefDoAluno = useCallback(
+    (a: { id: string }) => `/educacional/alunos/${encodeURIComponent(a.id)}${voltar ? `?voltar=${encodeURIComponent(voltar)}` : ""}`,
+    [voltar],
+  );
 
   const mudar = (parcial: Partial<EstadoTabela>) => onMudar({ ...estado, ...parcial, pagina: parcial.pagina ?? 1 });
 
@@ -281,16 +285,84 @@ function Lista({
   onOrdenar: (o: OrdemAlunos) => void;
 }) {
   const config = useConfig();
-  const gravar = useGravacao();
   const [ajuste, setAjuste] = useState<{ aluno: AlunoLinha; campo: CampoAjustavel } | null>(null);
-  const etapas = etapasAtivas(config.data);
-  const responsaveis = ativos(config.data?.responsaveis);
-  const colunas = COLUNAS_DA_TABELA.filter((c) => visiveis.includes(c.id));
+  // Props estáveis para as linhas memorizadas.
+  const etapas = useMemo(() => etapasAtivas(config.data), [config.data]);
+  const responsaveis = useMemo(() => ativos(config.data?.responsaveis), [config.data]);
+  const colunas = useMemo(() => COLUNAS_DA_TABELA.filter((c) => visiveis.includes(c.id)), [visiveis]);
+  const abrirAjuste = useCallback((aluno: AlunoLinha, campo: CampoAjustavel) => setAjuste({ aluno, campo }), []);
 
   const ordenar = (campo: ChaveOrdem) => {
     const atual = estado.ordem;
     onOrdenar(atual === campo ? (`-${campo}` as OrdemAlunos) : campo);
   };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-sm" style={{ minWidth: Math.max(640, colunas.length * 125) }}>
+        <thead>
+          <tr className="border-b border-borda text-left text-xs text-texto-sec">
+            {colunas.map((c) => {
+              const ativa = estado.ordem === c.id || estado.ordem === `-${c.id}`;
+              const Seta = !ativa ? ArrowUpDown : estado.ordem.startsWith("-") ? ArrowDown : ArrowUp;
+              return (
+                <th
+                  key={c.id}
+                  className="px-2 py-2 font-medium"
+                  aria-sort={ativa ? (estado.ordem.startsWith("-") ? "descending" : "ascending") : "none"}
+                >
+                  <button
+                    type="button"
+                    onClick={() => ordenar(c.id)}
+                    className={cn("inline-flex items-center gap-1 text-left hover:text-texto", ativa && "text-texto")}
+                  >
+                    {c.rotulo}
+                    <Seta className={cn("h-3 w-3", !ativa && "opacity-40")} aria-hidden />
+                  </button>
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {itens.map((a) => (
+            <LinhaAluno
+              key={a.id}
+              a={a}
+              colunas={colunas}
+              etapas={etapas}
+              responsaveis={responsaveis}
+              hrefDoAluno={hrefDoAluno}
+              onAjuste={abrirAjuste}
+            />
+          ))}
+        </tbody>
+      </table>
+      {ajuste && (
+        <FormAjuste
+          aluno={itens.find((x) => x.id === ajuste.aluno.id) ?? ajuste.aluno}
+          campo={ajuste.campo}
+          onFechar={() => setAjuste(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Uma linha da tabela, memorizada: só redesenha quando o aluno DELA muda (o
+// cache troca só o objeto do aluno gravado e o React Query mantém os demais).
+type ColunaVisivel = (typeof COLUNAS_DA_TABELA)[number];
+type PropsLinha = {
+  a: AlunoLinha;
+  colunas: ColunaVisivel[];
+  etapas: Etapa[];
+  responsaveis: Responsavel[];
+  hrefDoAluno: (a: AlunoLinha) => string;
+  onAjuste: (a: AlunoLinha, campo: CampoAjustavel) => void;
+};
+
+const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, hrefDoAluno, onAjuste }: PropsLinha) {
+  const gravar = useGravacao();
 
   // PATCH /alunos/:id com o otimista dos mesmos campos.
   const salvar = (a: AlunoLinha, campos: CamposDiretosAluno, otimista: (l: AlunoLinha) => AlunoLinha, afetaTotais = false) =>
@@ -315,7 +387,7 @@ function Lista({
   function celula(a: AlunoLinha, coluna: IdColuna): ReactNode {
     const bloqueada = a.arquivado;
     const ajustavel = (campo: CampoAjustavel, exibir: ReactNode, rotulo: string) => (
-      <CelulaEditavel rotulo={`Ajustar ${rotulo} de ${a.nome}`} bloqueada={bloqueada} onAbrir={() => setAjuste({ aluno: a, campo })} exibir={exibir} />
+      <CelulaEditavel rotulo={`Ajustar ${rotulo} de ${a.nome}`} bloqueada={bloqueada} onAbrir={() => onAjuste(a, campo)} exibir={exibir} />
     );
     switch (coluna) {
       case "nome":
@@ -564,64 +636,25 @@ function Lista({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm" style={{ minWidth: Math.max(640, colunas.length * 125) }}>
-        <thead>
-          <tr className="border-b border-borda text-left text-xs text-texto-sec">
-            {colunas.map((c) => {
-              const ativa = estado.ordem === c.id || estado.ordem === `-${c.id}`;
-              const Seta = !ativa ? ArrowUpDown : estado.ordem.startsWith("-") ? ArrowDown : ArrowUp;
-              return (
-                <th
-                  key={c.id}
-                  className="px-2 py-2 font-medium"
-                  aria-sort={ativa ? (estado.ordem.startsWith("-") ? "descending" : "ascending") : "none"}
-                >
-                  <button
-                    type="button"
-                    onClick={() => ordenar(c.id)}
-                    className={cn("inline-flex items-center gap-1 text-left hover:text-texto", ativa && "text-texto")}
-                  >
-                    {c.rotulo}
-                    <Seta className={cn("h-3 w-3", !ativa && "opacity-40")} aria-hidden />
-                  </button>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {itens.map((a) => (
-            <tr key={a.id} className={cn("border-b border-borda/40 align-top", a.arquivado && "opacity-60")}>
-              {colunas.map((c) => (
-                <td key={c.id} className="px-2 py-1.5">
-                  {c.id === "nome" && a.arquivado ? (
-                    <span className="flex flex-col items-start gap-1">
-                      {celula(a, c.id)}
-                      <Button variant="outline" size="sm" onClick={() => void reativar(a)}>
-                        <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                        Reativar
-                      </Button>
-                    </span>
-                  ) : (
-                    celula(a, c.id)
-                  )}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {ajuste && (
-        <FormAjuste
-          aluno={itens.find((x) => x.id === ajuste.aluno.id) ?? ajuste.aluno}
-          campo={ajuste.campo}
-          onFechar={() => setAjuste(null)}
-        />
-      )}
-    </div>
+    <tr className={cn("border-b border-borda/40 align-top", a.arquivado && "opacity-60")}>
+      {colunas.map((c) => (
+        <td key={c.id} className="px-2 py-1.5">
+          {c.id === "nome" && a.arquivado ? (
+            <span className="flex flex-col items-start gap-1">
+              {celula(a, c.id)}
+              <Button variant="outline" size="sm" onClick={() => void reativar(a)}>
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                Reativar
+              </Button>
+            </span>
+          ) : (
+            celula(a, c.id)
+          )}
+        </td>
+      ))}
+    </tr>
   );
-}
+});
 
 function Selecao({
   id,

@@ -55,9 +55,10 @@ export function EducacionalView() {
             <EtiquetaDemonstracao />
           </div>
           <p className="mt-1 text-sm opacity-80">Visão macro da turma + operação de acompanhamento</p>
-          {resumo.data && (
-            <p className="mt-1 text-xs text-texto-sec">Atualizado em {dataHoraBr(resumo.data.atualizado_em)}</p>
-          )}
+          {/* A linha existe desde o início (vazia enquanto carrega): nada abaixo se desloca. */}
+          <p className="mt-1 text-xs text-texto-sec">
+            {resumo.data ? `Atualizado em ${dataHoraBr(resumo.data.atualizado_em)}` : "\u00a0"}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
