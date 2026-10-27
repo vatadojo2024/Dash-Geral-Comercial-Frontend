@@ -249,8 +249,11 @@ function ListaConfig({ aba, config }: { aba: Aba; config: Config }) {
     }
   }
 
+  // Item novo de lista ordenável entra no fim: o backend exige `ordem` no POST.
+  const proximaOrdem = Math.max(0, ...itens.map((i) => i.ordem ?? 0)) + 1;
   const salvarItem = async (id: string | null, campos: Record<string, unknown>) => {
-    const ok = await gravar(() => (id ? atualizarItemConfig(def.colecao, id, campos) : criarItemConfig(def.colecao, campos)));
+    const novo = def.ordenavel ? { ordem: proximaOrdem, ...campos } : campos;
+    const ok = await gravar(() => (id ? atualizarItemConfig(def.colecao, id, campos) : criarItemConfig(def.colecao, novo)));
     if (ok) setEditando(null);
   };
 

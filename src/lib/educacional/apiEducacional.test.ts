@@ -21,6 +21,7 @@ import {
   definirUsuarioDaSessao,
   EducacionalError,
   FONTE_EDUCACIONAL,
+  queryDaApi,
   queryDosFiltros,
   restaurarDemonstracao,
   TAMANHO_PAGINA,
@@ -108,12 +109,38 @@ describe("leitura", () => {
     expect(c.responsaveis).toHaveLength(4);
   });
 
-  it("querystring do modo api", () => {
+  it("querystring da URL da página", () => {
     expect(
       queryDosFiltros({ checkpoint: ["pendente", "nao_respondeu"], health_max: 50, pagina: 2, ordem: "-nome", incluir_arquivados: true }),
     ).toBe("checkpoint=pendente%2Cnao_respondeu&health_max=50&incluir_arquivados=1&ordem=-nome&pagina=2");
     expect(queryDosFiltros({ ordem: "risco", pagina: 1 })).toBe("");
     expect(queryDosFiltros({ por_pagina: "todos" })).toBe("por_pagina=todos");
+  });
+
+  it("querystring da API: nomes e padrões do backend (teste de integração de 27/10)", () => {
+    expect(
+      queryDaApi({ etapa: "e1", responsavel: "r1", checkpoint: ["pendente"], health_max: 50, incluir_arquivados: true, pagina: 2 }),
+    ).toBe("etapa_id=e1&checkpoint=pendente&responsavel_id=r1&health_max=49&incluir_arquivados=true&ordem=risco&por_pagina=25&pagina=2");
+    expect(queryDaApi({})).toBe("ordem=risco&por_pagina=25");
+    expect(queryDaApi({ ordem: "-nome", por_pagina: "todos" })).toBe("ordem=-nome&por_pagina=todos");
+    // Mais de um status não vai na query (o backend aceita um só).
+    expect(queryDaApi({ checkpoint: ["pendente", "nao_respondeu"] })).toBe("ordem=risco&por_pagina=25");
+  });
+
+  it("filtros pelos nomes do backend; dois status de checkpoint = união dos dois", async () => {
+    const todos = (await buscarAlunos({ por_pagina: "todos" })).itens;
+    const a = todos.find((x) => x.responsavel)!;
+    const porResp = await buscarAlunos({ responsavel: a.responsavel!.id, por_pagina: "todos" });
+    expect(porResp.itens.length).toBeGreaterThan(0);
+    expect(porResp.itens.every((x) => x.responsavel?.id === a.responsavel!.id)).toBe(true);
+    const porEtapa = await buscarAlunos({ etapa: a.etapa.id, por_pagina: "todos" });
+    expect(porEtapa.itens.every((x) => x.etapa.id === a.etapa.id)).toBe(true);
+    const status = (s: string) => todos.filter((x) => x.proximo_checkpoint?.status === s).length;
+    const sla = await buscarAlunos({ checkpoint: ["pendente", "nao_respondeu"] });
+    expect(sla.total).toBe(status("pendente") + status("nao_respondeu"));
+    expect(sla.itens.length).toBe(Math.min(TAMANHO_PAGINA, sla.total));
+    const abaixo = await buscarAlunos({ health_max: 50, por_pagina: "todos" });
+    expect(abaixo.itens.every((x) => x.health_score.valor != null && x.health_score.valor < 50)).toBe(true);
   });
 });
 

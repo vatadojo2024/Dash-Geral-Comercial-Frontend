@@ -15,8 +15,9 @@ import { ErroDaApi, type Banco } from "./tipos";
 // Assim o adapter tem um só caminho para mock e api — muda só o transporte.
 // ---------------------------------------------------------------------------
 
-export const TAMANHO_PAGINA = 25;
-export const TAMANHO_PAGINA_HISTORICO = 20;
+// Padrões do backend quando a query não diz (o adapter sempre diz: 25 e 20).
+export const TAMANHO_PAGINA = 50;
+export const TAMANHO_PAGINA_HISTORICO = 50;
 
 export type Requisicao = {
   metodo: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -92,26 +93,28 @@ function ordenador(ordem: string, banco: Banco): (a: AlunoLinha, b: AlunoLinha) 
   return (a, b) => (desc ? -f(a, b) : f(a, b)) || padrao(a, b);
 }
 
+// Mesma query do backend: etapa_id, responsavel_id, incluir_arquivados=true, UM
+// status de checkpoint, health_max inclusivo, ordem padrão nome.
 function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
-  const arquivados = q.get("incluir_arquivados") === "1" || q.get("incluir_arquivados") === "true";
-  const checkpoint = (q.get("checkpoint") ?? "").split(",").filter(Boolean);
+  const arquivados = q.get("incluir_arquivados") === "true";
+  const checkpoint = q.get("checkpoint");
   const healthMax = q.get("health_max");
   const todos = banco.alunos
     .filter((a) => arquivados || !a.arquivado_em)
     .map((a) => linhaDoDetalhe(montarAluno(banco, a, hoje)))
     .filter((a) => {
-      if (q.get("etapa") && a.etapa.id !== q.get("etapa")) return false;
+      if (q.get("etapa_id") && a.etapa.id !== q.get("etapa_id")) return false;
       if (q.get("risco") && a.faixa_saude.valor !== q.get("risco")) return false;
-      if (checkpoint.length && !(a.proximo_checkpoint && checkpoint.includes(a.proximo_checkpoint.status))) return false;
-      if (q.get("responsavel") && a.responsavel?.id !== q.get("responsavel")) return false;
+      if (checkpoint && a.proximo_checkpoint?.status !== checkpoint) return false;
+      if (q.get("responsavel_id") && a.responsavel?.id !== q.get("responsavel_id")) return false;
       if (q.get("status_aluno") && a.status_aluno !== q.get("status_aluno")) return false;
       const sinal = q.get("sinal") as keyof AlunoLinha["sinais"] | null;
       if (sinal && a.sinais[sinal]?.valor !== true) return false;
-      // EXCLUSIVO: health_max=50 → Health Score efetivo abaixo de 50.
-      if (healthMax != null && !(a.health_score.valor != null && a.health_score.valor < Number(healthMax))) return false;
+      // INCLUSIVO, como no backend: health_max=49 → Health Score efetivo até 49.
+      if (healthMax != null && !(a.health_score.valor != null && a.health_score.valor <= Number(healthMax))) return false;
       return true;
     })
-    .sort(ordenador(q.get("ordem") ?? "risco", banco));
+    .sort(ordenador(q.get("ordem") ?? "nome", banco));
   if (q.get("por_pagina") === "todos") return { itens: todos, total: todos.length };
   const tamanho = Math.max(1, Number(q.get("por_pagina")) || TAMANHO_PAGINA);
   const pagina = Math.max(1, Number(q.get("pagina")) || 1);
@@ -137,8 +140,9 @@ function historico(banco: Banco, alunoId: string, q: URLSearchParams) {
       motivo,
     }));
   const pagina = Math.max(1, Number(q.get("pagina")) || 1);
+  const tamanho = Math.max(1, Number(q.get("por_pagina")) || TAMANHO_PAGINA_HISTORICO);
   return {
-    itens: itens.slice((pagina - 1) * TAMANHO_PAGINA_HISTORICO, pagina * TAMANHO_PAGINA_HISTORICO),
+    itens: itens.slice((pagina - 1) * tamanho, pagina * tamanho),
     total: itens.length,
   };
 }
