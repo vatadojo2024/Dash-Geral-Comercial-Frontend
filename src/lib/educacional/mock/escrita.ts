@@ -177,8 +177,10 @@ export function patchAluno(banco: Banco, id: string, campos: CamposDiretosAluno,
         erro400(chave, "Campo desconhecido.");
     }
   }
-  // Mudança de etapa (inclusive pelo Kanban): etapa_desde = hoje → dias na etapa zeram.
-  if (novos.etapa_id && novos.etapa_id !== a.etapa_id) novos.etapa_desde = ctx.hoje;
+  // Mudança de etapa (inclusive pelo Kanban): etapa_desde = hoje → dias na etapa
+  // zeram, e o ajuste manual de dias na etapa cai (decisão de 27/10, backend a971add).
+  const trocouEtapa = Boolean(novos.etapa_id && novos.etapa_id !== a.etapa_id);
+  if (trocouEtapa) novos.etapa_desde = ctx.hoje;
   const nomeEtapa = (eid: string) => banco.config.etapas.find((e) => e.id === eid)?.nome ?? eid;
   for (const [chave, depois] of Object.entries(novos) as [keyof AlunoBanco, unknown][]) {
     const antes = a[chave];
@@ -189,6 +191,11 @@ export function patchAluno(banco: Banco, id: string, campos: CamposDiretosAluno,
       registrar(banco, ctx, a, "aluno", a.id, "responsavel", nome(antes), nome(depois));
     } else registrar(banco, ctx, a, "aluno", a.id, chave, antes, depois);
     (a as Record<string, unknown>)[chave] = depois;
+  }
+  const ajusteDias = trocouEtapa && banco.ajustes.find((x) => x.aluno_id === a.id && x.campo === "dias_na_etapa" && x.ativo);
+  if (ajusteDias) {
+    ajusteDias.ativo = false;
+    registrar(banco, ctx, a, "ajuste", a.id, "dias_na_etapa", ajusteDias.valor, 0, "Removido por mudança de etapa");
   }
   return fim(banco, a, ctx);
 }

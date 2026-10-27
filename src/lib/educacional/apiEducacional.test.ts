@@ -145,6 +145,22 @@ describe("leitura", () => {
 });
 
 describe("escrita em aluno — seção 5 do backend", () => {
+  it("mudar etapa derruba o ajuste de dias na etapa; outros ajustes ficam (backend a971add)", async () => {
+    const a = await primeiro();
+    let d = await ajustarCampo(a.id, a.versao, "dias_na_etapa", 40, "Teste de ajuste de dias");
+    d = await ajustarCampo(a.id, d.versao, "health_score", 30, "Teste de ajuste de health");
+    const destino = (await buscarConfig()).etapas.find((e) => e.ativo && e.id !== a.etapa.id)!;
+    d = await atualizarAluno(a.id, d.versao, { etapa_id: destino.id });
+    expect(d.dias_na_etapa).toMatchObject({ valor: 0, automatico: 0, ajuste: null });
+    expect(d.health_score.ajuste?.valor).toBe(30);
+    const h = await buscarHistorico(a.id, { entidade: "ajuste" });
+    expect(h.itens[0]).toMatchObject({ campo: "dias_na_etapa", valor_antes: 40, valor_depois: 0, motivo: "Removido por mudança de etapa" });
+    // Mesma etapa não é troca: o ajuste novo fica.
+    d = await ajustarCampo(a.id, d.versao, "dias_na_etapa", 7, "Teste de ajuste de dias");
+    d = await atualizarAluno(a.id, d.versao, { etapa_id: destino.id });
+    expect(d.dias_na_etapa.ajuste?.valor).toBe(7);
+  });
+
   it("mudar etapa: versão sobe, dias na etapa zeram, histórico com os nomes das etapas", async () => {
     const a = await primeiro();
     const c = await buscarConfig();
@@ -252,12 +268,13 @@ describe("ajuste manual", () => {
     ]);
   });
 
-  it("ajuste sobrevive ao recálculo (mudança de etapa)", async () => {
+  it("ajuste sobrevive ao recálculo (mudança de etapa), exceto o de dias na etapa", async () => {
     const a = await primeiro();
-    const aj = await ajustarCampo(a.id, a.versao, "dias_na_etapa", 5, "Contagem corrigida");
+    const aj = await ajustarCampo(a.id, a.versao, "faixa_saude", "risco", "Contagem corrigida");
     const c = await buscarConfig();
     const depois = await atualizarAluno(a.id, aj.versao, { etapa_id: c.etapas.find((e) => e.id !== a.etapa.id)!.id });
-    expect(depois.dias_na_etapa).toMatchObject({ valor: 5, automatico: 0 });
+    expect(depois.faixa_saude).toMatchObject({ valor: "risco" });
+    expect(depois.faixa_saude.ajuste).not.toBeNull();
   });
 });
 
