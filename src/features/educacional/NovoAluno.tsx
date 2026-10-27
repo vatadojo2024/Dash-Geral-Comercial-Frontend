@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
+import { Sugestoes } from "./Edicao";
 import { useAcaoComAviso } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
@@ -146,7 +147,15 @@ export function NovoAluno({
           <input id={`${id}-nome`} value={nome} onChange={(e) => setNome(e.target.value)} className={CAMPO} autoComplete="off" />
         </Campo>
         <Campo id={`${id}-mentoria`} rotulo="Mentoria" obrigatorio erro={erros.mentoria}>
-          <input id={`${id}-mentoria`} value={mentoria} onChange={(e) => setMentoria(e.target.value)} className={CAMPO} />
+          <input
+            id={`${id}-mentoria`}
+            value={mentoria}
+            onChange={(e) => setMentoria(e.target.value)}
+            list={`${id}-mentorias`}
+            autoComplete="off"
+            className={CAMPO}
+          />
+          <Sugestoes id={`${id}-mentorias`} opcoes={config.data?.mentorias} />
         </Campo>
         <Campo id={`${id}-entrada`} rotulo="Data de entrada" obrigatorio erro={erros.data_entrada}>
           <input id={`${id}-entrada`} type="date" value={entrada} onChange={(e) => setEntrada(e.target.value)} className={CAMPO} />

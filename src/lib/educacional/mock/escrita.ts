@@ -1,10 +1,12 @@
 import {
   AUTORIZACOES_PROVA_SOCIAL,
   CAMPOS_AJUSTAVEIS,
+  LIMITE_LOTE,
   MOTIVO_MINIMO,
   NIVEIS_INICIAIS,
   STATUS_ALUNO,
   STATUS_CHECKPOINT,
+  ResultadoAnaliseSchema,
   TIPOS_RESPONSAVEL,
   type AlunoDetalhe,
   type CampoAjustavel,
@@ -15,12 +17,15 @@ import {
   type Etapa,
   type EntidadeHistorico,
   type NovoAluno,
+  type RespostaLote,
+  type ResultadoLoteAluno,
   type Responsavel,
   type TipoIntervencao,
   type Usuario,
 } from "../contrato";
+import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
 import { montarAluno, naJornada } from "./motor";
-import { ErroDaApi, type AlunoBanco, type Banco } from "./tipos";
+import { ErroDaApi, type AlunoBanco, type AnaliseBanco, type Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // Escritas do modo demonstração, no MESMO caminho da seção 5 do backend:
@@ -546,6 +551,189 @@ export function patchItemConfig(banco: Banco, colecao: ColecaoConfig, id: string
   }
   Object.assign(item, v);
   return banco.config;
+}
+
+// ---------------------------------------------------------------------------
+// Fase 3 — lote (seção 3 do backend): atômico por aluno. Cada aluno roda numa
+// cópia do banco; erro descarta só a cópia dele. Uma conferência de versão e um
+// incremento por aluno; histórico com o mesmo lote_id.
+// ---------------------------------------------------------------------------
+
+type ItemDoLote = Record<string, unknown> & { id?: unknown; novo?: unknown; arquivar?: unknown };
+
+const objeto = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+const listaDe = (campo: string, v: unknown): ItemDoLote[] => {
+  if (v == null) return [];
+  if (!Array.isArray(v)) erro400(campo, "Envie uma lista.");
+  return v.map(objeto);
+};
+function semChaves(o: Record<string, unknown>, ...chaves: string[]) {
+  return Object.fromEntries(Object.entries(o).filter(([k]) => !chaves.includes(k)));
+}
+
+function gravarAlunoDoLote(banco: Banco, item: Record<string, unknown>, motivoPadrao: string | null, ctx: Contexto): AlunoDetalhe {
+  const alunoId = typeof item.aluno_id === "string" ? item.aluno_id : "";
+  const a = alunoOu404(banco, alunoId);
+  const versao = item.versao;
+  if (typeof versao !== "number" || !Number.isInteger(versao)) erro400("versao", "Envie a versão do aluno.");
+  conferirVersao(banco, a, versao, ctx);
+  const campos = objeto(item.campos);
+  const ajustes = listaDe("ajustes", item.ajustes);
+  const checkpoints = listaDe("checkpoints", item.checkpoints);
+  const intervencoes = listaDe("intervencoes", item.intervencoes);
+  if (!Object.keys(campos).length && !ajustes.length && !checkpoints.length && !intervencoes.length) {
+    erro400("aluno", "Nenhuma alteração para este aluno.");
+  }
+  // Cada passo usa a versão do momento; no fim, a versão sobe UMA vez.
+  const v = () => a.versao;
+  if (Object.keys(campos).length) patchAluno(banco, a.id, campos as CamposDiretosAluno, v(), ctx);
+  for (const aj of ajustes) {
+    const campo = typeof aj.campo === "string" ? aj.campo : "";
+    if (aj.remover === true) removerAjuste(banco, a.id, campo, v(), ctx);
+    else {
+      const motivo = typeof aj.motivo === "string" && aj.motivo.trim() ? aj.motivo : motivoPadrao;
+      if (!motivo) erro400("motivo", `Ajuste de ${campo} sem motivo: informe o motivo ou um motivo padrão.`);
+      ajustar(banco, a.id, campo, aj.valor, motivo, v(), ctx);
+    }
+  }
+  const doAluno = (lista: { id: string; aluno_id: string }[], id: unknown, campo: string) => {
+    if (!lista.some((x) => x.id === id && x.aluno_id === a.id)) erro400(campo, "Item inexistente ou de outro aluno.");
+    return id as string;
+  };
+  for (const c of checkpoints) {
+    if (c.novo === true) criarCheckpoint(banco, a.id, semChaves(c, "novo", "id") as CamposCheckpoint, v(), ctx);
+    else {
+      const id = doAluno(banco.checkpoints, c.id, "checkpoints");
+      if (c.arquivar === true) arquivarCheckpoint(banco, id, v(), ctx);
+      else patchCheckpoint(banco, id, semChaves(c, "id") as CamposCheckpoint, v(), ctx);
+    }
+  }
+  for (const i of intervencoes) {
+    if (i.novo === true) {
+      criarIntervencao(banco, { ...(semChaves(i, "novo", "id") as Record<string, string>), aluno_id: a.id } as never, v(), ctx);
+    } else {
+      const id = doAluno(banco.intervencoes, i.id, "intervencoes");
+      if (i.arquivar === true) arquivarIntervencao(banco, id, v(), ctx);
+      else patchIntervencao(banco, id, semChaves(i, "id") as CamposIntervencao, v(), ctx);
+    }
+  }
+  a.versao = versao + 1;
+  return montarAluno(banco, a, ctx.hoje);
+}
+
+export function salvarLote(banco: Banco, corpo: Record<string, unknown>, ctx: Contexto): RespostaLote {
+  const alunos = corpo.alunos;
+  if (!Array.isArray(alunos) || alunos.length === 0) erro400("alunos", "Envie ao menos um aluno.");
+  if (alunos.length > LIMITE_LOTE) erro400("alunos", `No máximo ${LIMITE_LOTE} alunos por lote.`);
+  const motivoPadrao = typeof corpo.motivo_padrao === "string" && corpo.motivo_padrao.trim() ? corpo.motivo_padrao : null;
+  const loteId = novoId("lote");
+  const resultados = alunos.map((bruto): ResultadoLoteAluno => {
+    const item = objeto(bruto);
+    const alunoId = typeof item.aluno_id === "string" ? item.aluno_id : "";
+    const copia = structuredClone(banco);
+    const desde = copia.historico.length;
+    try {
+      const aluno = gravarAlunoDoLote(copia, item, motivoPadrao, ctx);
+      copia.historico.slice(desde).forEach((h) => (h.lote_id = loteId));
+      Object.assign(banco, copia);
+      return { aluno_id: alunoId, ok: true, aluno };
+    } catch (e) {
+      if (!(e instanceof ErroDaApi)) throw e;
+      if (e.status === 409 && e.corpo.aluno) return { aluno_id: alunoId, ok: false, error: "versao", aluno: e.corpo.aluno as AlunoDetalhe };
+      return {
+        aluno_id: alunoId,
+        ok: false,
+        error: "validacao",
+        campo: e.corpo.campo ?? (e.status === 404 ? "aluno_id" : ""),
+        mensagem: e.corpo.mensagem ?? e.corpo.error,
+      };
+    }
+  });
+  return { lote_id: loteId, resultados };
+}
+
+// ---------------------------------------------------------------------------
+// Fase 3 — análise de aula (seção 5.2 do backend)
+// ---------------------------------------------------------------------------
+
+function analiseOu404(banco: Banco, id: string): AnaliseBanco {
+  const an = (banco.analises ?? []).find((x) => x.id === id);
+  if (!an) throw new ErroDaApi(404, { error: "nao_encontrado", mensagem: "Análise não encontrada." });
+  return an;
+}
+
+export function criarAnalise(banco: Banco, corpo: Record<string, unknown>, ctx: Contexto): { id: string } {
+  const a = alunoOu404(banco, texto("aluno_id", corpo.aluno_id, true) as string);
+  if (a.arquivado_em) erro400("aluno_id", "Aluno arquivado.");
+  const dataAula = data("data_aula", corpo.data_aula, true) as string;
+  let etapaId = a.etapa_id;
+  if (corpo.etapa_id) {
+    if (!banco.config.etapas.some((e) => e.id === corpo.etapa_id)) erro400("etapa_id", "Etapa inexistente.");
+    etapaId = corpo.etapa_id as string;
+  }
+  const arquivo = typeof corpo.arquivo_nome === "string" ? corpo.arquivo_nome : null;
+  let bruto = typeof corpo.texto === "string" ? corpo.texto : "";
+  if (arquivo) {
+    if (/\.docx$/i.test(arquivo)) bruto = TEXTO_DOCX_EXEMPLO;
+    else if (/\.(txt|vtt|srt)$/i.test(arquivo)) bruto = typeof corpo.arquivo_texto === "string" ? corpo.arquivo_texto : "";
+    else erro400("arquivo", "Formato não aceito. Envie .txt, .vtt, .srt ou .docx.");
+  }
+  const transcricao = limparTranscricao(bruto, arquivo);
+  if (!transcricao) erro400(arquivo ? "arquivo" : "texto", "A transcrição está vazia.");
+  const id = novoId("an");
+  banco.analises = banco.analises ?? [];
+  banco.analises.push({
+    id,
+    aluno_id: a.id,
+    data_aula: dataAula,
+    etapa_id: etapaId,
+    arquivo_nome: arquivo,
+    transcricao,
+    estado: "processamento",
+    inicio: ctx.agora,
+    falhar: transcricao.includes(MARCA_DE_ERRO) || corpo.simular_erro === "1",
+    resultado_ia: resultadoDeExemplo(transcricao),
+    resultado_confirmado: null,
+    criada_por: ctx.usuario,
+    criada_em: ctx.agora,
+    confirmada_por: null,
+    confirmada_em: null,
+  });
+  return { id };
+}
+
+export function confirmarAnalise(banco: Banco, id: string, resultado: unknown, versao: number, ctx: Contexto) {
+  const an = analiseOu404(banco, id);
+  if (statusDe(an, ctx.agora) !== "pronta") erro400("status", "Só uma análise pronta pode ser confirmada.");
+  const a = alunoOu404(banco, an.aluno_id);
+  conferirVersao(banco, a, versao, ctx);
+  const r = ResultadoAnaliseSchema.safeParse(resultado);
+  if (!r.success) erro400("resultado", "Resultado fora do formato (resumo, 4 notas de 0 a 100 e highlights).");
+  an.estado = "confirmada";
+  an.resultado_confirmado = r.data;
+  an.confirmada_por = ctx.usuario;
+  an.confirmada_em = ctx.agora;
+  registrar(banco, ctx, a, "aluno", a.id, "analise_aula", null, an.data_aula);
+  return fim(banco, a, ctx);
+}
+
+export function descartarAnalise(banco: Banco, id: string, ctx: Contexto): AnaliseBanco {
+  const an = analiseOu404(banco, id);
+  if (statusDe(an, ctx.agora) === "confirmada") erro400("status", "Análise confirmada não pode ser descartada.");
+  an.estado = "descartada";
+  return an;
+}
+
+export function reprocessarAnalise(banco: Banco, id: string, ctx: Contexto): AnaliseBanco {
+  const an = analiseOu404(banco, id);
+  const status = statusDe(an, ctx.agora);
+  if (status !== "erro" && status !== "pronta" && status !== "descartada") {
+    erro400("status", "Só dá para reprocessar uma análise com erro, pronta ou descartada.");
+  }
+  an.estado = "processamento";
+  an.inicio = ctx.agora;
+  an.resultado_ia = resultadoDeExemplo(an.transcricao);
+  return an;
 }
 
 export type { CheckpointModelo };

@@ -1,4 +1,11 @@
-import { FAIXAS_SAUDE, SINAIS, STATUS_ALUNO, STATUS_CHECKPOINT, type StatusCheckpoint } from "@/lib/educacional/contrato";
+import {
+  FAIXAS_SAUDE,
+  SINAIS,
+  STATUS_ALUNO,
+  STATUS_CHECKPOINT,
+  type StatusAluno,
+  type StatusCheckpoint,
+} from "@/lib/educacional/contrato";
 import { ehOrdem, queryDosFiltros, type FiltrosAlunos, type Simular } from "@/lib/educacional/apiEducacional";
 import { ROTULO_FAIXA, ROTULO_SINAL, ROTULO_STATUS_ALUNO, ROTULO_STATUS_CHECKPOINT } from "@/lib/educacional/rotulos";
 
@@ -85,7 +92,8 @@ export function descreverFiltros(e: EstadoTabela, nomes: NomesDosFiltros = {}): 
   if (e.responsavel) partes.push(`Responsável: ${nomes.responsavel?.(e.responsavel) ?? "—"}`);
   if (e.sinal) partes.push(`Sinal: ${ROTULO_SINAL[e.sinal]}`);
   if (e.health_max != null) partes.push(`Health Score abaixo de ${e.health_max}`);
-  if (e.status_aluno) partes.push(`Status: ${ROTULO_STATUS_ALUNO[e.status_aluno]}`);
+  const status = e.status_aluno == null ? [] : ([] as StatusAluno[]).concat(e.status_aluno);
+  if (status.length) partes.push(`Status: ${status.map((s) => ROTULO_STATUS_ALUNO[s]).join(" + ")}`);
   return partes;
 }
 

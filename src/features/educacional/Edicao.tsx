@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Loader2, PencilLine } from "lucide-react";
 import { STATUS_CHECKPOINT, type Ajuste, type StatusCheckpoint } from "@/lib/educacional/contrato";
 import { dataHoraBr, hojeEmBrasilia, ROTULO_STATUS_CHECKPOINT } from "@/lib/educacional/rotulos";
@@ -148,21 +148,37 @@ function useFocoInicial<T extends HTMLElement>() {
   return ref;
 }
 
+// Sugestões nativas do navegador (<datalist>): sugere enquanto digita e aceita
+// valor novo. D2: mentorias existentes, vindas do /config.
+export function Sugestoes({ id, opcoes }: { id: string; opcoes?: readonly string[] }) {
+  if (!opcoes?.length) return null;
+  return (
+    <datalist id={id}>
+      {opcoes.map((o) => (
+        <option key={o} value={o} />
+      ))}
+    </datalist>
+  );
+}
+
 export function EditorTexto({
   valor,
   obrigatorio = false,
   rotulo,
+  sugestoes,
   onSalvar,
   onCancelar,
 }: {
   valor: string;
   obrigatorio?: boolean;
   rotulo: string;
+  sugestoes?: readonly string[];
   onSalvar: (v: string | null) => void;
   onCancelar: () => void;
 }) {
   const [v, setV] = useState(valor);
   const ref = useFocoInicial<HTMLInputElement>();
+  const lista = useId();
   return (
     <CaixaEdicao
       onCancelar={onCancelar}
@@ -172,7 +188,16 @@ export function EditorTexto({
         else onSalvar(limpo || null);
       }}
     >
-      <input ref={ref} aria-label={rotulo} value={v} onChange={(e) => setV(e.target.value)} className={ENTRADA} />
+      <input
+        ref={ref}
+        aria-label={rotulo}
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        list={sugestoes?.length ? lista : undefined}
+        autoComplete="off"
+        className={ENTRADA}
+      />
+      <Sugestoes id={lista} opcoes={sugestoes} />
     </CaixaEdicao>
   );
 }

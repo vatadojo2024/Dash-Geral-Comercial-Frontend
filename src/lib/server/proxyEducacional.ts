@@ -61,11 +61,14 @@ export async function proxyEducacional(req: NextRequest): Promise<NextResponse> 
   // Remonta o caminho a partir dos segmentos validados (recodificados).
   const destino = `${base.replace(/\/$/, "")}${PREFIXO}${segmentos.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
   const temCorpo = metodo !== "GET";
+  // O corpo vai como veio, em bytes, com o Content-Type original: JSON ou
+  // multipart da análise de aula (o boundary está no Content-Type).
+  const tipo = req.headers.get("content-type") ?? "application/json";
   try {
     const res = await fetch(destino, {
       method: metodo,
-      headers: { Authorization: token, ...(temCorpo ? { "Content-Type": "application/json" } : {}) },
-      body: temCorpo ? await req.text() : undefined,
+      headers: { Authorization: token, ...(temCorpo ? { "Content-Type": tipo } : {}) },
+      body: temCorpo ? await req.arrayBuffer() : undefined,
       cache: "no-store",
     });
     const corpo = (await res.json().catch(() => null)) as unknown;

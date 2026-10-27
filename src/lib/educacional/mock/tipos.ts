@@ -4,6 +4,7 @@ import type {
   Config,
   EntidadeHistorico,
   NivelInicial,
+  ResultadoAnalise,
   StatusAluno,
   StatusCheckpoint,
   Usuario,
@@ -89,6 +90,29 @@ export type HistoricoBanco = {
   motivo: string | null;
   usuario: Usuario;
   em: string;
+  lote_id?: string; // Fase 3: linhas de um mesmo "Salvar" em lote
+};
+
+// Fase 3 (edu_analises_aula). O status de quem está "em processamento" não é
+// guardado: sai do tempo desde `inicio` (ver mock/analises.ts), para a fila andar
+// mesmo depois de recarregar a página.
+export type AnaliseBanco = {
+  id: string;
+  aluno_id: string;
+  data_aula: string;
+  etapa_id: string;
+  arquivo_nome: string | null;
+  transcricao: string;
+  estado: "processamento" | "confirmada" | "descartada";
+  inicio: string; // ISO: envio ou último reprocessamento
+  falhar: boolean; // texto com #erro (ou ?simular_analise=erro): termina em erro
+  resultado_ia: ResultadoAnalise | null;
+  resultado_confirmado: ResultadoAnalise | null;
+  importada?: boolean; // semente D4: veio da Fase 1
+  criada_por: Usuario;
+  criada_em: string;
+  confirmada_por: Usuario | null;
+  confirmada_em: string | null;
 };
 
 export type Banco = {
@@ -99,6 +123,7 @@ export type Banco = {
   intervencoes: IntervencaoBanco[];
   ajustes: AjusteBanco[];
   historico: HistoricoBanco[];
+  analises: AnaliseBanco[];
 };
 
 // Erro com o mesmo corpo que a API devolve (seção 4 do backend + definições Q4).

@@ -2,9 +2,11 @@ import {
   ENTIDADES_HISTORICO,
   linhaDoDetalhe,
   type AlunoLinha,
+  type Config,
   type FaixaSaude,
   type StatusCheckpoint,
 } from "../contrato";
+import { detalheDaAnalise, itemDaLista, statusDe } from "./analises";
 import * as escrita from "./escrita";
 import { montarAluno, montarResumo } from "./motor";
 import { ErroDaApi, type Banco } from "./tipos";
@@ -18,6 +20,8 @@ import { ErroDaApi, type Banco } from "./tipos";
 // Padrões do backend quando a query não diz (o adapter sempre diz: 25 e 20).
 export const TAMANHO_PAGINA = 50;
 export const TAMANHO_PAGINA_HISTORICO = 50;
+export const TAMANHO_PAGINA_ANALISES = 20;
+export const LIMITE_OPCOES = 20;
 
 export type Requisicao = {
   metodo: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -87,17 +91,30 @@ function ordenador(ordem: string, banco: Banco): (a: AlunoLinha, b: AlunoLinha) 
     faixa_saude: (a, b) => faixa(a) - faixa(b),
     proxima_acao: (a, b) => txt(a.proxima_acao?.descricao).localeCompare(txt(b.proxima_acao?.descricao), "pt-BR"),
     responsavel: (a, b) => txt(a.responsavel?.nome).localeCompare(txt(b.responsavel?.nome), "pt-BR"),
+    // D3: faixa efetiva (risco, atenção, saudável), depois dias sem atividade
+    // decrescente, com os sem valor no fim.
+    atencao: (a, b) =>
+      faixa(a) - faixa(b) || (b.dias_sem_atividade.valor ?? -1) - (a.dias_sem_atividade.valor ?? -1),
   };
   const desc = ordem.startsWith("-");
   const f = base[desc ? ordem.slice(1) : ordem] ?? padrao;
   return (a, b) => (desc ? -f(a, b) : f(a, b)) || padrao(a, b);
 }
 
-// Mesma query do backend: etapa_id, responsavel_id, incluir_arquivados=true, UM
-// status de checkpoint, health_max inclusivo, ordem padrão nome.
+// Sem acento e em minúsculas, para a busca por nome.
+export const normalizar = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const listaDaQuery = (q: URLSearchParams, k: string) => (q.get(k) ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+
+// Mesma query do backend: etapa_id, responsavel_id (ou "sem"), incluir_arquivados
+// (true/1), status de checkpoint, de aluno, faixa e mentoria em lista por vírgula,
+// busca no nome (2+ letras, sem acento), health_max inclusivo, ordem padrão nome.
 function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
-  const arquivados = q.get("incluir_arquivados") === "true";
-  const checkpoint = q.get("checkpoint");
+  const arquivados = q.get("incluir_arquivados") === "true" || q.get("incluir_arquivados") === "1";
+  const checkpoint = listaDaQuery(q, "checkpoint");
+  const statusAluno = listaDaQuery(q, "status_aluno");
+  const faixas = listaDaQuery(q, "faixa_saude");
+  const mentorias = listaDaQuery(q, "mentoria");
+  const busca = normalizar((q.get("busca") ?? "").trim());
   const healthMax = q.get("health_max");
   const todos = banco.alunos
     .filter((a) => arquivados || !a.arquivado_em)
@@ -105,9 +122,13 @@ function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
     .filter((a) => {
       if (q.get("etapa_id") && a.etapa.id !== q.get("etapa_id")) return false;
       if (q.get("risco") && a.faixa_saude.valor !== q.get("risco")) return false;
-      if (checkpoint && a.proximo_checkpoint?.status !== checkpoint) return false;
-      if (q.get("responsavel_id") && a.responsavel?.id !== q.get("responsavel_id")) return false;
-      if (q.get("status_aluno") && a.status_aluno !== q.get("status_aluno")) return false;
+      if (checkpoint.length && !(a.proximo_checkpoint && checkpoint.includes(a.proximo_checkpoint.status))) return false;
+      const resp = q.get("responsavel_id");
+      if (resp === "sem" ? a.responsavel !== null : resp && a.responsavel?.id !== resp) return false;
+      if (statusAluno.length && !statusAluno.includes(a.status_aluno)) return false;
+      if (faixas.length && !(a.faixa_saude.valor && faixas.includes(a.faixa_saude.valor))) return false;
+      if (mentorias.length && !mentorias.includes(a.mentoria)) return false;
+      if (busca.length >= 2 && !normalizar(a.nome).includes(busca)) return false;
       const sinal = q.get("sinal") as keyof AlunoLinha["sinais"] | null;
       if (sinal && a.sinais[sinal]?.valor !== true) return false;
       // INCLUSIVO, como no backend: health_max=49 → Health Score efetivo até 49.
@@ -119,6 +140,40 @@ function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
   const tamanho = Math.max(1, Number(q.get("por_pagina")) || TAMANHO_PAGINA);
   const pagina = Math.max(1, Number(q.get("pagina")) || 1);
   return { itens: todos.slice((pagina - 1) * tamanho, pagina * tamanho), total: todos.length };
+}
+
+// D2: mentorias existentes (distintas, em ordem), para o filtro e as sugestões.
+function configComMentorias(banco: Banco): Config {
+  const mentorias = [...new Set(banco.alunos.map((a) => a.mentoria.trim()).filter(Boolean))].sort((x, y) =>
+    x.localeCompare(y, "pt-BR"),
+  );
+  return { ...banco.config, mentorias };
+}
+
+// GET /alunos/opcoes: até 20 alunos não arquivados, por nome.
+function opcoesDeAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
+  const busca = normalizar((q.get("busca") ?? "").trim());
+  const itens = banco.alunos
+    .filter((a) => !a.arquivado_em && (busca.length < 2 || normalizar(a.nome).includes(busca)))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+    .slice(0, LIMITE_OPCOES)
+    .map((a) => {
+      const d = montarAluno(banco, a, hoje);
+      return { id: d.id, nome: d.nome, mentoria: d.mentoria, etapa: d.etapa };
+    });
+  return { itens };
+}
+
+function listarAnalises(banco: Banco, q: URLSearchParams, agora: string) {
+  const alunoId = q.get("aluno_id");
+  const status = listaDaQuery(q, "status");
+  const itens = (banco.analises ?? [])
+    .filter((x) => (!alunoId || x.aluno_id === alunoId) && (!status.length || status.includes(statusDe(x, agora))))
+    .sort((a, b) => b.criada_em.localeCompare(a.criada_em))
+    .map((x) => itemDaLista(banco, x, agora));
+  const tamanho = Math.max(1, Number(q.get("por_pagina")) || TAMANHO_PAGINA_ANALISES);
+  const pagina = Math.max(1, Number(q.get("pagina")) || 1);
+  return { itens: itens.slice((pagina - 1) * tamanho, pagina * tamanho), total: itens.length };
 }
 
 function historico(banco: Banco, alunoId: string, q: URLSearchParams) {
@@ -162,14 +217,30 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
   // ---- leitura ----
   if (metodo === "GET") {
     if (s.length === 1 && s[0] === "resumo") return montarResumo(banco, ctx.hoje, ctx.agora);
-    if (s.length === 1 && s[0] === "config") return banco.config;
+    if (s.length === 1 && s[0] === "config") return configComMentorias(banco);
     if (s.length === 1 && s[0] === "alunos") return listarAlunos(banco, q, ctx.hoje);
+    if (s.length === 2 && s[0] === "alunos" && s[1] === "opcoes") return opcoesDeAlunos(banco, q, ctx.hoje);
+    if (s.length === 1 && s[0] === "analises") return listarAnalises(banco, q, ctx.agora);
+    if (s.length === 2 && s[0] === "analises") {
+      const an = (banco.analises ?? []).find((x) => x.id === s[1]);
+      if (!an) throw new ErroDaApi(404, { error: "nao_encontrado", mensagem: "Análise não encontrada." });
+      return detalheDaAnalise(banco, an, ctx.agora);
+    }
     if (s.length === 2 && s[0] === "alunos") return aluno(s[1]);
     if (s.length === 3 && s[0] === "alunos" && s[2] === "historico") {
       aluno(s[1]);
       return historico(banco, s[1], q);
     }
     naoEncontrado();
+  }
+
+  // ---- Fase 3: lote e análises ----
+  if (s.length === 1 && s[0] === "lote" && metodo === "POST") return escrita.salvarLote(banco, corpo, ctx);
+  if (s[0] === "analises" && metodo === "POST") {
+    if (s.length === 1) return escrita.criarAnalise(banco, corpo, ctx);
+    if (s.length === 3 && s[2] === "confirmar") return escrita.confirmarAnalise(banco, s[1], corpo.resultado, versaoDo(corpo), ctx);
+    if (s.length === 3 && s[2] === "descartar") return detalheDaAnalise(banco, escrita.descartarAnalise(banco, s[1], ctx), ctx.agora);
+    if (s.length === 3 && s[2] === "reprocessar") return detalheDaAnalise(banco, escrita.reprocessarAnalise(banco, s[1], ctx), ctx.agora);
   }
 
   // ---- escrita em alunos ----
@@ -207,8 +278,15 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
   // ---- escrita em configuração ----
   if (s[0] === "config" && s[1] && COLECOES[s[1]]) {
     const colecao = COLECOES[s[1]];
-    if (s.length === 2 && metodo === "POST") return escrita.criarItemConfig(banco, colecao, corpo);
-    if (s.length === 3 && metodo === "PATCH") return escrita.patchItemConfig(banco, colecao, s[2], corpo);
+    // Como o backend: toda escrita de config devolve a config inteira (com mentorias).
+    if (s.length === 2 && metodo === "POST") {
+      escrita.criarItemConfig(banco, colecao, corpo);
+      return configComMentorias(banco);
+    }
+    if (s.length === 3 && metodo === "PATCH") {
+      escrita.patchItemConfig(banco, colecao, s[2], corpo);
+      return configComMentorias(banco);
+    }
   }
   naoEncontrado();
 }

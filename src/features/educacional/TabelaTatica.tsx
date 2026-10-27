@@ -289,6 +289,7 @@ function Lista({
   // Props estáveis para as linhas memorizadas.
   const etapas = useMemo(() => etapasAtivas(config.data), [config.data]);
   const responsaveis = useMemo(() => ativos(config.data?.responsaveis), [config.data]);
+  const mentorias = useMemo(() => config.data?.mentorias ?? [], [config.data]);
   const colunas = useMemo(() => COLUNAS_DA_TABELA.filter((c) => visiveis.includes(c.id)), [visiveis]);
   const abrirAjuste = useCallback((aluno: AlunoLinha, campo: CampoAjustavel) => setAjuste({ aluno, campo }), []);
 
@@ -332,6 +333,7 @@ function Lista({
               colunas={colunas}
               etapas={etapas}
               responsaveis={responsaveis}
+              mentorias={mentorias}
               hrefDoAluno={hrefDoAluno}
               onAjuste={abrirAjuste}
             />
@@ -357,11 +359,12 @@ type PropsLinha = {
   colunas: ColunaVisivel[];
   etapas: Etapa[];
   responsaveis: Responsavel[];
+  mentorias: string[];
   hrefDoAluno: (a: AlunoLinha) => string;
   onAjuste: (a: AlunoLinha, campo: CampoAjustavel) => void;
 };
 
-const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, hrefDoAluno, onAjuste }: PropsLinha) {
+const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, mentorias, hrefDoAluno, onAjuste }: PropsLinha) {
   const gravar = useGravacao();
 
   // PATCH /alunos/:id com o otimista dos mesmos campos.
@@ -625,6 +628,7 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
               <EditorTexto
                 rotulo="Mentoria"
                 valor={a.mentoria}
+                sugestoes={mentorias}
                 obrigatorio
                 onCancelar={cancelar}
                 onSalvar={(m) => concluir(salvar(a, { mentoria: m ?? a.mentoria }, (l) => ({ ...l, mentoria: m ?? l.mentoria })))}

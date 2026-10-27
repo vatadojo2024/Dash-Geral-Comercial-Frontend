@@ -1,6 +1,10 @@
 import {
   AlunoLinhaSchema,
+  AnaliseDetalheSchema,
+  AnaliseItemListaSchema,
   CheckpointModeloSchema,
+  LIMITE_LOTE,
+  OpcaoAlunoSchema,
   EtapaSchema,
   ItemHistoricoSchema,
   ResponsavelSchema,
@@ -10,6 +14,9 @@ import {
   validarLista,
   type AlunoDetalhe,
   type AlunoLinha,
+  type AlunoNoLote,
+  type AnaliseDetalhe,
+  type AnaliseItemLista,
   type CampoAjustavel,
   type CamposCheckpoint,
   type CamposDiretosAluno,
@@ -19,9 +26,15 @@ import {
   type FaixaSaude,
   type ItemHistorico,
   type NovoAluno,
+  type OpcaoAluno,
+  type PedidoLote,
+  type RespostaLote,
+  type ResultadoAnalise,
+  type ResultadoLoteAluno,
   type ResumoEducacional,
   type Sinal,
   type StatusAluno,
+  type StatusAnalise,
   type StatusCheckpoint,
   type Usuario,
 } from "./contrato";
@@ -89,6 +102,7 @@ const CHAVES_ORDEM = [
   "faixa_saude",
   "proxima_acao",
   "responsavel",
+  "atencao", // D3 (Fase 3): faixa efetiva, depois dias sem atividade desc
 ] as const;
 export type ChaveOrdem = (typeof CHAVES_ORDEM)[number];
 export type OrdemAlunos = ChaveOrdem | `-${ChaveOrdem}`;
@@ -100,11 +114,15 @@ export type FiltrosAlunos = {
   etapa?: string | null; // id da etapa
   risco?: FaixaSaude | null; // faixa de saúde efetiva
   checkpoint?: StatusCheckpoint[];
-  responsavel?: string | null; // id do responsável
+  responsavel?: string | null; // id do responsável, ou RESPONSAVEL_NENHUM
   sinal?: Sinal | null;
   // EXCLUSIVO: health_max=50 → Health Score efetivo abaixo de 50.
   health_max?: number | null;
-  status_aluno?: StatusAluno | null;
+  status_aluno?: StatusAluno | StatusAluno[] | null;
+  // Fase 3 (aba Alunos)
+  busca?: string | null; // nome, a partir de BUSCA_MINIMA letras
+  mentoria?: string[];
+  faixa_saude?: FaixaSaude[];
   incluir_arquivados?: boolean;
   ordem?: OrdemAlunos;
   pagina?: number;
@@ -117,6 +135,15 @@ export type Simular = "erro" | "vazio" | "sem_permissao" | null | undefined;
 export type PaginaAlunos = { itens: AlunoLinha[]; total: number; descartados: number };
 export type PaginaHistorico = { itens: ItemHistorico[]; total: number };
 
+// `responsavel_id=sem`: alunos sem responsável (Fase 3).
+export const RESPONSAVEL_NENHUM = "sem";
+export const BUSCA_MINIMA = 2;
+const buscaValida = (b: string | null | undefined) => {
+  const t = b?.trim() ?? "";
+  return t.length >= BUSCA_MINIMA ? t : null;
+};
+const lista = (v: string | string[] | null | undefined) => (v == null ? [] : Array.isArray(v) ? v : [v]);
+
 export function queryDosFiltros(f: FiltrosAlunos): string {
   const qs = new URLSearchParams();
   if (f.etapa) qs.set("etapa", f.etapa);
@@ -125,7 +152,10 @@ export function queryDosFiltros(f: FiltrosAlunos): string {
   if (f.responsavel) qs.set("responsavel", f.responsavel);
   if (f.sinal) qs.set("sinal", f.sinal);
   if (f.health_max != null) qs.set("health_max", String(f.health_max));
-  if (f.status_aluno) qs.set("status_aluno", f.status_aluno);
+  if (lista(f.status_aluno).length) qs.set("status_aluno", lista(f.status_aluno).join(","));
+  if (buscaValida(f.busca)) qs.set("busca", buscaValida(f.busca)!);
+  if (f.mentoria?.length) qs.set("mentoria", f.mentoria.join(","));
+  if (f.faixa_saude?.length) qs.set("faixa_saude", f.faixa_saude.join(","));
   if (f.incluir_arquivados) qs.set("incluir_arquivados", "1");
   if (f.ordem && f.ordem !== "risco") qs.set("ordem", f.ordem);
   if (f.por_pagina != null) qs.set("por_pagina", String(f.por_pagina));
@@ -146,7 +176,10 @@ export function queryDaApi(f: FiltrosAlunos): string {
   if (f.sinal) qs.set("sinal", f.sinal);
   // A tela diz "abaixo de 50"; o backend devolve "até N" com N inteiro.
   if (f.health_max != null) qs.set("health_max", String(Math.max(0, Math.ceil(f.health_max) - 1)));
-  if (f.status_aluno) qs.set("status_aluno", f.status_aluno);
+  if (lista(f.status_aluno).length) qs.set("status_aluno", lista(f.status_aluno).join(","));
+  if (buscaValida(f.busca)) qs.set("busca", buscaValida(f.busca)!);
+  if (f.mentoria?.length) qs.set("mentoria", f.mentoria.join(","));
+  if (f.faixa_saude?.length) qs.set("faixa_saude", f.faixa_saude.join(","));
   if (f.incluir_arquivados) qs.set("incluir_arquivados", "true");
   qs.set("ordem", f.ordem ?? "risco");
   qs.set("por_pagina", String(f.por_pagina ?? TAMANHO_PAGINA));
@@ -212,10 +245,11 @@ async function transporteMock(p: Pedido): Promise<unknown> {
       salvarBanco(banco, hoje);
     }
   }
+  const corpo = await corpoDoMock(p.corpo);
   try {
     const resposta = atender(
       banco,
-      { metodo: p.metodo, caminho: p.caminho, query: new URLSearchParams(p.query ?? ""), corpo: p.corpo },
+      { metodo: p.metodo, caminho: p.caminho, query: new URLSearchParams(p.query ?? ""), corpo },
       { usuario: usuarioDemo, hoje, agora },
     );
     if (escrita) salvarBanco(banco, hoje);
@@ -224,6 +258,25 @@ async function transporteMock(p: Pedido): Promise<unknown> {
     if (e instanceof ErroDaApi) throw new EducacionalError(e.corpo.mensagem ?? e.corpo.error, e.status, e.corpo);
     throw e;
   }
+}
+
+// Multipart (análise de aula): no mock vira um objeto simples, com o texto do
+// arquivo já lido (.docx não é lido: o servidor do mock usa um texto de exemplo).
+async function corpoDoMock(corpo: unknown): Promise<unknown> {
+  if (typeof FormData === "undefined" || !(corpo instanceof FormData)) return corpo;
+  const o: Record<string, unknown> = {};
+  // ?simular_analise=erro: a análise termina em erro (ver o caminho de erro na tela).
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("simular_analise") === "erro") {
+    o.simular_erro = "1";
+  }
+  for (const [k, v] of corpo.entries()) {
+    if (typeof v === "string") o[k] = v;
+    else {
+      o.arquivo_nome = v.name;
+      o.arquivo_texto = /\.docx$/i.test(v.name) ? null : await v.text();
+    }
+  }
+  return o;
 }
 
 // Aluno dono de uma escrita (para o 409 simulado).
@@ -248,11 +301,14 @@ async function headersComToken(): Promise<Record<string, string>> {
 
 async function transporteApi(p: Pedido): Promise<unknown> {
   let res: Response;
+  // Multipart vai como veio: o navegador põe o Content-Type com o boundary.
+  const multipart = typeof FormData !== "undefined" && p.corpo instanceof FormData;
+  const json = p.corpo !== undefined && !multipart;
   try {
     res = await fetch(`/api/educacional/${p.caminho}${p.query ? `?${p.query}` : ""}`, {
       method: p.metodo,
-      headers: { ...(await headersComToken()), ...(p.corpo !== undefined ? { "Content-Type": "application/json" } : {}) },
-      body: p.corpo !== undefined ? JSON.stringify(p.corpo) : undefined,
+      headers: { ...(await headersComToken()), ...(json ? { "Content-Type": "application/json" } : {}) },
+      body: multipart ? (p.corpo as FormData) : json ? JSON.stringify(p.corpo) : undefined,
     });
   } catch {
     throw new EducacionalError(ERRO_DE_REDE, 0, { error: "rede", mensagem: ERRO_DE_REDE });
@@ -371,6 +427,10 @@ function validarConfig(bruto: unknown): Config {
     tipos_intervencao: validarLista(c.tipos_intervencao, TipoIntervencaoSchema, "tipo de intervenção").validos,
     responsaveis: validarLista(c.responsaveis, ResponsavelSchema, "responsável").validos,
     sync_planilha_erros: typeof c.sync_planilha_erros === "number" ? c.sync_planilha_erros : 0,
+    // D2: mentorias existentes (filtro e sugestões). Só textos não vazios, sem repetição.
+    mentorias: Array.isArray(c.mentorias)
+      ? [...new Set(c.mentorias.filter((m): m is string => typeof m === "string" && m.trim() !== ""))]
+      : [],
   };
 }
 
@@ -449,6 +509,143 @@ export function atualizarIntervencao(intervencaoId: string, versao: number, camp
 
 export function arquivarIntervencao(intervencaoId: string, versao: number): Promise<AlunoDetalhe> {
   return escreverAluno({ metodo: "POST", caminho: `intervencoes/${id(intervencaoId)}/arquivar`, corpo: { versao } });
+}
+
+// ---------------------------------------------------------------------------
+// Fase 3: lote (seção 3 do backend), opções de aluno (seção 4) e análise de
+// aula (seção 5.2)
+// ---------------------------------------------------------------------------
+
+const erroDeValidacao = (campo: string, mensagem: string) =>
+  new EducacionalError(mensagem, 400, { error: "validacao", campo, mensagem });
+
+const RESPOSTA_FORA = "A resposta do servidor para este aluno veio fora do contrato. Recarregue e confira o que foi salvo.";
+
+// Um resultado do lote, validado. Aluno fora do contrato vira erro daquele aluno
+// (a tela pede para recarregar), nunca derruba o lote inteiro.
+function resultadoDoLote(alunoId: string, bruto: unknown): ResultadoLoteAluno {
+  const fora: ResultadoLoteAluno = { aluno_id: alunoId, ok: false, error: "validacao", campo: "", mensagem: RESPOSTA_FORA };
+  if (!bruto || typeof bruto !== "object") return fora;
+  const b = bruto as Record<string, unknown>;
+  if (b.ok === true || b.error === "versao") {
+    const aluno = validarAlunoDetalhe(b.aluno);
+    if (!aluno) return fora;
+    return b.ok === true ? { aluno_id: alunoId, ok: true, aluno } : { aluno_id: alunoId, ok: false, error: "versao", aluno };
+  }
+  return {
+    aluno_id: alunoId,
+    ok: false,
+    error: "validacao",
+    campo: typeof b.campo === "string" ? b.campo : "",
+    mensagem: typeof b.mensagem === "string" ? b.mensagem : "Não foi possível salvar este aluno.",
+  };
+}
+
+// POST /lote: sempre 200 com o resultado de cada aluno (atômico por aluno).
+// 400 só para o corpo inválido no geral (sem alunos, mais de 100, JSON quebrado).
+export async function salvarLote(pedido: PedidoLote): Promise<RespostaLote> {
+  if (!pedido.alunos.length) throw erroDeValidacao("alunos", "Não há alterações para salvar.");
+  if (pedido.alunos.length > LIMITE_LOTE) {
+    throw erroDeValidacao("alunos", `Salve no máximo ${LIMITE_LOTE} alunos de uma vez (há ${pedido.alunos.length}).`);
+  }
+  const corpo = (await chamar({ metodo: "POST", caminho: "lote", corpo: pedido })) as {
+    lote_id?: unknown;
+    resultados?: unknown;
+  } | null;
+  const brutos = Array.isArray(corpo?.resultados) ? (corpo.resultados as unknown[]) : [];
+  // Mesma ordem do pedido; por segurança, casa pelo aluno_id quando ele vem.
+  const doAluno = (a: AlunoNoLote, i: number) =>
+    brutos.find((b) => (b as { aluno_id?: unknown } | null)?.aluno_id === a.aluno_id) ?? brutos[i];
+  return {
+    lote_id: typeof corpo?.lote_id === "string" ? corpo.lote_id : "",
+    resultados: pedido.alunos.map((a, i) => resultadoDoLote(a.aluno_id, doAluno(a, i))),
+  };
+}
+
+// Lista leve para escolher aluno (até 20, não arquivados).
+export async function buscarOpcoesAlunos(busca?: string): Promise<OpcaoAluno[]> {
+  const t = buscaValida(busca);
+  const corpo = (await chamar({
+    metodo: "GET",
+    caminho: "alunos/opcoes",
+    query: t ? `busca=${encodeURIComponent(t)}` : "",
+  })) as { itens?: unknown } | unknown[] | null;
+  const itens = Array.isArray(corpo) ? corpo : corpo?.itens;
+  return validarLista(itens, OpcaoAlunoSchema, "opção de aluno").validos;
+}
+
+export const TAMANHO_PAGINA_ANALISES = 20;
+export type FiltrosAnalises = { aluno_id?: string | null; status?: StatusAnalise[]; pagina?: number };
+export type PaginaAnalises = { itens: AnaliseItemLista[]; total: number };
+
+export async function listarAnalises(f: FiltrosAnalises = {}): Promise<PaginaAnalises> {
+  const qs = new URLSearchParams({ por_pagina: String(TAMANHO_PAGINA_ANALISES) });
+  if (f.aluno_id) qs.set("aluno_id", f.aluno_id);
+  if (f.status?.length) qs.set("status", f.status.join(","));
+  if (f.pagina && f.pagina > 1) qs.set("pagina", String(f.pagina));
+  const corpo = (await chamar({ metodo: "GET", caminho: "analises", query: qs.toString() })) as {
+    itens?: unknown;
+    total?: unknown;
+  } | null;
+  const { validos } = validarLista(corpo?.itens, AnaliseItemListaSchema, "análise");
+  return { itens: validos, total: typeof corpo?.total === "number" ? corpo.total : validos.length };
+}
+
+export async function buscarAnalise(analiseId: string): Promise<AnaliseDetalhe> {
+  const r = AnaliseDetalheSchema.safeParse(await chamar({ metodo: "GET", caminho: `analises/${id(analiseId)}` }));
+  if (!r.success) throw new EducacionalError("Análise fora do contrato.", 502);
+  return r.data;
+}
+
+// D1: 4 MB (o corpo de uma função da Vercel para em 4,5 MB; o backend aceita 5).
+export const LIMITE_ARQUIVO_ANALISE = 4 * 1024 * 1024;
+export const FORMATOS_ANALISE = [".txt", ".vtt", ".srt", ".docx"] as const;
+
+export type NovaAnalise = { aluno_id: string; data_aula: string; etapa_id?: string | null } & (
+  | { arquivo: File; texto?: undefined }
+  | { texto: string; arquivo?: undefined }
+);
+
+// Envia a transcrição (arquivo ou texto colado). Responde 202 com o id; a IA
+// processa em segundo plano.
+export async function enviarAnalise(n: NovaAnalise): Promise<{ id: string }> {
+  const fd = new FormData();
+  fd.set("aluno_id", n.aluno_id);
+  fd.set("data_aula", n.data_aula);
+  if (n.etapa_id) fd.set("etapa_id", n.etapa_id);
+  if (n.arquivo) {
+    const nome = n.arquivo.name.toLowerCase();
+    if (!FORMATOS_ANALISE.some((f) => nome.endsWith(f))) {
+      throw erroDeValidacao("arquivo", `Formato não aceito. Envie ${FORMATOS_ANALISE.join(", ")} ou cole o texto.`);
+    }
+    if (n.arquivo.size > LIMITE_ARQUIVO_ANALISE) {
+      const mb = (n.arquivo.size / 1024 / 1024).toFixed(1).replace(".", ",");
+      throw erroDeValidacao("arquivo", `O arquivo tem ${mb} MB e o limite é 4 MB. Envie um arquivo menor ou cole o texto.`);
+    }
+    fd.set("arquivo", n.arquivo);
+  } else {
+    if (!n.texto?.trim()) throw erroDeValidacao("texto", "Cole o texto da transcrição ou envie um arquivo.");
+    if (new Blob([n.texto]).size > LIMITE_ARQUIVO_ANALISE) {
+      throw erroDeValidacao("texto", "O texto passa de 4 MB. Envie só a transcrição desta aula.");
+    }
+    fd.set("texto", n.texto);
+  }
+  const r = (await chamar({ metodo: "POST", caminho: "analises", corpo: fd })) as { id?: unknown } | null;
+  if (typeof r?.id !== "string") throw new EducacionalError("Enviado, mas a resposta veio sem o id da análise.", 502);
+  return { id: r.id };
+}
+
+// Confirma o resultado revisado: grava na ficha (versão do aluno, como toda escrita).
+export function confirmarAnalise(analiseId: string, versao: number, resultado: ResultadoAnalise): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: `analises/${id(analiseId)}/confirmar`, corpo: { versao, resultado } });
+}
+
+export async function descartarAnalise(analiseId: string): Promise<void> {
+  await chamar({ metodo: "POST", caminho: `analises/${id(analiseId)}/descartar`, corpo: {} });
+}
+
+export async function reprocessarAnalise(analiseId: string): Promise<void> {
+  await chamar({ metodo: "POST", caminho: `analises/${id(analiseId)}/reprocessar`, corpo: {} });
 }
 
 // ---------------------------------------------------------------------------

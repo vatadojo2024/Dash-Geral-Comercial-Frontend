@@ -5,10 +5,13 @@ import type {
   Checkpoint,
   FaixaSaude,
   Intervencao,
+  AnaliseResumo,
+  OrigemProgresso,
   ResumoEducacional,
   StatusCheckpoint,
   StatusFinanceiro,
 } from "../contrato";
+import { confirmadasDoAluno } from "./analises";
 import type { AlunoBanco, Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -110,12 +113,18 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
   const checkpoints = checkpointsDoAluno(banco, a.id);
   const intervencoes = intervencoesDoAluno(banco, a.id);
   const c = <T,>(nome: CampoAjustavel, auto: T | null) => campo<T>(banco, a.id, nome, auto);
+  // Fase 3: análises confirmadas (todas para a lista e a última atividade; as da
+  // etapa ATUAL para o progresso automático e os highlights).
+  const confirmadas = confirmadasDoAluno(banco, a.id);
+  const daEtapa = confirmadas.filter((x) => x.etapa_id === a.etapa_id);
+  const ultimaDaEtapa = daEtapa[0] ?? null;
 
   // Automáticos desta fase (seção 3 do backend).
   const diasNaEtapa = c<number>("dias_na_etapa", diasEntre(a.etapa_desde, hoje));
   const datasDeAtividade = [
     ...checkpoints.filter((x) => x.status === "realizado" && x.data_realizada).map((x) => x.data_realizada as string),
     ...intervencoes.filter((i) => i.status === "concluida" && i.concluida_em).map((i) => (i.concluida_em as string).slice(0, 10)),
+    ...confirmadas.map((x) => x.data_aula),
   ].sort();
   const ultimaAtividade = c<string>("ultima_atividade", datasDeAtividade.at(-1) ?? null);
   const diasSemAtividade = c<number>(
@@ -126,6 +135,38 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
   const faixa = c<FaixaSaude>("faixa_saude", faixaDoHealth(health.valor)); // pelo Health EFETIVO
   const ultimaEtapa = etapasAtivas(banco).at(-1);
   const bigWinRealizado = checkpoints.some((x) => x.big_win && x.status === "realizado");
+  // Progresso automático = notas da análise confirmada mais recente da etapa atual
+  // (sem análise na etapa: null). Ajuste manual continua prevalecendo.
+  const nota = (k: "consumiu" | "entendeu" | "aplicou" | "validou") =>
+    ultimaDaEtapa?.resultado_confirmado?.progresso[k].nota ?? null;
+  const progresso = {
+    consumiu: c<number>("progresso_consumiu", nota("consumiu")),
+    entendeu: c<number>("progresso_entendeu", nota("entendeu")),
+    aplicou: c<number>("progresso_aplicou", nota("aplicou")),
+    validou: c<number>("progresso_validou", nota("validou")),
+  };
+  const origem = (n: CampoCalculado<number>): OrigemProgresso => {
+    if (n.ajuste) return { tipo: "ajuste" };
+    if (n.automatico != null && ultimaDaEtapa) return { tipo: "analise", analise_id: ultimaDaEtapa.id, data_aula: ultimaDaEtapa.data_aula };
+    return { tipo: "nenhuma" };
+  };
+  // Highlights das análises da etapa atual (até 20); sem análise, os da ficha.
+  const highlightsDasAnalises = daEtapa
+    .flatMap((x) => (x.resultado_confirmado?.highlights ?? []).map((texto) => ({ data_aula: x.data_aula, texto })))
+    .slice(0, 20);
+  const nomeDaEtapa = (id: string) => banco.config.etapas.find((e) => e.id === id)?.nome ?? "Etapa removida";
+  const analises: AnaliseResumo[] = confirmadas.map((x) => ({
+    id: x.id,
+    data_aula: x.data_aula,
+    etapa: { id: x.etapa_id, nome: nomeDaEtapa(x.etapa_id) },
+    resumo: x.resultado_confirmado!.resumo,
+    notas: {
+      consumiu: x.resultado_confirmado!.progresso.consumiu.nota,
+      entendeu: x.resultado_confirmado!.progresso.entendeu.nota,
+      aplicou: x.resultado_confirmado!.progresso.aplicou.nota,
+      validou: x.resultado_confirmado!.progresso.validou.nota,
+    },
+  }));
 
   return {
     id: a.id,
@@ -159,15 +200,19 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
     ultima_atividade: ultimaAtividade,
     status_financeiro: c<StatusFinanceiro>("status_financeiro", null),
     ltv: c<number>("ltv", null),
-    progresso: {
-      consumiu: c<number>("progresso_consumiu", null),
-      entendeu: c<number>("progresso_entendeu", null),
-      aplicou: c<number>("progresso_aplicou", null),
-      validou: c<number>("progresso_validou", null),
-    },
-    highlights: [...a.highlights].sort((x, y) => y.data_aula.localeCompare(x.data_aula)),
+    progresso,
+    highlights: highlightsDasAnalises.length
+      ? highlightsDasAnalises
+      : [...a.highlights].sort((x, y) => y.data_aula.localeCompare(x.data_aula)),
     checkpoints,
     intervencoes,
+    analises,
+    progresso_origem: {
+      consumiu: origem(progresso.consumiu),
+      entendeu: origem(progresso.entendeu),
+      aplicou: origem(progresso.aplicou),
+      validou: origem(progresso.validou),
+    },
   };
 }
 

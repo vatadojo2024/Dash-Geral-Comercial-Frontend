@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -56,6 +56,7 @@ import { AJUSTE_AFETA_TOTAIS, campoDe, comCampo, EDITOR_DO_CAMPO, rotuloDoCampo 
 import { Timeline } from "./Checkpoints";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { CAMPO } from "./Dialogo";
+import { Sugestoes } from "./Edicao";
 import { lerSimular } from "./estado";
 import { HistoricoDoAluno } from "./Historico";
 import { NovaIntervencao } from "./NovaIntervencao";
@@ -405,6 +406,7 @@ function Texto({
   area = false,
   tipo = "text",
   className,
+  sugestoes,
 }: {
   b: Bloco;
   k: string;
@@ -412,7 +414,9 @@ function Texto({
   area?: boolean;
   tipo?: string;
   className?: string;
+  sugestoes?: readonly string[];
 }) {
+  const lista = useId();
   return (
     <Entrada rotulo={rotulo} className={className}>
       {area ? (
@@ -424,7 +428,18 @@ function Texto({
           className={cn(CAMPO, "h-auto py-2")}
         />
       ) : (
-        <input aria-label={nomeAcessivel(rotulo)} type={tipo} value={b.valores[k] ?? ""} onChange={(e) => b.set(k, e.target.value)} className={CAMPO} />
+        <>
+          <input
+            aria-label={nomeAcessivel(rotulo)}
+            type={tipo}
+            value={b.valores[k] ?? ""}
+            onChange={(e) => b.set(k, e.target.value)}
+            list={sugestoes?.length ? lista : undefined}
+            autoComplete={sugestoes?.length ? "off" : undefined}
+            className={CAMPO}
+          />
+          <Sugestoes id={lista} opcoes={sugestoes} />
+        </>
       )}
     </Entrada>
   );
@@ -551,7 +566,7 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
       edicao={
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Texto b={b} k="nome" rotulo="Nome *" className="sm:col-span-2" />
-          <Texto b={b} k="mentoria" rotulo="Mentoria *" />
+          <Texto b={b} k="mentoria" rotulo="Mentoria *" sugestoes={config?.mentorias} />
           <Lista b={b} k="status_aluno" rotulo="Status do aluno" opcoes={STATUS_ALUNO.map((s) => ({ valor: s, rotulo: ROTULO_STATUS_ALUNO[s] }))} />
           <Texto b={b} k="data_entrada" rotulo="Data de entrada *" tipo="date" />
           <Texto b={b} k="data_termino" rotulo="Data de término" tipo="date" />

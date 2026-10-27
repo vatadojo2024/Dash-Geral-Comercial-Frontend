@@ -18,15 +18,19 @@ function como(role: Role) {
 const BASE = "https://api.exemplo.test";
 const fetchMock = vi.fn();
 
-function req(caminho: string, init?: { method?: string; body?: string }) {
+type Init = { method?: string; body?: BodyInit; headers?: Record<string, string> };
+
+function req(caminho: string, init?: Init) {
   return new NextRequest(`http://localhost${caminho}`, {
     method: init?.method ?? "GET",
     body: init?.body,
-    headers: { authorization: "Bearer jwt-da-sessao" },
+    headers: { authorization: "Bearer jwt-da-sessao", ...init?.headers },
   });
 }
 
-async function chamar(caminho: string, init?: { method?: string; body?: string }) {
+const texto = (b: unknown) => new TextDecoder().decode(b as ArrayBuffer);
+
+async function chamar(caminho: string, init?: Init) {
   const rota = await import("@/app/api/educacional/[...caminho]/route");
   const metodo = (init?.method ?? "GET") as "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   return rota[metodo](req(caminho, init));
@@ -98,8 +102,25 @@ describe("rota /api/educacional/[...caminho]", () => {
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe(`${BASE}/api/educacional/alunos/abc-1?versao=3`);
     expect(init.method).toBe("PATCH");
-    expect(init.body).toBe('{"nome":"X","versao":3}');
+    expect(texto(init.body)).toBe('{"nome":"X","versao":3}');
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer jwt-da-sessao");
+  });
+
+  it("multipart (análise de aula) passa em bytes, com o Content-Type e o boundary originais", async () => {
+    como("educacional");
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: "an-1" }), { status: 202 }));
+    const fd = new FormData();
+    fd.set("aluno_id", "a1");
+    fd.set("arquivo", new File(["1\n00:00:01,000 --> 00:00:02,000\nOlá"], "aula.srt", { type: "text/plain" }));
+    const enviado = new Request("http://x", { method: "POST", body: fd });
+    const tipo = enviado.headers.get("content-type")!;
+    const bytes = await enviado.arrayBuffer();
+    const res = await chamar("/api/educacional/analises", { method: "POST", body: bytes, headers: { "content-type": tipo } });
+    expect(res.status).toBe(202);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>)["Content-Type"]).toBe(tipo);
+    expect(tipo).toMatch(/^multipart\/form-data; boundary=/);
+    expect(texto(init.body)).toBe(texto(bytes));
   });
 
   it("409 passa com o corpo (aluno atual); 500 do backend vira 502", async () => {

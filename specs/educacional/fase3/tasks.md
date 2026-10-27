@@ -13,7 +13,9 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
 - Regressão de cada uma: 8 telas de closer e SDR, desktop, pixel a pixel no mock local; resumo ao Vata antes do push.
 
 ## Módulo
-- [ ] M1. Contrato da seção 7, adapter (lote, opções, análises, filtros novos), proxy multipart, mock (lote, opções, `ordem=atencao`, mentorias no `/config`, análises, semente D4) e testes. Campo mentoria com sugestões (novo aluno e edição).
+- [x] M1. Contrato da seção 7, adapter (lote, opções, análises, filtros novos), proxy multipart, mock (lote, opções, `ordem=atencao`, mentorias no `/config`, análises, semente D4) e testes. Campo mentoria com sugestões (novo aluno e edição).
+  - Alinhar com o backend quando ele publicar a Fase 3: corpo de `POST /analises/:id/confirmar` (o front manda `{ versao, resultado }`) e a resposta de `descartar`/`reprocessar` (o front não depende dela).
+  - Filtro de SLA (dois status de checkpoint): continua filtrado no front até o backend publicar o `a971add`; aí volta para a API (decisão de 27/10).
 - [ ] M2. Menu com 4 itens, Cockpit com "Precisam de atenção" e aba Alunos (busca, filtros, contador, URL).
 - [ ] M3. Salvar em lote na aba Alunos: armazém de pendências, marca e "Desfazer", barra, envio sem travar, resultado parcial, 409 com "Ver versão atual" e "Reaplicar", rede, `sessionStorage`, guarda de saída.
 - [ ] M4. Raio-X com "Editar ficha" e "Salvar ficha" em lote.

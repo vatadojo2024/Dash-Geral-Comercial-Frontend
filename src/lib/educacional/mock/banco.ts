@@ -1,6 +1,6 @@
 import semente from "@/lib/mock/data_educacional.json";
 import { diasEntre } from "./motor";
-import type { Banco } from "./tipos";
+import type { AnaliseBanco, Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // Persistência do modo demonstração (spec Fase 2, seção 7.2): o banco fica no
@@ -15,7 +15,8 @@ import type { Banco } from "./tipos";
 
 export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // Sobe quando o formato da semente muda: banco salvo com outra versão é trocado.
-export const VERSAO_DADOS = 1;
+// 2 = Fase 3 (análises de aula; semente D4).
+export const VERSAO_DADOS = 2;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };
@@ -52,7 +53,56 @@ export function bancoDaSemente(hoje: string): Banco {
   const s = semente as unknown as Semente;
   const n = diasEntre(s.data_referencia, hoje);
   const { data_referencia: _ref, config, ...tabelas } = structuredClone(s);
-  return { versao_dados: VERSAO_DADOS, config, ...deslocar(tabelas, n) };
+  const banco: Banco = { versao_dados: VERSAO_DADOS, config, ...deslocar(tabelas, n), analises: [] };
+  importarDaFase1(banco);
+  return banco;
+}
+
+const NOTAS_DA_FASE1 = ["consumiu", "entendeu", "aplicou", "validou"] as const;
+
+// D4 (só demonstração): o progresso e os highlights da Fase 1 viram uma análise
+// confirmada "importada" por aluno (na etapa atual dele), e os ajustes de
+// progresso saem — a nota passa a vir da análise, como na Fase 3. Aluno sem as
+// 4 notas fica como estava.
+function importarDaFase1(banco: Banco) {
+  for (const a of banco.alunos) {
+    const ajustes = NOTAS_DA_FASE1.map((k) =>
+      banco.ajustes.find((x) => x.aluno_id === a.id && x.campo === `progresso_${k}` && x.ativo),
+    );
+    if (ajustes.some((x) => !x)) continue;
+    const [consumiu, entendeu, aplicou, validou] = ajustes.map((x) => x!);
+    const datas = a.highlights.map((h) => h.data_aula).sort();
+    // Data da aula: a do highlight mais recente; sem highlight, a de entrada (não
+    // inventa atividade: a última atividade do aluno fica como estava).
+    const dataAula = datas.at(-1) ?? a.data_entrada;
+    const nota = (aj: typeof consumiu) => ({ nota: Number(aj.valor), justificativa: aj.motivo, evidencias: [] });
+    const resultado = {
+      resumo: "Análise importada da Fase 1: notas de progresso e highlights que já estavam na ficha.",
+      progresso: { consumiu: nota(consumiu), entendeu: nota(entendeu), aplicou: nota(aplicou), validou: nota(validou) },
+      highlights: [...a.highlights].sort((x, y) => y.data_aula.localeCompare(x.data_aula)).map((h) => h.texto),
+    };
+    const analise: AnaliseBanco = {
+      id: `an-fase1-${a.id}`,
+      aluno_id: a.id,
+      data_aula: dataAula,
+      etapa_id: a.etapa_id,
+      arquivo_nome: null,
+      transcricao: "",
+      estado: "confirmada",
+      inicio: consumiu.ajustado_em,
+      falhar: false,
+      resultado_ia: resultado,
+      resultado_confirmado: resultado,
+      importada: true,
+      criada_por: consumiu.ajustado_por,
+      criada_em: consumiu.ajustado_em,
+      confirmada_por: consumiu.ajustado_por,
+      confirmada_em: consumiu.ajustado_em,
+    };
+    banco.analises.push(analise);
+    banco.ajustes = banco.ajustes.filter((x) => !ajustes.includes(x));
+    a.highlights = [];
+  }
 }
 
 // Tarefa diária (seção 5 do backend), uma vez por dia.

@@ -92,6 +92,8 @@ export const ConfigSchema = z.object({
   tipos_intervencao: z.array(TipoIntervencaoSchema),
   responsaveis: z.array(ResponsavelSchema),
   sync_planilha_erros: z.number().int().min(0),
+  // Fase 3 (D2): mentorias existentes, para o filtro e as sugestões do campo.
+  mentorias: z.array(z.string()).default([]),
 });
 export type Config = z.infer<typeof ConfigSchema>;
 
@@ -165,6 +167,74 @@ export type Intervencao = z.infer<typeof IntervencaoSchema>;
 
 export const HighlightSchema = z.object({ data_aula: z.string(), texto: z.string() });
 
+// ---------- análise de aula (Fase 3, seção 7) ----------
+export const STATUS_ANALISE = ["na_fila", "processando", "pronta", "erro", "confirmada", "descartada"] as const;
+export const StatusAnaliseSchema = z.enum(STATUS_ANALISE);
+export type StatusAnalise = z.infer<typeof StatusAnaliseSchema>;
+export const STATUS_ANALISE_PENDENTE: readonly StatusAnalise[] = ["na_fila", "processando"];
+
+export const PASSOS_PROGRESSO = ["consumiu", "entendeu", "aplicou", "validou"] as const;
+export type PassoProgresso = (typeof PASSOS_PROGRESSO)[number];
+
+export const NotaProgressoSchema = z.object({ nota: Nota, justificativa: z.string(), evidencias: z.array(z.string()) });
+export type NotaProgresso = z.infer<typeof NotaProgressoSchema>;
+
+export const ResultadoAnaliseSchema = z.object({
+  resumo: z.string(),
+  progresso: z.object({
+    consumiu: NotaProgressoSchema,
+    entendeu: NotaProgressoSchema,
+    aplicou: NotaProgressoSchema,
+    validou: NotaProgressoSchema,
+  }),
+  highlights: z.array(z.string()),
+});
+export type ResultadoAnalise = z.infer<typeof ResultadoAnaliseSchema>;
+
+const EtapaRef = z.object({ id: z.string(), nome: z.string() });
+
+export const AnaliseResumoSchema = z.object({
+  id: z.string(),
+  data_aula: Data,
+  etapa: EtapaRef,
+  resumo: z.string(),
+  notas: z.object({ consumiu: Nota, entendeu: Nota, aplicou: Nota, validou: Nota }),
+});
+export type AnaliseResumo = z.infer<typeof AnaliseResumoSchema>;
+
+export const AnaliseItemListaSchema = z.object({
+  id: z.string(),
+  aluno: z.object({ id: z.string(), nome: z.string() }),
+  data_aula: Data,
+  etapa: EtapaRef,
+  status: StatusAnaliseSchema,
+  criada_por: Usuario,
+  criada_em: z.string(),
+});
+export type AnaliseItemLista = z.infer<typeof AnaliseItemListaSchema>;
+
+export const AnaliseDetalheSchema = AnaliseItemListaSchema.extend({
+  arquivo_nome: z.string().nullable(),
+  transcricao: z.string(),
+  resultado_ia: ResultadoAnaliseSchema.nullable(),
+  resultado_confirmado: ResultadoAnaliseSchema.nullable(),
+  erro: z.string().nullable(),
+  confirmada_por: Usuario.nullable(),
+  confirmada_em: z.string().nullable(),
+});
+export type AnaliseDetalhe = z.infer<typeof AnaliseDetalheSchema>;
+
+export const OrigemProgressoSchema = z.discriminatedUnion("tipo", [
+  z.object({ tipo: z.literal("analise"), analise_id: z.string(), data_aula: Data }),
+  z.object({ tipo: z.literal("ajuste") }),
+  z.object({ tipo: z.literal("nenhuma") }),
+]);
+export type OrigemProgresso = z.infer<typeof OrigemProgressoSchema>;
+const SEM_ORIGEM = { tipo: "nenhuma" } as const;
+
+export const OpcaoAlunoSchema = z.object({ id: z.string(), nome: z.string(), mentoria: z.string(), etapa: EtapaRef });
+export type OpcaoAluno = z.infer<typeof OpcaoAlunoSchema>;
+
 export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
   data_entrada: Data,
   data_termino: z.string().nullable(),
@@ -186,8 +256,39 @@ export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
   highlights: z.array(HighlightSchema),
   checkpoints: z.array(CheckpointSchema),
   intervencoes: z.array(IntervencaoSchema),
+  // Fase 3: com padrão, para a tela não cair enquanto a API ainda não manda.
+  analises: z.array(AnaliseResumoSchema).default([]),
+  progresso_origem: z
+    .object({
+      consumiu: OrigemProgressoSchema.default(SEM_ORIGEM),
+      entendeu: OrigemProgressoSchema.default(SEM_ORIGEM),
+      aplicou: OrigemProgressoSchema.default(SEM_ORIGEM),
+      validou: OrigemProgressoSchema.default(SEM_ORIGEM),
+    })
+    .default({ consumiu: SEM_ORIGEM, entendeu: SEM_ORIGEM, aplicou: SEM_ORIGEM, validou: SEM_ORIGEM }),
 });
 export type AlunoDetalhe = z.infer<typeof AlunoDetalheSchema>;
+
+// ---------- lote (Fase 3, seção 7; POST /lote) ----------
+export type AjusteLote = { campo: CampoAjustavelNome; valor: unknown; motivo?: string } | { campo: CampoAjustavelNome; remover: true };
+type CampoAjustavelNome = string;
+export type ItemLote = Record<string, unknown>; // { id, ...mudanças } | { novo: true, ... } | { id, arquivar: true }
+export type AlunoNoLote = {
+  aluno_id: string;
+  versao: number;
+  campos?: Record<string, unknown>;
+  ajustes?: AjusteLote[];
+  checkpoints?: ItemLote[];
+  intervencoes?: ItemLote[];
+};
+export type PedidoLote = { motivo_padrao?: string; alunos: AlunoNoLote[] };
+export const LIMITE_LOTE = 100;
+
+export type ResultadoLoteAluno =
+  | { aluno_id: string; ok: true; aluno: AlunoDetalhe }
+  | { aluno_id: string; ok: false; error: "versao"; aluno: AlunoDetalhe }
+  | { aluno_id: string; ok: false; error: "validacao"; campo: string; mensagem: string };
+export type RespostaLote = { lote_id: string; resultados: ResultadoLoteAluno[] };
 
 export const ENTIDADES_HISTORICO = ["aluno", "checkpoint", "intervencao", "ajuste"] as const;
 export type EntidadeHistorico = (typeof ENTIDADES_HISTORICO)[number];
@@ -312,6 +413,8 @@ export function validarAlunoDetalhe(bruto: unknown): AlunoDetalhe | null {
     checkpoints: validarLista(b.checkpoints, CheckpointSchema, "checkpoint").validos,
     intervencoes: validarLista(b.intervencoes, IntervencaoSchema, "intervenção").validos,
     highlights: validarLista(b.highlights, HighlightSchema, "highlight").validos,
+    // Fase 3: cada análise validada sozinha (uma ruim não derruba o aluno).
+    analises: b.analises === undefined ? undefined : validarLista(b.analises, AnaliseResumoSchema, "análise").validos,
   };
   const r = AlunoDetalheSchema.safeParse(candidato);
   if (!r.success) {
