@@ -67,6 +67,12 @@ const ROTULO_CAMPO: Record<string, string> = {
   tipo: "Tipo",
   descricao: "Descrição",
   prazo: "Prazo",
+  // nomes do backend (o valor já vem com o nome resolvido)
+  etapa_id: "Etapa",
+  responsavel_id: "Responsável",
+  tipo_id: "Tipo",
+  arquivado_em: "Arquivado em",
+  concluida_em: "Concluída em",
 };
 
 // "Mês 1 · status" → { prefixo: "Mês 1", campo: "status" }
@@ -86,6 +92,14 @@ export function formatarDoHistorico(item: ItemHistorico, valor: unknown): string
   const { campo } = partes(item);
   if (item.entidade === "ajuste" && campo in CAMPOS_AJUSTAVEIS) return formatarValor(campo as CampoAjustavel, valor);
   if (typeof valor === "boolean") return valor ? "Sim" : "Não";
+  // Cadastro no backend ("criado"/"criada"): objeto com os campos iniciais.
+  // Cada um é formatado como o campo de mesmo nome; vazios ficam de fora.
+  if (typeof valor === "object" && !Array.isArray(valor)) {
+    const textos = Object.entries(valor as Record<string, unknown>)
+      .filter(([, v]) => v != null && v !== "")
+      .map(([k, v]) => formatarDoHistorico({ ...item, campo: k }, v));
+    return textos.length ? textos.join(" · ") : "—";
+  }
   if (typeof valor !== "string") return String(valor);
   if (campo === "nivel_inicial") return ROTULO_NIVEL[valor as keyof typeof ROTULO_NIVEL] ?? valor;
   if (campo === "status_aluno") return ROTULO_STATUS_ALUNO[valor as keyof typeof ROTULO_STATUS_ALUNO] ?? valor;
