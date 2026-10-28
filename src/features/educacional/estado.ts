@@ -41,6 +41,7 @@ export function lerEstado(sp: URLSearchParams): EstadoTabela {
     sinal: umDe(SINAIS, sp.get("sinal")),
     health_max: sp.get("health_max") && Number.isFinite(health) ? health : null,
     status_aluno: umDe(STATUS_ALUNO, sp.get("status_aluno")),
+    programa: (sp.get("programa") ?? "").split(",").flatMap((v) => (id(v.trim()) ? [v.trim()] : [])),
     incluir_arquivados: sp.get("incluir_arquivados") === "1",
     ordem: ordem && ehOrdem(ordem) ? ordem : "risco",
     pagina: Number.isInteger(pagina) && pagina > 1 ? pagina : 1,
@@ -63,7 +64,7 @@ export function queryDoEstado(e: EstadoTabela, simular?: Simular): string {
 
 export function temFiltro(e: EstadoTabela): boolean {
   return Boolean(
-    e.etapa || e.risco || e.checkpoint?.length || e.responsavel || e.sinal || e.health_max != null || e.status_aluno,
+    e.etapa || e.risco || e.checkpoint?.length || e.responsavel || e.sinal || e.health_max != null || e.status_aluno || e.programa?.length,
   );
 }
 
@@ -77,11 +78,16 @@ export function semFiltros(e: EstadoTabela): EstadoTabela {
     sinal: null,
     health_max: null,
     status_aluno: null,
+    programa: [],
     pagina: 1,
   };
 }
 
-export type NomesDosFiltros = { etapa?: (id: string) => string | undefined; responsavel?: (id: string) => string | undefined };
+export type NomesDosFiltros = {
+  etapa?: (id: string) => string | undefined;
+  responsavel?: (id: string) => string | undefined;
+  programa?: (id: string) => string | undefined;
+};
 
 // Descrição do chip "Filtro ativo".
 export function descreverFiltros(e: EstadoTabela, nomes: NomesDosFiltros = {}): string[] {
@@ -94,6 +100,7 @@ export function descreverFiltros(e: EstadoTabela, nomes: NomesDosFiltros = {}): 
   if (e.health_max != null) partes.push(`Health Score abaixo de ${e.health_max}`);
   const status = e.status_aluno == null ? [] : ([] as StatusAluno[]).concat(e.status_aluno);
   if (status.length) partes.push(`Status: ${status.map((s) => ROTULO_STATUS_ALUNO[s]).join(" + ")}`);
+  if (e.programa?.length) partes.push(`Programa: ${e.programa.map((p) => nomes.programa?.(p) ?? "—").join(" + ")}`);
   return partes;
 }
 

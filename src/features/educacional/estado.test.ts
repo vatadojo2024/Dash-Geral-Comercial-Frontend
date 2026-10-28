@@ -47,4 +47,14 @@ describe("estado da Tabela tática na URL", () => {
     expect(lerEstado(new URLSearchParams("etapa=../x&responsavel=a%20b")).etapa).toBeNull();
     expect(lerEstado(new URLSearchParams("responsavel=a%20b")).responsavel).toBeNull();
   });
+
+  it("programa: vários na URL, ida e volta, chip e limpar", () => {
+    const e = lerEstado(new URLSearchParams("programa=prog-a,prog-b,../x"));
+    expect(e.programa).toEqual(["prog-a", "prog-b"]);
+    expect(queryDoEstado(e)).toBe("programa=prog-a%2Cprog-b");
+    expect(temFiltro(e)).toBe(true);
+    const nomes = { programa: (id: string) => ({ "prog-a": "Blackbelt 6 meses", "prog-b": "Blackbelt 12 meses" })[id] };
+    expect(descreverFiltros(e, nomes)).toEqual(["Programa: Blackbelt 6 meses + Blackbelt 12 meses"]);
+    expect(semFiltros(e).programa).toEqual([]);
+  });
 });

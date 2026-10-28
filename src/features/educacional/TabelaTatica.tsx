@@ -48,6 +48,8 @@ import { formatarValor } from "./campos";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { CelulaEditavel, EditorAcao, EditorCheckpoint, EditorLista, EditorTexto, MarcaAjuste } from "./Edicao";
 import { descreverFiltros, queryDoEstado, semFiltros, temFiltro, type EstadoTabela, type Visao } from "./estado";
+import { FiltroProgramas } from "./FiltroProgramas";
+import { programasPorMentoria, temProgramas } from "./programas";
 import { FormAjuste } from "./FormAjuste";
 import { Kanban } from "./Kanban";
 import { NovoAluno } from "./NovoAluno";
@@ -101,7 +103,9 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
   const descricao = descreverFiltros(estado, {
     etapa: (id) => config.data?.etapas.find((e) => e.id === id)?.nome,
     responsavel: (id) => config.data?.responsaveis.find((r) => r.id === id)?.nome,
+    programa: (id) => config.data?.programas.find((p) => p.id === id)?.nome,
   });
+  const comProgramas = temProgramas(config.data);
   const total = lista.data?.total ?? 0;
   const totalPaginas = Math.max(1, Math.ceil(total / TAMANHO_PAGINA));
   const valorCheckpoint = estado.checkpoint?.join(",") ?? "";
@@ -131,7 +135,19 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
         }
       />
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5" role="group" aria-label="Filtros da tabela">
+        <div
+          className={cn("grid grid-cols-2 gap-2 sm:grid-cols-3", comProgramas ? "lg:grid-cols-6" : "lg:grid-cols-5")}
+          role="group"
+          aria-label="Filtros da tabela"
+        >
+          {comProgramas && (
+            <FiltroProgramas
+              id="filtro-programa"
+              grupos={programasPorMentoria(config.data, true)}
+              valor={estado.programa ?? []}
+              onChange={(v) => mudar({ programa: v })}
+            />
+          )}
           <Selecao
             id="filtro-etapa"
             rotulo="Etapa"

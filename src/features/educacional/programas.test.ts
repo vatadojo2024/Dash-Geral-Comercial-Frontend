@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Config } from "@/lib/educacional/contrato";
 import { normalizarMarco } from "./Configuracoes";
+import { resumoDosProgramas } from "./FiltroProgramas";
 import { programasPorMentoria, sugerirTermino, temProgramas } from "./programas";
 
 const programa = (id: string, mentoria: string, meses: number, ativo = true) => ({
@@ -41,5 +42,14 @@ describe("apoio de programas na tela", () => {
     expect(normalizarMarco("Dia 03")).toBe("Dia 3");
     expect(normalizarMarco("Semana 2")).toBeNull();
     expect(normalizarMarco("Mês")).toBeNull();
+  });
+
+  it("resumo do filtro: Todos, um nome, a mentoria inteira ou a contagem", () => {
+    const config = { programas: [programa("b6", "Blackbelt", 6), programa("b12", "Blackbelt", 12), programa("p6", "Prime", 6)] } as unknown as Config;
+    const grupos = programasPorMentoria(config);
+    expect(resumoDosProgramas(grupos, [])).toBe("Todos");
+    expect(resumoDosProgramas(grupos, ["b12"])).toBe("Blackbelt 12 meses");
+    expect(resumoDosProgramas(grupos, ["b6", "b12"])).toBe("Blackbelt (todos)");
+    expect(resumoDosProgramas(grupos, ["b6", "p6"])).toBe("2 programas");
   });
 });

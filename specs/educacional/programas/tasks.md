@@ -7,5 +7,5 @@ Plano aprovado em 28/10 (6 decisões aprovadas; filtro com vários programas agr
 - [x] P3. Raio-X: programa e observação; painel "Roteiro do contato" (próximo checkpoint aberto); editar checkpoint pelo painel.
 - [x] P4. Trocar programa: diálogo em 2 passos com prévia, motivo, 400/409.
 - [x] P5. Configurações: aba Programas; Checkpoints padrão com seletor de programa, marco e roteiro.
-- [ ] P6. Filtro por programa, vários ao mesmo tempo, opções agrupadas por mentoria (lista e aba Alunos; junto com o M2).
+- [x] P6. Filtro por programa, vários ao mesmo tempo, opções agrupadas por mentoria: na lista e no Kanban (componente `FiltroProgramas`, reaproveitado na aba Alunos do M2).
 - [ ] PV. Verificação: fluxos no mock, regressão visual do módulo, nenhuma rota comercial, screenshots.
