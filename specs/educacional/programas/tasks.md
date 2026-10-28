@@ -8,4 +8,4 @@ Plano aprovado em 28/10 (6 decisões aprovadas; filtro com vários programas agr
 - [x] P4. Trocar programa: diálogo em 2 passos com prévia, motivo, 400/409.
 - [x] P5. Configurações: aba Programas; Checkpoints padrão com seletor de programa, marco e roteiro.
 - [x] P6. Filtro por programa, vários ao mesmo tempo, opções agrupadas por mentoria: na lista e no Kanban (componente `FiltroProgramas`, reaproveitado na aba Alunos do M2).
-- [ ] PV. Verificação: fluxos no mock, regressão visual do módulo, nenhuma rota comercial, screenshots.
+- [x] PV. Verificação (28/10): fluxos P2 a P6 no mock (desktop), 478 testes, nenhuma rota comercial chamada, nenhum arquivo fora do módulo alterado, screenshots. Falta conferir contra o backend quando ele publicar programas (nomes finais de rotas e campos).
