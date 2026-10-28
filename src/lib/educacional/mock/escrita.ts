@@ -228,19 +228,20 @@ export function arquivarAluno(banco: Banco, id: string, arquivar: boolean, versa
 
 export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
   const etapaId = dados.etapa_id ?? banco.config.etapas.filter((e) => e.ativo).sort((x, y) => x.ordem - y.ordem)[0]?.id;
-  // Com programas: o programa é obrigatório e dá a mentoria, o início (= entrada),
-  // o término padrão (início + duração) e os checkpoints.
-  const comProgramas = (banco.config.programas ?? []).length > 0;
-  const programa = comProgramas || dados.programa_id ? programaAtivo(banco, dados.programa_id) : null;
+  // Como o backend: o programa é obrigatório e dá a mentoria (recusada aqui), o
+  // início (= entrada), o término padrão (início + duração) e os checkpoints.
+  if ("mentoria" in dados) erro400("mentoria", "A mentoria vem do programa.");
+  if (!dados.programa_id) erro400("programa_id", "Escolha o programa.");
+  const programa = programaAtivo(banco, dados.programa_id);
   const entrada = data("data_entrada", dados.data_entrada, true) as string;
   const a: AlunoBanco = {
     id: novoId("aluno"),
     nome: texto("nome", dados.nome, true) as string,
-    mentoria: programa ? programa.mentoria : (texto("mentoria", dados.mentoria, true) as string),
+    mentoria: programa.mentoria,
     data_entrada: entrada,
-    data_termino: data("data_termino", dados.data_termino, false) ?? (programa ? somarMeses(entrada, programa.duracao_meses) : null),
-    programa_id: programa?.id ?? null,
-    data_inicio_programa: programa ? entrada : null,
+    data_termino: data("data_termino", dados.data_termino, false) ?? somarMeses(entrada, programa.duracao_meses),
+    programa_id: programa.id,
+    data_inicio_programa: entrada,
     objetivo: texto("objetivo", dados.objetivo, false),
     nivel_inicial: umDe("nivel_inicial", NIVEIS_INICIAIS, dados.nivel_inicial),
     status_aluno: dados.status_aluno ? umDe("status_aluno", STATUS_ALUNO, dados.status_aluno) : "ativo",
@@ -260,12 +261,8 @@ export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
     versao: 0,
   };
   banco.alunos.push(a);
-  // Checkpoints a partir do modelo ATIVO do programa (sem programa: os sem
-  // programa), status previsto.
-  const modelo = banco.config.checkpoints_modelo
-    .filter((m) => m.ativo && (m.programa_id ?? null) === (programa?.id ?? null))
-    .sort((x, y) => x.ordem - y.ordem);
-  modelo.forEach((m, i) => {
+  // Checkpoints a partir do modelo ATIVO do programa, status previsto.
+  modelosDoPrograma(banco, programa.id).forEach((m, i) => {
     banco.checkpoints.push({
       id: novoId("cp"),
       aluno_id: a.id,
@@ -820,7 +817,8 @@ export function reprocessarAnalise(banco: Banco, id: string, ctx: Contexto): Ana
 
 function programaAtivo(banco: Banco, id: unknown): Programa {
   const p = (banco.config.programas ?? []).find((x) => x.id === id);
-  if (!p || !p.ativo) erro400("programa_id", "Programa inexistente ou inativo.");
+  if (!p) erro400("programa_id", "Programa inexistente.");
+  if (!p.ativo) erro400("programa_id", "programa inativo");
   return p;
 }
 

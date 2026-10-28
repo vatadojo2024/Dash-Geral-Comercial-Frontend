@@ -84,10 +84,21 @@ export const ProgramaSchema = z.object({
 });
 export type Programa = z.infer<typeof ProgramaSchema>;
 
+// Programa aninhado na linha e no detalhe do aluno (além de `programa_id`).
+// Só `id` e `nome` são garantidos; o resto, quando faltar, vem da config.
+export const ProgramaDoAlunoSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  mentoria: z.string().optional(),
+  duracao_meses: z.number().int().nullable().optional(),
+  observacoes: z.string().nullable().optional(),
+});
+export type ProgramaDoAluno = z.infer<typeof ProgramaDoAlunoSchema>;
+
 // Roteiro do contato de um checkpoint (os 4 textos do checkpoint padrão). É
-// referência: o backend devolve os textos junto com o checkpoint do aluno (só
-// leitura no Raio-X). O formato exato (objeto `roteiro` ou 4 campos soltos)
-// ainda será confirmado: a leitura aceita os dois.
+// referência: no checkpoint do aluno vem como objeto `roteiro` (null quando o
+// padrão não tem nenhum dos 4 textos); só leitura no Raio-X. No checkpoint
+// padrão (Configurações) os 4 textos vêm e vão soltos. A leitura aceita os dois.
 export const CAMPOS_ROTEIRO = ["objetivo_contato", "perguntas_chave", "sinais_upsell", "estrategia_monetizacao"] as const;
 export const RoteiroSchema = z.object({
   objetivo_contato: z.string().nullable().default(null),
@@ -203,8 +214,10 @@ export const AlunoLinhaSchema = z.object({
   }),
   arquivado: z.boolean(),
   // Programas: null = aluno sem programa (antigo). `mentoria` continua vindo
-  // (do programa; não é mais editável). Nome, duração e observações: da config.
+  // (do programa; não é mais editável). `programa` vem aninhado (use
+  // `programaDoAluno`, que completa pela config o que faltar).
   programa_id: z.string().nullable().default(null),
+  programa: ProgramaDoAlunoSchema.nullable().default(null),
 });
 export type AlunoLinha = z.infer<typeof AlunoLinhaSchema>;
 
@@ -219,8 +232,9 @@ export const CheckpointSchema = z.preprocess(
     status: StatusCheckpointSchema,
     big_win: z.boolean(),
     observacao: z.string().nullable(),
-    // Programas: marco ("Dia N"/"Mês N", da contagem do checkpoint padrão) e
-    // roteiro do padrão (null no avulso).
+    // Programas: checkpoint padrão de origem (null no avulso), marco ("Dia N"/
+    // "Mês N", da contagem do padrão) e roteiro do padrão.
+    modelo_id: z.string().nullable().default(null),
     marco: z.string().nullable().default(null),
     roteiro: RoteiroSchema.nullable().default(null),
   }),
@@ -452,9 +466,8 @@ export type CamposDiretosAluno = Partial<{
 
 export type NovoAluno = {
   nome: string;
-  // Com programas, o programa é obrigatório e a mentoria vem dele.
-  programa_id?: string;
-  mentoria?: string;
+  // Obrigatório; a mentoria vem dele (o backend recusa `mentoria` aqui).
+  programa_id: string;
   data_entrada: string;
   nivel_inicial: NivelInicial;
   etapa_id: string;

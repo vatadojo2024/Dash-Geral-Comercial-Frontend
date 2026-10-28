@@ -112,6 +112,8 @@ const listaDaQuery = (q: URLSearchParams, k: string) => (q.get(k) ?? "").split("
 function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
   const arquivados = q.get("incluir_arquivados") === "true" || q.get("incluir_arquivados") === "1";
   const checkpoint = listaDaQuery(q, "checkpoint");
+  // Substituído não é da jornada: o backend recusa o filtro.
+  if (checkpoint.includes("substituido")) throw new ErroDaApi(400, { error: "validacao", campo: "checkpoint", mensagem: "Status de checkpoint inválido." });
   const statusAluno = listaDaQuery(q, "status_aluno");
   const faixas = listaDaQuery(q, "faixa_saude");
   const mentorias = listaDaQuery(q, "mentoria");

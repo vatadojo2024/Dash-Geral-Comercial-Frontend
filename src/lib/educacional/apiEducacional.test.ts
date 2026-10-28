@@ -246,10 +246,36 @@ describe("escrita em aluno — seção 5 do backend", () => {
     expect(novo.checkpoints.find((x) => x.nome === "Big Win")?.big_win).toBe(true);
     expect(novo.checkpoints[0].roteiro?.objetivo_contato).toBeTruthy();
     expect((await buscarAlunos({ por_pagina: "todos" })).itens.some((x) => x.id === novo.id)).toBe(true);
-    const sem = await erroDe(criarAluno({ nome: "Sem Programa", data_entrada: "2026-11-02", nivel_inicial: "iniciante", etapa_id: c.etapas[0].id }));
+    // Programa aninhado na resposta e checkpoint com o padrão de origem.
+    expect(novo.programa).toMatchObject({ id: prime6.id, nome: "Prime 6 meses", mentoria: "Prime", duracao_meses: 6 });
+    const welcome = c.checkpoints_modelo.find((m) => m.programa_id === prime6.id && m.nome === "Welcome")!;
+    expect(novo.checkpoints[0].modelo_id).toBe(welcome.id);
+    const linha = (await buscarAlunos({ por_pagina: "todos" })).itens.find((x) => x.id === novo.id)!;
+    expect(linha.programa?.nome).toBe("Prime 6 meses");
+    const base = { data_entrada: "2026-11-02", nivel_inicial: "iniciante" as const, etapa_id: c.etapas[0].id };
+    const sem = await erroDe(criarAluno({ nome: "Sem Programa", ...base } as never));
     expect(sem.corpo.campo).toBe("programa_id");
-    const e = await erroDe(criarAluno({ nome: "", programa_id: prime6.id, data_entrada: "2026-11-02", nivel_inicial: "iniciante", etapa_id: c.etapas[0].id }));
+    const e = await erroDe(criarAluno({ nome: "", programa_id: prime6.id, ...base }));
     expect(e.corpo.campo).toBe("nome");
+  });
+
+  it("como o backend: mentoria recusada no POST e no PATCH; programa inativo dá 400", async () => {
+    const c = await buscarConfig();
+    const prime6 = c.programas.find((p) => p.nome === "Prime 6 meses")!;
+    const base = { nome: "Rui", data_entrada: "2026-11-02", nivel_inicial: "iniciante" as const, etapa_id: c.etapas[0].id };
+    expect((await erroDe(criarAluno({ ...base, programa_id: prime6.id, mentoria: "Prime" } as never))).corpo.campo).toBe("mentoria");
+    const a = await primeiro();
+    expect((await erroDe(atualizarAluno(a.id, a.versao, { mentoria: "Prime" } as never))).status).toBe(400);
+    let cfg = await criarItemConfig("programas", { nome: "Prime 1 mês", mentoria: "Prime", duracao_meses: 1 });
+    const curto = cfg.programas.find((p) => p.nome === "Prime 1 mês")!;
+    cfg = await atualizarItemConfig("programas", curto.id, { ativo: false });
+    const inativo = await erroDe(criarAluno({ ...base, programa_id: curto.id }));
+    expect([inativo.status, inativo.corpo.campo, inativo.corpo.mensagem]).toEqual([400, "programa_id", "programa inativo"]);
+  });
+
+  it("filtro checkpoint=substituido dá 400 (não é status da jornada)", async () => {
+    const e = await erroDe(buscarAlunos({ checkpoint: ["substituido" as never] }));
+    expect(e.status).toBe(400);
   });
 });
 

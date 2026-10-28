@@ -1,4 +1,4 @@
-import type { Config, Programa } from "@/lib/educacional/contrato";
+import type { Config, Programa, ProgramaDoAluno } from "@/lib/educacional/contrato";
 
 // ---------------------------------------------------------------------------
 // Apoio da tela para os programas (specs/educacional/programas). Nada aqui é
@@ -20,12 +20,23 @@ export function programasPorMentoria(config: Config | undefined, incluirInativos
   return grupos;
 }
 
-// O aluno traz só `programa_id`; nome, duração e observações vêm da config.
-export function programaDoAluno(a: { programa_id: string | null }, config: Config | undefined): Programa | null {
-  return (a.programa_id && config?.programas.find((p) => p.id === a.programa_id)) || null;
+// O aluno traz o programa aninhado; o que não vier nele sai da config (e, sem
+// o aninhado, tudo sai da config pelo `programa_id`).
+export function programaDoAluno(
+  a: { programa_id: string | null; programa?: ProgramaDoAluno | null },
+  config: Config | undefined,
+): ProgramaDoAluno | null {
+  const id = a.programa?.id ?? a.programa_id;
+  const daConfig = (id && config?.programas.find((p) => p.id === id)) || null;
+  if (!a.programa) return daConfig;
+  return {
+    ...a.programa,
+    mentoria: a.programa.mentoria ?? daConfig?.mentoria,
+    duracao_meses: a.programa.duracao_meses ?? daConfig?.duracao_meses ?? null,
+    observacoes: a.programa.observacoes ?? daConfig?.observacoes ?? null,
+  };
 }
 
-// Com a API ainda sem programas, o cadastro volta ao texto livre de mentoria.
 export const temProgramas = (config: Config | undefined) => (config?.programas.length ?? 0) > 0;
 
 // Início + N meses de calendário; no fim do mês cai no último dia (31/01 + 1 = 28/02).
