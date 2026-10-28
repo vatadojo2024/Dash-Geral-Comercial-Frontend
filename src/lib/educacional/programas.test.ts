@@ -7,6 +7,7 @@ import {
   buscarConfig,
   buscarHistorico,
   buscarResumo,
+  criarCheckpoint,
   criarItemConfig,
   definirUsuarioDaSessao,
   EducacionalError,
@@ -166,15 +167,30 @@ describe("trocar programa (prévia e confirmação)", () => {
     const destino = c.programas.find((p) => p.id !== a.programa_id && p.duracao_meses === 12)!;
     const pv = await previaTrocaPrograma(a.id, a.versao, { programa_id: destino.id, data_inicio: a.data_entrada });
     const realizados = a.checkpoints.filter((x) => x.status === "realizado");
-    expect(pv.programa).toEqual({ id: destino.id, nome: destino.nome });
+    // Formato do backend: o programa é o mesmo objeto do aluno; criados com id null.
+    expect(pv.programa).toEqual({ id: destino.id, nome: destino.nome, mentoria: destino.mentoria, duracao_meses: 12 });
     expect(pv.ficam.map((x) => x.id).sort()).toEqual(realizados.map((x) => x.id).sort());
     expect(pv.saem.map((x) => x.id).sort()).toEqual(a.checkpoints.filter((x) => x.status !== "realizado").map((x) => x.id).sort());
     const ultimo = realizados.map((x) => x.data_realizada ?? x.data_prevista ?? "").sort().at(-1)!;
     expect(pv.criados.length).toBeGreaterThan(0);
-    expect(pv.criados.every((x) => x.data_prevista > ultimo)).toBe(true);
+    expect(pv.criados.every((x) => x.id === null && x.status === "previsto" && x.modelo_id && x.data_prevista! > ultimo)).toBe(true);
+    expect(pv.saem.every((x) => x.status !== "realizado")).toBe(true); // status atual, não "substituido"
     expect(pv.data_termino_sugerida).toBe(dataDoMarco(a.data_entrada, "Mês 12"));
     // Prévia não grava nada.
     expect((await buscarAluno(a.id)).versao).toBe(a.versao);
+  });
+
+  it("checkpoint avulso fica sempre, mesmo não realizado", async () => {
+    const a = await alunoMisto();
+    const comAvulso = await criarCheckpoint(a.id, a.versao, { nome: "Conversa extra", data_prevista: HOJE });
+    const avulso = comAvulso.checkpoints.find((x) => x.nome === "Conversa extra")!;
+    expect(avulso.modelo_id).toBeNull();
+    const destino = (await buscarConfig()).programas.find((p) => p.id !== a.programa_id)!;
+    const pv = await previaTrocaPrograma(a.id, null, { programa_id: destino.id, data_inicio: HOJE });
+    expect(pv.ficam.map((x) => x.id)).toContain(avulso.id);
+    expect(pv.saem.map((x) => x.id)).not.toContain(avulso.id);
+    const d = await trocarPrograma(a.id, comAvulso.versao, { programa_id: destino.id, data_inicio: HOJE, motivo: "Troca com avulso" });
+    expect(d.checkpoints.map((x) => x.id)).toContain(avulso.id);
   });
 
   it("confirmar grava programa, início, mentoria e término; substituídos saem da timeline e do SLA e vão ao histórico", async () => {

@@ -527,10 +527,10 @@ export function arquivarIntervencao(intervencaoId: string, versao: number): Prom
 // fica, sai e é criado é do backend; a tela só mostra e confirma com motivo.
 // ---------------------------------------------------------------------------
 
-export async function previaTrocaPrograma(alunoId: string, versao: number, pedido: PedidoTroca): Promise<PreviaTroca> {
-  const r = PreviaTrocaSchema.safeParse(
-    await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/programa`, corpo: { ...pedido, versao, simular: true } }),
-  );
+// Simulação: motivo e versao são opcionais no backend (a versao vai quando a tela tem).
+export async function previaTrocaPrograma(alunoId: string, versao: number | null, pedido: PedidoTroca): Promise<PreviaTroca> {
+  const corpo = { ...pedido, ...(versao == null ? {} : { versao }), simular: true };
+  const r = PreviaTrocaSchema.safeParse(await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/programa`, corpo }));
   if (!r.success) throw new EducacionalError("Prévia da troca fora do contrato.", 502);
   return r.data;
 }

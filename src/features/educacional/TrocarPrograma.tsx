@@ -181,13 +181,18 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
             <ListaDaPrevia
               titulo="Ficam"
               nota="Já realizados."
-              itens={previa.ficam.map((c) => ({ chave: c.id, texto: rotulo(c.marco, c.nome), data: c.data_prevista, status: ROTULO_STATUS_CHECKPOINT[c.status] }))}
+              itens={previa.ficam.map((c) => ({
+                chave: c.id ?? c.nome,
+                texto: rotulo(c.marco, c.nome),
+                data: c.data_realizada ?? c.data_prevista,
+                status: c.modelo_id ? ROTULO_STATUS_CHECKPOINT[c.status] : `Avulso · ${ROTULO_STATUS_CHECKPOINT[c.status]}`,
+              }))}
             />
             <ListaDaPrevia
               titulo="Saem da jornada"
               nota="Não aparecem na timeline nem contam no SLA; ficam no histórico."
               tom="saem"
-              itens={previa.saem.map((c) => ({ chave: c.id, texto: rotulo(c.marco, c.nome), data: c.data_prevista, status: ROTULO_STATUS_CHECKPOINT[c.status] }))}
+              itens={previa.saem.map((c) => ({ chave: c.id ?? c.nome, texto: rotulo(c.marco, c.nome), data: c.data_prevista, status: ROTULO_STATUS_CHECKPOINT[c.status] }))}
             />
             <ListaDaPrevia
               titulo="Criados"

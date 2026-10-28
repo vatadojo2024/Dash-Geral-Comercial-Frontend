@@ -44,8 +44,8 @@ interface Programa {
 
 **Respostas do backend (28/10, segunda rodada)**
 - **Roteiro:** objeto aninhado no checkpoint do aluno (null nos antigos); em Configurações os 4 textos continuam soltos no checkpoint padrão (`corpoDaConfig` envia soltos).
-- **Prévia** (`simular: true`): pedido ao backend o formato `{ programa: {id, nome}, data_inicio, data_termino_sugerida, ficam[], saem[], criados[] }` e a simulação sem motivo (o motivo só vai na confirmação). **A confirmar** quando a parte C do backend fechar.
-- **Contagem no checkpoint do aluno:** pedidos `dias_apos_entrada` e `meses_apos_inicio`; a tela mostra "Dia N"/"Mês N" a partir deles (ou de `marco`); sem nenhum, mostra só o nome.
+- **Prévia** (`simular: true`, fechada em 28/10): `{ programa, data_inicio, data_termino_sugerida, ficam, saem, criados }`. `programa` = o mesmo objeto do aluno (`id, nome, mentoria, duracao_meses`). `ficam`/`saem`: checkpoints completos; `saem` com o status atual (não `substituido`). `criados`: mesma forma, `id: null`. Um componente só para as três listas. Simulação sem motivo e sem versao; na confirmação os dois são obrigatórios. Avulso (sem `modelo_id`) fica sempre, mesmo não realizado.
+- **Contagem no checkpoint do aluno:** vem no próximo pacote do backend. Até lá a timeline mostra só o nome (que já traz "Dia N"/"Mês N"); com a contagem, a tela mostra o marco a partir dela.
 
 **Respostas do backend (28/10, primeira rodada)**
 1. **Término na troca:** a troca grava `data_inicio_programa`, `mentoria` e `data_termino` (início + duração).

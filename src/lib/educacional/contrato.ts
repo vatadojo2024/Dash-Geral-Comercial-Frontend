@@ -362,27 +362,31 @@ export type AlunoDetalhe = z.infer<typeof AlunoDetalheSchema>;
 
 // ---------- troca de programa ----------
 // Uma rota só: POST /alunos/:id/programa { programa_id, data_inicio, motivo,
-// versao, simular }. Com `simular: true` devolve a prévia sem gravar.
-// O formato da prévia ainda será confirmado com o backend (este é o proposto).
+// versao, simular }. Com `simular: true` devolve a prévia sem gravar (motivo e
+// versao opcionais); na confirmação os dois são obrigatórios. Formato fechado
+// com o backend em 28/10: `programa` é o mesmo objeto do aluno; ficam, saem e
+// criados são checkpoints completos (saem com o status atual; criados com
+// id null). Avulso (sem modelo_id) fica sempre.
 const CheckpointDaPrevia = z.preprocess(
   daApi,
   z.object({
-    id: z.string(),
+    id: z.string().nullable(),
     nome: z.string(),
+    modelo_id: z.string().nullable().default(null),
     marco: z.string().nullable().default(null),
-    status: StatusCheckpointSchema,
+    status: StatusCheckpointSchema.default("previsto"),
     data_prevista: z.string().nullable(),
+    data_realizada: z.string().nullable().default(null),
   }),
 );
+export type CheckpointDaPrevia = z.infer<typeof CheckpointDaPrevia>;
 export const PreviaTrocaSchema = z.object({
-  programa: z.object({ id: z.string(), nome: z.string() }),
+  programa: ProgramaDoAlunoSchema,
   data_inicio: Data,
   data_termino_sugerida: Data,
   ficam: z.array(CheckpointDaPrevia),
   saem: z.array(CheckpointDaPrevia),
-  criados: z.array(
-    z.preprocess(daApi, z.object({ nome: z.string(), marco: z.string().nullable().default(null), data_prevista: Data })),
-  ),
+  criados: z.array(CheckpointDaPrevia),
 });
 export type PreviaTroca = z.infer<typeof PreviaTrocaSchema>;
 export type PedidoTroca = { programa_id: string; data_inicio: string };

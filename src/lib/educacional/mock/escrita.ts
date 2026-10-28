@@ -835,33 +835,63 @@ function planoDaTroca(banco: Banco, a: AlunoBanco, corpo: Record<string, unknown
   const programa = programaAtivo(banco, corpo.programa_id);
   const inicio = data("data_inicio", corpo.data_inicio, true) as string;
   const atuais = banco.checkpoints.filter((c) => c.aluno_id === a.id && !c.arquivado_em && !c.substituido_em);
-  const ficam = atuais.filter((c) => c.status === "realizado");
-  const saem = atuais.filter((c) => c.status !== "realizado");
-  const ultimoRealizado = ficam.map((c) => c.data_realizada ?? c.data_prevista ?? "").sort().at(-1) ?? "";
+  // Ficam os realizados e os avulsos (sem checkpoint padrão), realizados ou não.
+  const fica = (c: CheckpointBanco) => c.status === "realizado" || !c.modelo_id;
+  const ficam = atuais.filter(fica);
+  const saem = atuais.filter((c) => !fica(c));
+  const ultimoRealizado =
+    ficam
+      .filter((c) => c.status === "realizado")
+      .map((c) => c.data_realizada ?? c.data_prevista ?? "")
+      .sort()
+      .at(-1) ?? "";
   const criados = modelosDoPrograma(banco, programa.id)
     .map((m) => ({ modelo: m, data_prevista: dataPrevista(m, inicio) }))
     .filter((x) => x.data_prevista > ultimoRealizado);
   return { programa, inicio, ficam, saem, criados, termino: somarMeses(inicio, programa.duracao_meses) };
 }
 
-const resumoDoCheckpoint = (banco: Banco) => (c: CheckpointBanco) => ({
-  id: c.id,
-  nome: c.nome,
-  marco: (c.modelo_id && marcoDe(banco.config.checkpoints_modelo.find((m) => m.id === c.modelo_id) ?? {})) || null,
-  status: c.status,
-  data_prevista: c.data_prevista,
-});
+// Checkpoint completo, como o do aluno (o backend manda o mesmo objeto).
+const checkpointDaPrevia = (banco: Banco) => (c: CheckpointBanco) => {
+  const modelo = c.modelo_id ? banco.config.checkpoints_modelo.find((m) => m.id === c.modelo_id) : undefined;
+  return {
+    id: c.id,
+    nome: c.nome,
+    ordem: c.ordem,
+    modelo_id: c.modelo_id ?? null,
+    marco: (modelo && marcoDe(modelo)) || null,
+    status: c.status,
+    data_prevista: c.data_prevista,
+    data_realizada: c.data_realizada,
+    big_win: c.big_win,
+    observacao: c.observacao,
+    roteiro: modelo?.roteiro ?? null,
+  };
+};
 
 export function previaTrocaPrograma(banco: Banco, id: string, corpo: Record<string, unknown>): PreviaTroca {
   const a = alunoOu404(banco, id);
   const t = planoDaTroca(banco, a, corpo);
+  const p = t.programa;
   return {
-    programa: { id: t.programa.id, nome: t.programa.nome },
+    programa: { id: p.id, nome: p.nome, mentoria: p.mentoria, duracao_meses: p.duracao_meses },
     data_inicio: t.inicio,
     data_termino_sugerida: t.termino,
-    ficam: t.ficam.map(resumoDoCheckpoint(banco)),
-    saem: t.saem.map(resumoDoCheckpoint(banco)),
-    criados: t.criados.map((x) => ({ nome: x.modelo.nome, marco: marcoDe(x.modelo), data_prevista: x.data_prevista })),
+    ficam: t.ficam.map(checkpointDaPrevia(banco)),
+    saem: t.saem.map(checkpointDaPrevia(banco)),
+    criados: t.criados.map((x, i) => ({
+      id: null,
+      nome: x.modelo.nome,
+      ordem: i + 1,
+      modelo_id: x.modelo.id,
+      marco: marcoDe(x.modelo),
+      status: "previsto" as const,
+      data_prevista: x.data_prevista,
+      data_realizada: null,
+      big_win: x.modelo.big_win,
+      observacao: null,
+      roteiro: x.modelo.roteiro ?? null,
+    })),
   };
 }
 
