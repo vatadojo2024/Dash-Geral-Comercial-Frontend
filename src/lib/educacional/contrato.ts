@@ -70,45 +70,78 @@ export const EtapaSchema = z.object({ id: z.string(), nome: z.string(), ordem: z
 export type Etapa = z.infer<typeof EtapaSchema>;
 
 // ---------- programas e roteiros (specs/educacional/programas) ----------
-// Programa = mentoria + duração, com a sua lista de checkpoints padrão.
+// Contrato alinhado com o backend em 28/10. Programa = mentoria + duração, com a
+// sua lista de checkpoints padrão. Rotas em /config/programas, como as outras.
+export const MENTORIAS = ["Blackbelt", "Prime", "Private"] as const;
 export const ProgramaSchema = z.object({
   id: z.string(),
   nome: z.string(), // "Blackbelt 6 meses"
-  mentoria: z.string(), // "Blackbelt" — é o que a tela mostra como mentoria
+  mentoria: z.string(), // Blackbelt, Prime ou Private — é o que a tela mostra como mentoria
   duracao_meses: z.number().int().positive(),
-  observacao: z.string().nullable().default(null),
+  observacoes: z.string().nullable().default(null),
   ordem: z.number().int().default(0),
   ativo: z.boolean(),
 });
 export type Programa = z.infer<typeof ProgramaSchema>;
 
-// Roteiro do contato de um checkpoint. É referência ao checkpoint padrão: o
-// backend devolve os 4 textos junto com o checkpoint do aluno (só leitura no Raio-X).
+// Roteiro do contato de um checkpoint (os 4 textos do checkpoint padrão). É
+// referência: o backend devolve os textos junto com o checkpoint do aluno (só
+// leitura no Raio-X). O formato exato (objeto `roteiro` ou 4 campos soltos)
+// ainda será confirmado: a leitura aceita os dois.
+export const CAMPOS_ROTEIRO = ["objetivo_contato", "perguntas_chave", "sinais_upsell", "estrategia_monetizacao"] as const;
 export const RoteiroSchema = z.object({
-  objetivo: z.string().nullable().default(null),
+  objetivo_contato: z.string().nullable().default(null),
   perguntas_chave: z.string().nullable().default(null),
-  sinais_upsell_renovacao: z.string().nullable().default(null),
+  sinais_upsell: z.string().nullable().default(null),
   estrategia_monetizacao: z.string().nullable().default(null),
 });
 export type Roteiro = z.infer<typeof RoteiroSchema>;
-export const CAMPOS_ROTEIRO = ["objetivo", "perguntas_chave", "sinais_upsell_renovacao", "estrategia_monetizacao"] as const;
 
-// "Dia N" ou "Mês N" (Dia = início + N dias; Mês = N meses de calendário).
+function comRoteiro(b: Record<string, unknown>): Record<string, unknown> {
+  if (b.roteiro !== undefined || !CAMPOS_ROTEIRO.some((k) => k in b)) return b;
+  return { ...b, roteiro: Object.fromEntries(CAMPOS_ROTEIRO.map((k) => [k, b[k] ?? null])) };
+}
+
+// Contagem do checkpoint padrão: EXATAMENTE uma das duas (a outra null, nunca 0).
+//   dias_apos_entrada → "Dia N" (início + N dias)
+//   meses_apos_inicio → "Mês N" (N meses de calendário; fim do mês quando o dia não existe)
+export type Contagem = { dias_apos_entrada: number | null; meses_apos_inicio: number | null };
 export const RE_MARCO = /^(Dia|Mês) (\d{1,3})$/;
+export function marcoDe(c: Partial<Contagem>): string | null {
+  if (c.meses_apos_inicio != null) return `Mês ${c.meses_apos_inicio}`;
+  if (c.dias_apos_entrada != null) return `Dia ${c.dias_apos_entrada}`;
+  return null;
+}
+export function contagemDoMarco(marco: string): Contagem | null {
+  const m = RE_MARCO.exec(marco);
+  if (!m) return null;
+  const n = Number(m[2]);
+  return m[1] === "Dia" ? { dias_apos_entrada: n, meses_apos_inicio: null } : { dias_apos_entrada: null, meses_apos_inicio: n };
+}
 
-export const CheckpointModeloSchema = z.object({
-  id: z.string(),
-  nome: z.string(),
-  ordem: z.number().int(),
-  // Antes dos programas, a data vinha daqui; com programas, do `marco`.
-  dias_apos_entrada: z.number().int().nullable().default(null),
-  prazo_sla_dias: z.number().int().nullable(),
-  big_win: z.boolean(),
-  ativo: z.boolean(),
-  programa_id: z.string().nullable().default(null),
-  marco: z.string().nullable().default(null),
-  roteiro: RoteiroSchema.nullable().default(null),
-});
+// Objeto vindo da API: roteiro em objeto (aceita os 4 campos soltos) e o marco
+// derivado da contagem quando ela vier.
+const daApi = (bruto: unknown) => {
+  if (!bruto || typeof bruto !== "object" || Array.isArray(bruto)) return bruto;
+  const b = comRoteiro(bruto as Record<string, unknown>);
+  return b.marco === undefined && ("dias_apos_entrada" in b || "meses_apos_inicio" in b) ? { ...b, marco: marcoDe(b as Partial<Contagem>) } : b;
+};
+
+export const CheckpointModeloSchema = z.preprocess(
+  (bruto) => (bruto && typeof bruto === "object" && !Array.isArray(bruto) ? comRoteiro(bruto as Record<string, unknown>) : bruto),
+  z.object({
+    id: z.string(),
+    nome: z.string(),
+    ordem: z.number().int(),
+    dias_apos_entrada: z.number().int().nullable().default(null),
+    meses_apos_inicio: z.number().int().nullable().default(null),
+    prazo_sla_dias: z.number().int().nullable(),
+    big_win: z.boolean(),
+    ativo: z.boolean(),
+    programa_id: z.string().nullable().default(null),
+    roteiro: RoteiroSchema.nullable().default(null),
+  }),
+);
 export type CheckpointModelo = z.infer<typeof CheckpointModeloSchema>;
 
 export const TipoIntervencaoSchema = z.object({ id: z.string(), nome: z.string(), ativo: z.boolean() });
@@ -145,8 +178,6 @@ export type ResumoEducacional = z.infer<typeof ResumoEducacionalSchema>;
 
 // ---------- aluno ----------
 const ResponsavelDoAluno = z.object({ id: z.string(), nome: z.string(), tipo: TipoResponsavelSchema });
-const ProgramaDoAluno = z.object({ id: z.string(), nome: z.string(), mentoria: z.string(), duracao_meses: z.number().int() });
-export type ProgramaResumo = z.infer<typeof ProgramaDoAluno>;
 
 export const AlunoLinhaSchema = z.object({
   id: z.string().min(1),
@@ -171,24 +202,29 @@ export const AlunoLinhaSchema = z.object({
     prova_social: CampoCalculadoSchema(z.boolean()),
   }),
   arquivado: z.boolean(),
-  // Programas: null = aluno sem programa (antigo). `mentoria` continua vindo.
-  programa: ProgramaDoAluno.nullable().default(null),
+  // Programas: null = aluno sem programa (antigo). `mentoria` continua vindo
+  // (do programa; não é mais editável). Nome, duração e observações: da config.
+  programa_id: z.string().nullable().default(null),
 });
 export type AlunoLinha = z.infer<typeof AlunoLinhaSchema>;
 
-export const CheckpointSchema = z.object({
-  id: z.string(),
-  nome: z.string(),
-  ordem: z.number().int(),
-  data_prevista: z.string().nullable(),
-  data_realizada: z.string().nullable(),
-  status: StatusCheckpointSchema,
-  big_win: z.boolean(),
-  observacao: z.string().nullable(),
-  // Programas: marco e roteiro do checkpoint padrão (null no avulso).
-  marco: z.string().nullable().default(null),
-  roteiro: RoteiroSchema.nullable().default(null),
-});
+export const CheckpointSchema = z.preprocess(
+  daApi,
+  z.object({
+    id: z.string(),
+    nome: z.string(),
+    ordem: z.number().int(),
+    data_prevista: z.string().nullable(),
+    data_realizada: z.string().nullable(),
+    status: StatusCheckpointSchema,
+    big_win: z.boolean(),
+    observacao: z.string().nullable(),
+    // Programas: marco ("Dia N"/"Mês N", da contagem do checkpoint padrão) e
+    // roteiro do padrão (null no avulso).
+    marco: z.string().nullable().default(null),
+    roteiro: RoteiroSchema.nullable().default(null),
+  }),
+);
 export type Checkpoint = z.infer<typeof CheckpointSchema>;
 
 export const IntervencaoSchema = z.object({
@@ -295,9 +331,8 @@ export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
   highlights: z.array(HighlightSchema),
   checkpoints: z.array(CheckpointSchema),
   intervencoes: z.array(IntervencaoSchema),
-  // Programas: início do programa (a troca grava) e observação do programa.
+  // Programas: início do programa (a troca grava).
   data_inicio_programa: z.string().nullable().default(null),
-  programa_observacao: z.string().nullable().default(null),
   // Fase 3: com padrão, para a tela não cair enquanto a API ainda não manda.
   analises: z.array(AnaliseResumoSchema).default([]),
   progresso_origem: z
@@ -311,24 +346,32 @@ export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
 });
 export type AlunoDetalhe = z.infer<typeof AlunoDetalheSchema>;
 
-// ---------- troca de programa (prévia do backend) ----------
-const CheckpointDaPrevia = z.object({
-  id: z.string(),
-  nome: z.string(),
-  marco: z.string().nullable().default(null),
-  status: StatusCheckpointSchema,
-  data_prevista: z.string().nullable(),
-});
+// ---------- troca de programa ----------
+// Uma rota só: POST /alunos/:id/programa { programa_id, data_inicio, motivo,
+// versao, simular }. Com `simular: true` devolve a prévia sem gravar.
+// O formato da prévia ainda será confirmado com o backend (este é o proposto).
+const CheckpointDaPrevia = z.preprocess(
+  daApi,
+  z.object({
+    id: z.string(),
+    nome: z.string(),
+    marco: z.string().nullable().default(null),
+    status: StatusCheckpointSchema,
+    data_prevista: z.string().nullable(),
+  }),
+);
 export const PreviaTrocaSchema = z.object({
   programa: z.object({ id: z.string(), nome: z.string() }),
-  inicio: Data,
+  data_inicio: Data,
   data_termino_sugerida: Data,
   ficam: z.array(CheckpointDaPrevia),
   saem: z.array(CheckpointDaPrevia),
-  criados: z.array(z.object({ nome: z.string(), marco: z.string(), data_prevista: Data })),
+  criados: z.array(
+    z.preprocess(daApi, z.object({ nome: z.string(), marco: z.string().nullable().default(null), data_prevista: Data })),
+  ),
 });
 export type PreviaTroca = z.infer<typeof PreviaTrocaSchema>;
-export type PedidoTroca = { programa_id: string; inicio: string };
+export type PedidoTroca = { programa_id: string; data_inicio: string };
 
 // ---------- lote (Fase 3, seção 7; POST /lote) ----------
 export type AjusteLote = { campo: CampoAjustavelNome; valor: unknown; motivo?: string } | { campo: CampoAjustavelNome; remover: true };
@@ -389,9 +432,9 @@ export const MOTIVO_MINIMO = 5;
 
 // ---------- corpos de escrita (seção 4 do backend) ----------
 // Campos diretos do aluno (PATCH /alunos/:id). Nome igual ao do banco.
+// `mentoria` não entra: vem do programa (não é mais editável).
 export type CamposDiretosAluno = Partial<{
   nome: string;
-  mentoria: string;
   data_entrada: string;
   data_termino: string | null;
   objetivo: string | null;

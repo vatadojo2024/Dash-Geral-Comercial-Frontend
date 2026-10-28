@@ -23,7 +23,17 @@ import {
   restaurarDemonstracao,
   type ColecaoConfig,
 } from "@/lib/educacional/apiEducacional";
-import { CAMPOS_ROTEIRO, RE_MARCO, TIPOS_RESPONSAVEL, type Config, type Roteiro } from "@/lib/educacional/contrato";
+import {
+  CAMPOS_ROTEIRO,
+  contagemDoMarco,
+  marcoDe,
+  MENTORIAS,
+  RE_MARCO,
+  TIPOS_RESPONSAVEL,
+  type Config,
+  type Contagem,
+  type Roteiro,
+} from "@/lib/educacional/contrato";
 import { ROTULO_TIPO_RESPONSAVEL } from "@/lib/educacional/rotulos";
 import { Alternador } from "@/components/ui/Alternador";
 import { Button } from "@/components/ui/Button";
@@ -66,7 +76,10 @@ type Coluna = {
 
 type Item = { id: string; nome: string; ativo: boolean; ordem?: number } & Record<string, unknown>;
 
-const ABAS: Record<Aba, { colecao: ColecaoConfig; chave: keyof Config; titulo: string; novo: string; ordenavel: boolean; colunas: Coluna[] }> = {
+const ABAS: Record<
+  Aba,
+  { colecao: ColecaoConfig; chave: keyof Config; titulo: string; novo: string; ordenavel: boolean; colunas: Coluna[]; avisoEdicao?: string }
+> = {
   etapas: {
     colecao: "etapas",
     chave: "etapas",
@@ -113,13 +126,20 @@ const ABAS: Record<Aba, { colecao: ColecaoConfig; chave: keyof Config; titulo: s
     titulo: "Programas",
     novo: "Novo programa",
     ordenavel: true,
+    avisoEdicao: "Mudar a duração não recalcula o término de quem já está no programa.",
     colunas: [
       { chave: "nome", rotulo: "Nome", tipo: "texto", largura: "min-w-[10rem] flex-1", dica: "Ex.: Blackbelt 6 meses" },
-      { chave: "mentoria", rotulo: "Mentoria", tipo: "texto", largura: "w-32" },
+      {
+        chave: "mentoria",
+        rotulo: "Mentoria",
+        tipo: "lista",
+        largura: "w-32",
+        opcoes: MENTORIAS.map((m) => ({ valor: m, rotulo: m })),
+      },
       { chave: "duracao_meses", rotulo: "Duração (meses)", tipo: "numero", largura: "w-32", exibir: (v) => `${v} meses` },
       {
-        chave: "observacao",
-        rotulo: "Observação",
+        chave: "observacoes",
+        rotulo: "Observações",
         tipo: "texto_opcional",
         largura: "min-w-[12rem] flex-[2]",
         exibir: (v) => (v ? <span className="line-clamp-2">{String(v)}</span> : <span className="text-texto-sec/60">—</span>),
@@ -282,6 +302,7 @@ function ListaConfig({ aba, config }: { aba: Aba; config: Config }) {
   const programa = config.programas.find((p) => p.id === programaId) ?? null;
   const itens = [...(config[def.chave] as unknown as Item[])]
     .filter((i) => !porPrograma || i.programa_id === programaId)
+    .map((i) => (porPrograma ? { ...i, marco: marcoDe(i as Partial<Contagem>) } : i))
     .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -325,7 +346,10 @@ function ListaConfig({ aba, config }: { aba: Aba; config: Config }) {
 
   // Item novo de lista ordenável entra no fim: o backend exige `ordem` no POST.
   const proximaOrdem = Math.max(0, ...itens.map((i) => i.ordem ?? 0)) + 1;
-  const salvarItem = async (id: string | null, campos: Record<string, unknown>) => {
+  const salvarItem = async (id: string | null, entrada: Record<string, unknown>) => {
+    // "Dia N"/"Mês N" vira a contagem do backend: exatamente uma preenchida, a outra null.
+    const { marco, ...resto } = entrada;
+    const campos = typeof marco === "string" ? { ...resto, ...contagemDoMarco(marco) } : resto;
     const novo = { ...(def.ordenavel ? { ordem: proximaOrdem } : {}), ...(porPrograma ? { programa_id: programaId } : {}), ...campos };
     const ok = await gravar(() => (id ? atualizarItemConfig(def.colecao, id, campos) : criarItemConfig(def.colecao, novo)));
     if (ok) setEditando(null);
@@ -671,6 +695,12 @@ function FormItem({
           </Button>
         </span>
       </div>
+      {item && def.avisoEdicao && (
+        <p className="flex items-center gap-1.5 text-xs text-aviso" role="note">
+          <Info className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          {def.avisoEdicao}
+        </p>
+      )}
       {roteiro && (
         <fieldset className="grid gap-3 border-t border-white/10 pt-3 md:grid-cols-2">
           <legend className="mb-1 text-xs font-semibold text-texto">Roteiro do contato</legend>

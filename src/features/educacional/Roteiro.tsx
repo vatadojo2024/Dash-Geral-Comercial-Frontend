@@ -13,9 +13,9 @@ import { BadgeCheckpoint } from "./partes";
 // ---------------------------------------------------------------------------
 
 export const ROTULO_ROTEIRO: Record<keyof Roteiro, string> = {
-  objetivo: "Objetivo",
+  objetivo_contato: "Objetivo do contato",
   perguntas_chave: "Perguntas-chave",
-  sinais_upsell_renovacao: "Sinais de upsell e renovação",
+  sinais_upsell: "Sinais de upsell e renovação",
   estrategia_monetizacao: "Estratégia de monetização",
 };
 

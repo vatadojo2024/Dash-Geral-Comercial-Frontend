@@ -11,7 +11,7 @@ import type {
   StatusCheckpoint,
   StatusFinanceiro,
 } from "../contrato";
-import { RE_MARCO } from "../contrato";
+import { marcoDe, RE_MARCO, type Contagem } from "../contrato";
 import { confirmadasDoAluno } from "./analises";
 import type { AlunoBanco, Banco } from "./tipos";
 
@@ -81,6 +81,12 @@ export function dataDoMarco(inicio: string, marco: string): string | null {
 
 export const somarMeses = (inicio: string, meses: number) => dataDoMarco(inicio, `Mês ${meses}`) as string;
 
+// Data prevista de um checkpoint padrão a partir do início do programa
+// (contagem: dias_apos_entrada OU meses_apos_inicio).
+export function dataPrevistaDoModelo(inicio: string, m: Partial<Contagem>): string {
+  return dataDoMarco(inicio, marcoDe(m) ?? "Dia 0") as string;
+}
+
 function checkpointsDoAluno(banco: Banco, alunoId: string): Checkpoint[] {
   // Roteiro e marco são REFERÊNCIA ao checkpoint padrão (editar em Configurações
   // vale para todos os alunos). Avulso: sem roteiro.
@@ -97,7 +103,7 @@ function checkpointsDoAluno(banco: Banco, alunoId: string): Checkpoint[] {
       status: c.status,
       big_win: c.big_win,
       observacao: c.observacao,
-      marco: (c.modelo_id && modelo.get(c.modelo_id)?.marco) || null,
+      marco: (c.modelo_id && marcoDe(modelo.get(c.modelo_id) ?? {})) || null,
       roteiro: (c.modelo_id && modelo.get(c.modelo_id)?.roteiro) || null,
     }));
 }
@@ -159,7 +165,6 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
   const health = c<number>("health_score", null); // fórmula pendente: só ajuste
   const faixa = c<FaixaSaude>("faixa_saude", faixaDoHealth(health.valor)); // pelo Health EFETIVO
   const ultimaEtapa = etapasAtivas(banco).at(-1);
-  const programa = a.programa_id ? (banco.config.programas ?? []).find((p) => p.id === a.programa_id) : null;
   const bigWinRealizado = checkpoints.some((x) => x.big_win && x.status === "realizado");
   // Progresso automático = notas da análise confirmada mais recente da etapa atual
   // (sem análise na etapa: null). Ajuste manual continua prevalecendo.
@@ -215,9 +220,8 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
       prova_social: c<boolean>("sinal_prova_social", bigWinRealizado && a.etapa_id === ultimaEtapa?.id),
     },
     arquivado: Boolean(a.arquivado_em),
-    programa: programa ? { id: programa.id, nome: programa.nome, mentoria: programa.mentoria, duracao_meses: programa.duracao_meses } : null,
+    programa_id: a.programa_id ?? null,
     data_inicio_programa: a.data_inicio_programa ?? null,
-    programa_observacao: programa?.observacao ?? null,
     data_entrada: a.data_entrada,
     data_termino: a.data_termino,
     etapa_desde: a.etapa_desde,

@@ -232,7 +232,7 @@ describe("escrita em aluno — seção 5 do backend", () => {
     expect(novo.status_aluno).toBe("ativo");
     expect(novo.autorizacao_prova_social).toBe("pendente");
     expect(novo.mentoria).toBe("Prime");
-    expect(novo.programa).toMatchObject({ id: prime6.id, nome: "Prime 6 meses", duracao_meses: 6 });
+    expect(novo.programa_id).toBe(prime6.id);
     expect(novo.data_inicio_programa).toBe("2026-01-31");
     expect(novo.data_termino).toBe("2026-07-31"); // início + duração, sugerido quando não vem
     expect(novo.checkpoints.map((x) => [x.marco, x.nome, x.data_prevista, x.status])).toEqual([
@@ -244,7 +244,7 @@ describe("escrita em aluno — seção 5 do backend", () => {
       ["Mês 6", "Fim", "2026-07-31", "previsto"],
     ]);
     expect(novo.checkpoints.find((x) => x.nome === "Big Win")?.big_win).toBe(true);
-    expect(novo.checkpoints[0].roteiro?.objetivo).toBeTruthy();
+    expect(novo.checkpoints[0].roteiro?.objetivo_contato).toBeTruthy();
     expect((await buscarAlunos({ por_pagina: "todos" })).itens.some((x) => x.id === novo.id)).toBe(true);
     const sem = await erroDe(criarAluno({ nome: "Sem Programa", data_entrada: "2026-11-02", nivel_inicial: "iniciante", etapa_id: c.etapas[0].id }));
     expect(sem.corpo.campo).toBe("programa_id");
@@ -351,10 +351,10 @@ describe("configuração", () => {
     expect(c2.etapas.find((x) => x.id === nova.id)?.ativo).toBe(false);
   });
 
-  it("checkpoint padrão novo vale só para alunos novos do programa dele; marco validado", async () => {
+  it("checkpoint padrão novo vale só para alunos novos do programa dele; contagem: exatamente uma", async () => {
     const antigo = await primeiro();
-    const prog = antigo.programa!;
-    await criarItemConfig("checkpoints-modelo", { programa_id: prog.id, nome: "Extra", marco: "Mês 7" });
+    const prog = { id: antigo.programa_id! };
+    await criarItemConfig("checkpoints-modelo", { programa_id: prog.id, nome: "Extra", dias_apos_entrada: null, meses_apos_inicio: 7 });
     expect((await buscarAluno(antigo.id)).checkpoints.some((x) => x.nome === "Extra")).toBe(false);
     const c = await buscarConfig();
     const novo = await criarAluno({ nome: "Rita Nova", programa_id: prog.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
@@ -362,7 +362,11 @@ describe("configuração", () => {
     const outro = c.programas.find((p) => p.id !== prog.id)!;
     const deOutro = await criarAluno({ nome: "Outro Programa", programa_id: outro.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
     expect(deOutro.checkpoints.some((x) => x.nome === "Extra")).toBe(false);
-    expect((await erroDe(criarItemConfig("checkpoints-modelo", { programa_id: prog.id, nome: "X", marco: "Semana 2" }))).corpo.campo).toBe("marco");
+    // As duas ou nenhuma → 400 (como o backend).
+    const duas = { programa_id: prog.id, nome: "X", dias_apos_entrada: 3, meses_apos_inicio: 1 };
+    expect((await erroDe(criarItemConfig("checkpoints-modelo", duas))).status).toBe(400);
+    const nenhuma = { programa_id: prog.id, nome: "X", dias_apos_entrada: null, meses_apos_inicio: null };
+    expect((await erroDe(criarItemConfig("checkpoints-modelo", nenhuma))).status).toBe(400);
   });
 });
 

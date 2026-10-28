@@ -15,7 +15,7 @@ import {
   queryDosFiltros,
   trocarPrograma,
 } from "./apiEducacional";
-import { validarAlunoDetalhe, type AlunoDetalhe } from "./contrato";
+import { CheckpointModeloSchema, CheckpointSchema, contagemDoMarco, marcoDe, validarAlunoDetalhe, type AlunoDetalhe } from "./contrato";
 import { _zerarMemoria } from "./mock/banco";
 import { dataDoMarco, hojeBR } from "./mock/motor";
 
@@ -115,8 +115,47 @@ describe("contrato", () => {
     expect(a).not.toBeNull();
     expect(a.checkpoints.map((c) => c.id)).toEqual(["c1"]);
     expect(a.checkpoints[0]).toMatchObject({ marco: null, roteiro: null });
-    expect(a.programa).toBeNull();
+    expect(a.programa_id).toBeNull();
     expect(a.data_inicio_programa).toBeNull();
+  });
+});
+
+describe("leitura tolerante do roteiro e da contagem", () => {
+  it("checkpoint com os 4 textos soltos e contagem vira roteiro em objeto e marco", () => {
+    const modelo = CheckpointModeloSchema.parse({
+      id: "m1",
+      nome: "Revisão",
+      ordem: 3,
+      dias_apos_entrada: null,
+      meses_apos_inicio: 1,
+      prazo_sla_dias: 7,
+      big_win: false,
+      ativo: true,
+      programa_id: "p1",
+      objetivo_contato: "O",
+      perguntas_chave: "P",
+      sinais_upsell: "S",
+      estrategia_monetizacao: "E",
+    });
+    expect(modelo.roteiro).toEqual({ objetivo_contato: "O", perguntas_chave: "P", sinais_upsell: "S", estrategia_monetizacao: "E" });
+    expect(marcoDe(modelo)).toBe("Mês 1");
+    const doAluno = CheckpointSchema.parse({
+      id: "c1",
+      nome: "Check-in",
+      ordem: 2,
+      data_prevista: "2026-10-04",
+      data_realizada: null,
+      status: "previsto",
+      big_win: false,
+      observacao: null,
+      dias_apos_entrada: 3,
+      meses_apos_inicio: null,
+      objetivo_contato: "O",
+    });
+    expect(doAluno.marco).toBe("Dia 3");
+    expect(doAluno.roteiro?.objetivo_contato).toBe("O");
+    expect(contagemDoMarco("Mês 12")).toEqual({ dias_apos_entrada: null, meses_apos_inicio: 12 });
+    expect(contagemDoMarco("Dia 0")).toEqual({ dias_apos_entrada: 0, meses_apos_inicio: null });
   });
 });
 
@@ -124,8 +163,8 @@ describe("trocar programa (prévia e confirmação)", () => {
   it("prévia: ficam os realizados, saem os não realizados, criados os do novo depois do último realizado", async () => {
     const a = await alunoMisto();
     const c = await buscarConfig();
-    const destino = c.programas.find((p) => p.id !== a.programa!.id && p.duracao_meses === 12)!;
-    const pv = await previaTrocaPrograma(a.id, { programa_id: destino.id, inicio: a.data_entrada });
+    const destino = c.programas.find((p) => p.id !== a.programa_id && p.duracao_meses === 12)!;
+    const pv = await previaTrocaPrograma(a.id, a.versao, { programa_id: destino.id, data_inicio: a.data_entrada });
     const realizados = a.checkpoints.filter((x) => x.status === "realizado");
     expect(pv.programa).toEqual({ id: destino.id, nome: destino.nome });
     expect(pv.ficam.map((x) => x.id).sort()).toEqual(realizados.map((x) => x.id).sort());
@@ -141,14 +180,14 @@ describe("trocar programa (prévia e confirmação)", () => {
   it("confirmar grava programa, início, mentoria e término; substituídos saem da timeline e do SLA e vão ao histórico", async () => {
     const a = await alunoMisto();
     const c = await buscarConfig();
-    const destino = c.programas.find((p) => p.mentoria !== a.programa!.mentoria)!;
-    const pv = await previaTrocaPrograma(a.id, { programa_id: destino.id, inicio: HOJE });
-    expect((await erroDe(trocarPrograma(a.id, a.versao, { programa_id: destino.id, inicio: HOJE, motivo: "ok" }))).corpo.campo).toBe("motivo");
-    expect((await erroDe(trocarPrograma(a.id, a.versao - 1, { programa_id: destino.id, inicio: HOJE, motivo: "Novo ciclo" }))).status).toBe(409);
+    const destino = c.programas.find((p) => p.mentoria !== a.mentoria)!;
+    const pv = await previaTrocaPrograma(a.id, a.versao, { programa_id: destino.id, data_inicio: HOJE });
+    expect((await erroDe(trocarPrograma(a.id, a.versao, { programa_id: destino.id, data_inicio: HOJE, motivo: "ok" }))).corpo.campo).toBe("motivo");
+    expect((await erroDe(trocarPrograma(a.id, a.versao - 1, { programa_id: destino.id, data_inicio: HOJE, motivo: "Novo ciclo" }))).status).toBe(409);
 
-    const d = await trocarPrograma(a.id, a.versao, { programa_id: destino.id, inicio: HOJE, motivo: "Novo ciclo combinado" });
+    const d = await trocarPrograma(a.id, a.versao, { programa_id: destino.id, data_inicio: HOJE, motivo: "Novo ciclo combinado" });
     expect(d.versao).toBe(a.versao + 1);
-    expect(d.programa?.id).toBe(destino.id);
+    expect(d.programa_id).toBe(destino.id);
     expect(d.data_inicio_programa).toBe(HOJE);
     expect(d.mentoria).toBe(destino.mentoria);
     expect(d.data_termino).toBe(pv.data_termino_sugerida);
@@ -164,49 +203,54 @@ describe("trocar programa (prévia e confirmação)", () => {
     expect((await buscarResumo()).kpis.alunos_ativos).toBeGreaterThan(0);
   });
 
-  it("PATCH não troca programa: só pela troca com prévia", async () => {
+  it("PATCH não troca programa nem mentoria: só pela troca com prévia", async () => {
     const a = await alunoMisto();
     const e = await erroDe(atualizarAluno(a.id, a.versao, { programa_id: "x" } as never));
     expect(e.corpo.campo).toBe("programa_id");
+    const m = await erroDe(atualizarAluno(a.id, a.versao, { mentoria: "Prime" } as never));
+    expect(m.corpo.campo).toBe("mentoria");
   });
 
   it("filtro por programa traz só os alunos dos programas escolhidos", async () => {
     const todos = (await buscarAlunos({ por_pagina: "todos" })).itens;
-    const ids = [...new Set(todos.map((a) => a.programa!.id))].slice(0, 2);
+    const ids = [...new Set(todos.map((a) => a.programa_id!))].slice(0, 2);
     const filtrados = (await buscarAlunos({ programa: ids, por_pagina: "todos" })).itens;
-    expect(filtrados.length).toBe(todos.filter((a) => ids.includes(a.programa!.id)).length);
-    expect(filtrados.every((a) => ids.includes(a.programa!.id))).toBe(true);
+    expect(filtrados.length).toBe(todos.filter((a) => ids.includes(a.programa_id!)).length);
+    expect(filtrados.every((a) => ids.includes(a.programa_id!))).toBe(true);
   });
 });
 
 describe("configuração de programas", () => {
   it("criar, editar e inativar (409 com alunos, como a etapa)", async () => {
-    let c = await criarItemConfig("programas", { nome: "Blackbelt 3 meses", mentoria: "Blackbelt", duracao_meses: 3, observacao: "Teste" });
+    let c = await criarItemConfig("programas", { nome: "Blackbelt 3 meses", mentoria: "Blackbelt", duracao_meses: 3, observacoes: "Teste" });
     const novo = c.programas.find((p) => p.nome === "Blackbelt 3 meses")!;
-    expect(novo).toMatchObject({ mentoria: "Blackbelt", duracao_meses: 3, observacao: "Teste", ativo: true });
-    c = await atualizarItemConfig("programas", novo.id, { observacao: null });
-    expect(c.programas.find((p) => p.id === novo.id)?.observacao).toBeNull();
+    expect(novo).toMatchObject({ mentoria: "Blackbelt", duracao_meses: 3, observacoes: "Teste", ativo: true });
+    c = await atualizarItemConfig("programas", novo.id, { observacoes: null });
+    expect(c.programas.find((p) => p.id === novo.id)?.observacoes).toBeNull();
     c = await atualizarItemConfig("programas", novo.id, { ativo: false });
     expect(c.programas.find((p) => p.id === novo.id)?.ativo).toBe(false);
-    const emUso = (await buscarAlunos({ por_pagina: "todos" })).itens[0].programa!.id;
+    const emUso = (await buscarAlunos({ por_pagina: "todos" })).itens[0].programa_id!;
     const e = await erroDe(atualizarItemConfig("programas", emUso, { ativo: false }));
     expect(e.status).toBe(409);
     expect(e.corpo).toMatchObject({ error: "programa_com_alunos" });
-    expect((await erroDe(criarItemConfig("programas", { nome: "X", mentoria: "X", duracao_meses: 0 }))).corpo.campo).toBe("duracao_meses");
+    expect((await erroDe(criarItemConfig("programas", { nome: "X", mentoria: "Blackbelt", duracao_meses: 0 }))).corpo.campo).toBe("duracao_meses");
+    // Mentoria: Blackbelt, Prime ou Private.
+    expect((await erroDe(criarItemConfig("programas", { nome: "X", mentoria: "Gold", duracao_meses: 6 }))).corpo.campo).toBe("mentoria");
   });
 
   it("checkpoint padrão com roteiro: editar em Configurações vale para todos os alunos (referência)", async () => {
     const a = (await buscarAlunos({ por_pagina: "todos" })).itens[0];
     const d = await buscarAluno(a.id);
     const c = await buscarConfig();
-    const modelo = c.checkpoints_modelo.find((m) => m.programa_id === d.programa!.id && m.nome === d.checkpoints[0].nome)!;
+    const modelo = c.checkpoints_modelo.find((m) => m.programa_id === d.programa_id && m.nome === d.checkpoints[0].nome)!;
+    // A tela manda o roteiro em objeto; o adapter envia os 4 campos soltos.
     await atualizarItemConfig("checkpoints-modelo", modelo.id, {
-      roteiro: { objetivo: "Objetivo novo", perguntas_chave: "P?", sinais_upsell_renovacao: null, estrategia_monetizacao: "M" },
+      roteiro: { objetivo_contato: "Objetivo novo", perguntas_chave: "P?", sinais_upsell: null, estrategia_monetizacao: "M" },
     });
     expect((await buscarAluno(a.id)).checkpoints[0].roteiro).toEqual({
-      objetivo: "Objetivo novo",
+      objetivo_contato: "Objetivo novo",
       perguntas_chave: "P?",
-      sinais_upsell_renovacao: null,
+      sinais_upsell: null,
       estrategia_monetizacao: "M",
     });
   });

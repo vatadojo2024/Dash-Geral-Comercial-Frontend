@@ -4,7 +4,8 @@ import {
   LIMITE_LOTE,
   MOTIVO_MINIMO,
   NIVEIS_INICIAIS,
-  RE_MARCO,
+  CAMPOS_ROTEIRO,
+  MENTORIAS,
   STATUS_ALUNO,
   STATUS_CHECKPOINT,
   ResultadoAnaliseSchema,
@@ -26,8 +27,9 @@ import {
   type TipoIntervencao,
   type Usuario,
 } from "../contrato";
+import { marcoDe } from "../contrato";
 import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
-import { dataDoMarco, montarAluno, naJornada, somarMeses } from "./motor";
+import { dataPrevistaDoModelo, montarAluno, naJornada, somarMeses } from "./motor";
 import { ErroDaApi, type AlunoBanco, type AnaliseBanco, type Banco, type CheckpointBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -149,8 +151,10 @@ export function patchAluno(banco: Banco, id: string, campos: CamposDiretosAluno,
   for (const [chave, valor] of Object.entries(campos)) {
     switch (chave) {
       case "nome":
-      case "mentoria":
         novos[chave] = texto(chave, valor, true) as string;
+        break;
+      case "mentoria":
+        erro400("mentoria", "A mentoria vem do programa; para mudar, use Trocar programa.");
         break;
       case "objetivo":
       case "proxima_acao":
@@ -519,40 +523,35 @@ function validarItem(banco: Banco, colecao: ColecaoConfig, campos: Record<string
     v.ordem = campos.ordem;
   }
   if (colecao === "programas") {
-    if (!parcial || "mentoria" in campos) v.mentoria = texto("mentoria", campos.mentoria, true);
+    if (!parcial || "mentoria" in campos) v.mentoria = umDe("mentoria", MENTORIAS, campos.mentoria);
     if (!parcial || "duracao_meses" in campos) {
       const d = campos.duracao_meses;
       if (!Number.isInteger(d) || (d as number) < 1) erro400("duracao_meses", "Use um número inteiro de meses, 1 ou mais.");
       v.duracao_meses = d;
     }
-    if ("observacao" in campos) v.observacao = texto("observacao", campos.observacao, false);
+    if ("observacoes" in campos) v.observacoes = texto("observacoes", campos.observacoes, false);
   }
   if (colecao === "checkpoints_modelo") {
     if ("programa_id" in campos) {
       if (!(idsDosProgramas as string[]).includes(campos.programa_id as string)) erro400("programa_id", "Programa inexistente.");
       v.programa_id = campos.programa_id;
     }
-    if ("marco" in campos) {
-      const m = typeof campos.marco === "string" ? campos.marco.trim() : "";
-      if (!RE_MARCO.test(m)) erro400("marco", "Use \"Dia N\" ou \"Mês N\" (ex.: Dia 3, Mês 1).");
-      v.marco = m;
+    // Roteiro: os 4 textos soltos (ou num objeto `roteiro`; o formato final será confirmado).
+    const r = campos.roteiro && typeof campos.roteiro === "object" ? (campos.roteiro as Record<string, unknown>) : campos;
+    if (campos.roteiro !== undefined || CAMPOS_ROTEIRO.some((k) => k in campos)) {
+      v.roteiro = Object.fromEntries(CAMPOS_ROTEIRO.map((k) => [k, texto(k, r[k], false)]));
     }
-    if ("roteiro" in campos) {
-      const r = campos.roteiro && typeof campos.roteiro === "object" ? (campos.roteiro as Record<string, unknown>) : {};
-      v.roteiro = {
-        objetivo: texto("roteiro.objetivo", r.objetivo, false),
-        perguntas_chave: texto("roteiro.perguntas_chave", r.perguntas_chave, false),
-        sinais_upsell_renovacao: texto("roteiro.sinais_upsell_renovacao", r.sinais_upsell_renovacao, false),
-        estrategia_monetizacao: texto("roteiro.estrategia_monetizacao", r.estrategia_monetizacao, false),
-      };
-    }
-    // Antes dos programas, a data vinha de dias_apos_entrada; segue aceito.
+    // Contagem: dias_apos_entrada OU meses_apos_inicio (a combinação é conferida ao gravar).
     if ("dias_apos_entrada" in campos) {
       const d = campos.dias_apos_entrada;
       if (d != null && (!Number.isInteger(d) || (d as number) < 0)) erro400("dias_apos_entrada", "Use um número inteiro de dias, 0 ou mais.");
       v.dias_apos_entrada = d ?? null;
     }
-    if (!parcial && !("marco" in campos) && !("dias_apos_entrada" in campos)) erro400("marco", "Informe Dia N ou Mês N.");
+    if ("meses_apos_inicio" in campos) {
+      const m = campos.meses_apos_inicio;
+      if (m != null && (!Number.isInteger(m) || (m as number) < 1)) erro400("meses_apos_inicio", "Use um número inteiro de meses, 1 ou mais.");
+      v.meses_apos_inicio = m ?? null;
+    }
     if ("prazo_sla_dias" in campos) {
       const p = campos.prazo_sla_dias;
       if (p != null && (!Number.isInteger(p) || (p as number) < 0)) erro400("prazo_sla_dias", "Use um número inteiro de dias ou deixe em branco.");
@@ -562,6 +561,15 @@ function validarItem(banco: Banco, colecao: ColecaoConfig, campos: Record<string
   }
   if (colecao === "responsaveis" && (!parcial || "tipo" in campos)) v.tipo = umDe("tipo", TIPOS_RESPONSAVEL, campos.tipo);
   return v;
+}
+
+// Checkpoint padrão: exatamente uma contagem preenchida (a outra null, nunca 0).
+function conferirContagem(c: Record<string, unknown>) {
+  const dias = c.dias_apos_entrada != null;
+  const meses = c.meses_apos_inicio != null;
+  if (dias === meses) {
+    erro400("dias_apos_entrada", "Informe dias após a entrada OU meses após o início (só um dos dois).");
+  }
 }
 
 export function criarItemConfig(banco: Banco, colecao: ColecaoConfig, campos: Record<string, unknown>) {
@@ -575,11 +583,12 @@ export function criarItemConfig(banco: Banco, colecao: ColecaoConfig, campos: Re
     base.prazo_sla_dias = base.prazo_sla_dias ?? null;
     base.big_win = base.big_win ?? false;
     base.programa_id = base.programa_id ?? null;
-    base.marco = base.marco ?? null;
     base.roteiro = base.roteiro ?? null;
     base.dias_apos_entrada = base.dias_apos_entrada ?? null;
+    base.meses_apos_inicio = base.meses_apos_inicio ?? null;
+    conferirContagem(base);
   }
-  if (colecao === "programas") base.observacao = base.observacao ?? null;
+  if (colecao === "programas") base.observacoes = base.observacoes ?? null;
   lista.push(base as unknown as ItemConfig);
   return banco.config;
 }
@@ -600,6 +609,7 @@ export function patchItemConfig(banco: Banco, colecao: ColecaoConfig, id: string
       });
     }
   }
+  if (colecao === "checkpoints_modelo" && ("dias_apos_entrada" in v || "meses_apos_inicio" in v)) conferirContagem({ ...item, ...v });
   // Inativar programa com alunos na jornada → 409 com a contagem (como a etapa).
   if (colecao === "programas" && v.ativo === false && item.ativo) {
     const n = banco.alunos.filter((a) => naJornada(a) && a.programa_id === id).length;
@@ -821,13 +831,11 @@ function modelosDoPrograma(banco: Banco, programaId: string) {
 }
 
 // Data prevista de um checkpoint padrão a partir do início do programa.
-function dataPrevista(m: CheckpointModelo, inicio: string): string {
-  return (m.marco && dataDoMarco(inicio, m.marco)) || somarDias(inicio, m.dias_apos_entrada ?? 0);
-}
+const dataPrevista = (m: CheckpointModelo, inicio: string) => dataPrevistaDoModelo(inicio, m);
 
 function planoDaTroca(banco: Banco, a: AlunoBanco, corpo: Record<string, unknown>) {
   const programa = programaAtivo(banco, corpo.programa_id);
-  const inicio = data("inicio", corpo.inicio, true) as string;
+  const inicio = data("data_inicio", corpo.data_inicio, true) as string;
   const atuais = banco.checkpoints.filter((c) => c.aluno_id === a.id && !c.arquivado_em && !c.substituido_em);
   const ficam = atuais.filter((c) => c.status === "realizado");
   const saem = atuais.filter((c) => c.status !== "realizado");
@@ -841,7 +849,7 @@ function planoDaTroca(banco: Banco, a: AlunoBanco, corpo: Record<string, unknown
 const resumoDoCheckpoint = (banco: Banco) => (c: CheckpointBanco) => ({
   id: c.id,
   nome: c.nome,
-  marco: (c.modelo_id && banco.config.checkpoints_modelo.find((m) => m.id === c.modelo_id)?.marco) || null,
+  marco: (c.modelo_id && marcoDe(banco.config.checkpoints_modelo.find((m) => m.id === c.modelo_id) ?? {})) || null,
   status: c.status,
   data_prevista: c.data_prevista,
 });
@@ -851,11 +859,11 @@ export function previaTrocaPrograma(banco: Banco, id: string, corpo: Record<stri
   const t = planoDaTroca(banco, a, corpo);
   return {
     programa: { id: t.programa.id, nome: t.programa.nome },
-    inicio: t.inicio,
+    data_inicio: t.inicio,
     data_termino_sugerida: t.termino,
     ficam: t.ficam.map(resumoDoCheckpoint(banco)),
     saem: t.saem.map(resumoDoCheckpoint(banco)),
-    criados: t.criados.map((x) => ({ nome: x.modelo.nome, marco: x.modelo.marco ?? "", data_prevista: x.data_prevista })),
+    criados: t.criados.map((x) => ({ nome: x.modelo.nome, marco: marcoDe(x.modelo), data_prevista: x.data_prevista })),
   };
 }
 

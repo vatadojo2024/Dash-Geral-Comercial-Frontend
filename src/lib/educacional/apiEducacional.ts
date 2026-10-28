@@ -521,20 +521,26 @@ export function arquivarIntervencao(intervencaoId: string, versao: number): Prom
 }
 
 // ---------------------------------------------------------------------------
-// Programas: troca com prévia (ação própria, fora do lote). A regra do que fica,
-// sai e é criado é do backend; a tela só mostra a prévia e confirma com motivo.
+// Programas: troca com prévia (ação própria, fora do lote). Uma rota só:
+// POST /alunos/:id/programa { programa_id, data_inicio, motivo, versao, simular }.
+// Com `simular: true` o backend devolve a prévia sem gravar. A regra do que
+// fica, sai e é criado é do backend; a tela só mostra e confirma com motivo.
 // ---------------------------------------------------------------------------
 
-export async function previaTrocaPrograma(alunoId: string, pedido: PedidoTroca): Promise<PreviaTroca> {
+export async function previaTrocaPrograma(alunoId: string, versao: number, pedido: PedidoTroca): Promise<PreviaTroca> {
   const r = PreviaTrocaSchema.safeParse(
-    await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/programa/previa`, corpo: pedido }),
+    await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/programa`, corpo: { ...pedido, versao, simular: true } }),
   );
   if (!r.success) throw new EducacionalError("Prévia da troca fora do contrato.", 502);
   return r.data;
 }
 
 export function trocarPrograma(alunoId: string, versao: number, pedido: PedidoTroca & { motivo: string }): Promise<AlunoDetalhe> {
-  return escreverAluno({ metodo: "POST", caminho: `alunos/${id(alunoId)}/programa`, corpo: { ...pedido, versao } });
+  return escreverAluno({
+    metodo: "POST",
+    caminho: `alunos/${id(alunoId)}/programa`,
+    corpo: { ...pedido, versao, simular: false },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -680,8 +686,17 @@ export async function reprocessarAnalise(analiseId: string): Promise<void> {
 
 export type ColecaoConfig = "etapas" | "checkpoints-modelo" | "tipos-intervencao" | "responsaveis" | "programas";
 
+// Roteiro do checkpoint padrão vai como os 4 campos soltos (objetivo_contato,
+// perguntas_chave, sinais_upsell, estrategia_monetizacao). Se o backend confirmar
+// o objeto `roteiro`, a troca é só aqui.
+function corpoDaConfig(campos: Record<string, unknown>): Record<string, unknown> {
+  if (!campos.roteiro || typeof campos.roteiro !== "object") return campos;
+  const { roteiro, ...resto } = campos;
+  return { ...resto, ...(roteiro as Record<string, unknown>) };
+}
+
 export async function criarItemConfig(colecao: ColecaoConfig, campos: Record<string, unknown>): Promise<Config> {
-  return validarConfig(await chamar({ metodo: "POST", caminho: `config/${colecao}`, corpo: campos }));
+  return validarConfig(await chamar({ metodo: "POST", caminho: `config/${colecao}`, corpo: corpoDaConfig(campos) }));
 }
 
 export async function atualizarItemConfig(
@@ -689,7 +704,7 @@ export async function atualizarItemConfig(
   itemId: string,
   campos: Record<string, unknown>,
 ): Promise<Config> {
-  return validarConfig(await chamar({ metodo: "PATCH", caminho: `config/${colecao}/${id(itemId)}`, corpo: campos }));
+  return validarConfig(await chamar({ metodo: "PATCH", caminho: `config/${colecao}/${id(itemId)}`, corpo: corpoDaConfig(campos) }));
 }
 
 // Só no modo demonstração: volta o banco do navegador à semente.

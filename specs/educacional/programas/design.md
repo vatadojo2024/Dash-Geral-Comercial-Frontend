@@ -1,69 +1,53 @@
 # Programas e roteiros de checkpoint — Design (frontend)
 
-## 1. Contrato proposto ao backend
-
-Acréscimos. Nada do que existe muda de formato, exceto onde indicado.
+## 1. Contrato (alinhado com o backend em 28/10)
 
 ```typescript
 interface Programa {
   id: string;
-  nome: string;              // "Blackbelt 6 meses"
-  mentoria: string;          // "Blackbelt" — é o que a tela mostra como mentoria
-  duracao_meses: number;     // 6 | 12
-  observacao: string | null; // "Em que momento solicitar indicação? ..."
-  ordem: number;
+  nome: string;
+  mentoria: "Blackbelt" | "Prime" | "Private";
+  duracao_meses: number;
+  observacoes: string | null;
   ativo: boolean;
+  ordem: number;
 }
+// GET /config devolve `programas`. Rotas: /config/programas[/:id], no mesmo
+// desenho das outras tabelas de configuração. Editar duracao_meses NÃO recalcula
+// o término de quem já está no programa (a tela avisa na edição).
 
-interface Roteiro {
-  objetivo: string | null;
-  perguntas_chave: string | null;
-  sinais_upsell_renovacao: string | null;
-  estrategia_monetizacao: string | null;
-}
+// Checkpoint padrão: ganha programa_id; a contagem fica em EXATAMENTE uma de
+//   dias_apos_entrada ("Dia N" = início + N dias)
+//   meses_apos_inicio ("Mês N" = N meses de calendário; fim do mês quando o dia não existe)
+// — a outra null (nunca 0); as duas ou nenhuma → 400. Roteiro: objetivo_contato,
+// perguntas_chave, sinais_upsell, estrategia_monetizacao. prazo_sla_dias, big_win,
+// ativo e ordem como hoje.
 
-// Config: ganha `programas: Programa[]`.
-// CheckpointModelo: ganha
-//   programa_id: string;
-//   marco: string;          // "Dia 0", "Dia 3", "Mês 1"… — substitui `dias_apos_entrada` na tela
-//   roteiro: Roteiro;
-// (`dias_apos_entrada` pode continuar na resposta; a tela deixa de editá-lo.)
+// Aluno: ganha programa_id e data_inicio_programa. `mentoria` continua na resposta,
+// mas não é mais editável: não vai no PATCH. Nome, duração e observações do
+// programa a tela tira da config.
 
-// Checkpoint (do aluno): ganha
-//   marco: string | null;   // null no checkpoint avulso
-//   roteiro: Roteiro | null;// lido do checkpoint padrão (referência); null no avulso
+// Checkpoint do aluno: novo status `substituido` (sai da timeline e do SLA; fica no
+// histórico). O roteiro vem do checkpoint padrão (referência).
 
-// AlunoLinha: ganha `programa: { id, nome, mentoria, duracao_meses } | null`
-//   (null = aluno antigo, sem programa). `mentoria` continua vindo (= programa.mentoria).
-// AlunoDetalhe: ganha `data_inicio_programa: string | null` e
-//   `programa_observacao: string | null`.
+// Troca de programa: UMA rota.
+// POST /alunos/:id/programa { programa_id, data_inicio, motivo, versao, simular }
+//   simular: true  → prévia, sem gravar
+//   simular: false → grava; responde o AlunoDetalhe
 
-// Escritas
-// POST /alunos: `programa_id` obrigatório; `mentoria` sai do corpo (o backend preenche).
-// PATCH /alunos/:id: `programa_id` NÃO é aceito (troca só pela rota abaixo).
-// POST /alunos/:id/programa/previa  { programa_id, inicio }            → PreviaTroca
-// POST /alunos/:id/programa         { programa_id, inicio, motivo, versao } → AlunoDetalhe
-
-interface PreviaTroca {
-  programa: { id: string; nome: string };
-  inicio: string;
-  data_termino_sugerida: string;
-  ficam: { id: string; nome: string; marco: string | null; status: StatusCheckpoint; data_prevista: string | null }[];
-  saem:  { id: string; nome: string; marco: string | null; status: StatusCheckpoint; data_prevista: string | null }[];
-  criados: { nome: string; marco: string; data_prevista: string }[];
-}
-
-// Configuração: POST/PATCH /config/programas[/:id] (como as outras coleções,
-// devolvem a config inteira). Inativar programa com alunos: 409
-// { error: "programa_com_alunos", alunos: N } (igual à etapa).
-// GET /alunos?programa_id=a,b (lista por vírgula).
+// Filtro: GET /alunos?programa_id=uuid1,uuid2
 ```
 
-**Respostas do backend (28/10)** — os nomes finais de rotas e campos virão do plano do backend; até lá o front segue com os desta proposta e ajusta depois.
-1. **Término na troca:** a troca grava `data_inicio_programa`, `mentoria` e `data_termino` (início + duração). Por isso o aluno usa o nome `data_inicio_programa` (e não `programa_inicio`).
-2. **"Mês N":** meses de calendário a partir do início; no fim do mês cai no último dia (31/01 + 1 mês = 28/02). **"Dia N":** início + N dias.
-3. **Troca:** os realizados ficam; os não realizados do programa antigo saem da jornada sem ser apagados (o backend vai propor um status, ex.: `substituido`) — não aparecem na timeline nem contam no SLA, mas ficam no histórico; os do programa novo são criados a partir do início escolhido, pulando os que caem em data igual ou anterior à do último realizado. A tela tolera um checkpoint `substituido` que chegue na lista: ele é retirado sem aviso.
-4. **Roteiro:** é referência, não cópia. O backend devolve os 4 textos junto com o checkpoint do aluno, lidos do checkpoint padrão. No Raio-X o roteiro é só leitura; a edição fica em Configurações.
+**Como a tela lida com o que ainda não está fechado**
+- **Formato do roteiro** (objeto `roteiro` ou 4 campos soltos): a leitura aceita os dois; o envio vai em 4 campos soltos, numa função só do adapter (`corpoDaConfig`).
+- **Formato da prévia** (`simular: true`): a tela espera `{ programa: {id, nome}, data_inicio, data_termino_sugerida, ficam[], saem[], criados[] }`. Na simulação o front manda `programa_id`, `data_inicio`, `versao` e `simular`; o motivo só vai na confirmação.
+- **Marco no checkpoint do aluno:** a tela mostra "Dia N"/"Mês N" se o checkpoint trouxer `marco` ou a contagem (`dias_apos_entrada`/`meses_apos_inicio`); sem isso, mostra só o nome.
+
+**Respostas do backend (28/10, primeira rodada)**
+1. **Término na troca:** a troca grava `data_inicio_programa`, `mentoria` e `data_termino` (início + duração).
+2. **"Mês N":** meses de calendário a partir do início; no fim do mês cai no último dia. **"Dia N":** início + N dias.
+3. **Troca:** os realizados ficam; os não realizados do programa antigo saem da jornada sem ser apagados (status `substituido`); os do programa novo são criados a partir do início escolhido, pulando os de data igual ou anterior à do último realizado.
+4. **Roteiro:** referência ao checkpoint padrão; no Raio-X só leitura.
 
 ## 2. Telas
 
@@ -71,7 +55,7 @@ interface PreviaTroca {
 - **Raio-X — cabeçalho**: mostra Programa (com a mentoria) e, se houver, a observação num aviso discreto. Em edição, sem campo de mentoria/programa; botão **Trocar programa** ao lado (e "Definir programa" para aluno sem programa, mesmo fluxo).
 - **Timeline**: clicar num checkpoint seleciona-o; abaixo da timeline, um painel **Roteiro do contato** com os 4 blocos e o botão "Editar checkpoint" (o formulário de hoje). Ao abrir o Raio-X, o painel já mostra o próximo checkpoint. Avulso: "Checkpoint avulso, sem roteiro".
 - **Trocar programa** (diálogo em 2 passos): programa + início (data de entrada | começa hoje | outra data) → "Ver prévia" chama `/previa` → três listas (Ficam / Saem / Criados) + término sugerido + motivo → "Confirmar troca". Erros: 400 no campo; 409 = aviso de outra pessoa e recarrega.
-- **Configurações**: aba **Programas** (lista ordenável como Etapas; colunas nome, mentoria, duração, observação; ativar/inativar com o 409 de alunos). Aba **Checkpoints padrão**: seletor de programa no topo (filtra a lista e é o programa do item novo); colunas Marco ("Dia N"/"Mês N", validado), Nome, SLA, Big Win; o roteiro abre num diálogo de edição com 4 textos longos.
+- **Configurações**: aba **Programas** (lista ordenável como Etapas; colunas nome, mentoria — Blackbelt, Prime ou Private —, duração, observações; ativar/inativar com o 409 de alunos; aviso na edição: mudar a duração não recalcula o término de quem já está no programa). Aba **Checkpoints padrão**: seletor de programa no topo (filtra a lista e é o programa do item novo); colunas Marco ("Dia N"/"Mês N", validado), Nome, SLA, Big Win; o roteiro abre num diálogo de edição com 4 textos longos.
 - **Lista / aba Alunos**: filtro "Programa" com vários ao mesmo tempo (ex.: Blackbelt 6 e 12 meses), opções agrupadas por mentoria. Substitui o filtro de mentoria do M1 (a mentoria sai do programa); a coluna Mentoria continua.
 
 ## 3. Modo demonstração

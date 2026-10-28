@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { useConfig } from "./dados";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
-import { programasPorMentoria } from "./programas";
+import { programaDoAluno, programasPorMentoria } from "./programas";
 import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
@@ -45,7 +45,8 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
   }, [aberto]);
 
   const dataDeInicio = inicio === "entrada" ? a.data_entrada.slice(0, 10) : inicio === "hoje" ? hojeEmBrasilia() : outraData;
-  const definir = !a.programa;
+  const atual = programaDoAluno(a, config.data);
+  const definir = !a.programa_id;
 
   async function verPrevia() {
     const novos: typeof erros = {};
@@ -55,11 +56,11 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
     if (Object.keys(novos).length) return;
     setCarregando(true);
     try {
-      setPrevia(await previaTrocaPrograma(a.id, { programa_id: programaId, inicio: dataDeInicio }));
+      setPrevia(await previaTrocaPrograma(a.id, a.versao, { programa_id: programaId, data_inicio: dataDeInicio }));
     } catch (e) {
       const campo = e instanceof EducacionalError ? e.corpo.campo : undefined;
       const msg = e instanceof EducacionalError ? (e.corpo.mensagem ?? e.message) : "Não foi possível montar a prévia.";
-      setErros(campo === "programa_id" ? { programa: msg } : campo === "inicio" ? { inicio: msg } : { envio: msg });
+      setErros(campo === "programa_id" ? { programa: msg } : campo === "data_inicio" ? { inicio: msg } : { envio: msg });
     } finally {
       setCarregando(false);
     }
@@ -75,7 +76,7 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
     const r = await gravar({
       alunoId: a.id,
       versao: a.versao,
-      executar: (v) => trocarPrograma(a.id, v, { programa_id: previa.programa.id, inicio: previa.inicio, motivo: motivo.trim() }),
+      executar: (v) => trocarPrograma(a.id, v, { programa_id: previa.programa.id, data_inicio: previa.data_inicio, motivo: motivo.trim() }),
       afetaTotais: true,
     });
     setCarregando(false);
@@ -94,8 +95,8 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
       subtitulo={
         previa
           ? "Confira o que muda na jornada. Nada é gravado antes de confirmar."
-          : a.programa
-            ? `Programa atual: ${a.programa.nome}${a.data_inicio_programa ? `, desde ${dataCurta(a.data_inicio_programa)}` : ""}.`
+          : atual
+            ? `Programa atual: ${atual.nome}${a.data_inicio_programa ? `, desde ${dataCurta(a.data_inicio_programa)}` : ""}.`
             : "Este aluno ainda não tem programa."
       }
       onFechar={onFechar}
@@ -127,7 +128,7 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
                   {g.programas.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nome}
-                      {p.id === a.programa?.id ? " (atual: novo ciclo)" : ""}
+                      {p.id === a.programa_id ? " (atual: novo ciclo)" : ""}
                     </option>
                   ))}
                 </optgroup>
@@ -172,7 +173,7 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
       ) : (
         <div className="space-y-4">
           <p className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-texto">
-            <span className="font-semibold">{previa.programa.nome}</span> a partir de {dataCurta(previa.inicio)} · término{" "}
+            <span className="font-semibold">{previa.programa.nome}</span> a partir de {dataCurta(previa.data_inicio)} · término{" "}
             {dataCurta(previa.data_termino_sugerida)}
             <span className="block text-xs text-texto-sec">A troca grava o início, a mentoria e o término do programa.</span>
           </p>

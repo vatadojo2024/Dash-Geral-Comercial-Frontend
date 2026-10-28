@@ -20,6 +20,11 @@ export function programasPorMentoria(config: Config | undefined, incluirInativos
   return grupos;
 }
 
+// O aluno traz só `programa_id`; nome, duração e observações vêm da config.
+export function programaDoAluno(a: { programa_id: string | null }, config: Config | undefined): Programa | null {
+  return (a.programa_id && config?.programas.find((p) => p.id === a.programa_id)) || null;
+}
+
 // Com a API ainda sem programas, o cadastro volta ao texto livre de mentoria.
 export const temProgramas = (config: Config | undefined) => (config?.programas.length ?? 0) > 0;
 

@@ -59,7 +59,7 @@ import { CAMPO } from "./Dialogo";
 import { Sugestoes } from "./Edicao";
 import { lerSimular } from "./estado";
 import { HistoricoDoAluno } from "./Historico";
-import { temProgramas } from "./programas";
+import { programaDoAluno, temProgramas } from "./programas";
 import { TrocarPrograma } from "./TrocarPrograma";
 import { NovaIntervencao } from "./NovaIntervencao";
 import { EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
@@ -161,7 +161,7 @@ export function RaioXAluno({ id }: { id: string }) {
                 {!a.arquivado && temProgramas(config.data) && (
                   <Button size="sm" variant="outline" onClick={() => setTrocar(true)}>
                     <Repeat className="h-3.5 w-3.5" aria-hidden />
-                    {a.programa ? "Trocar programa" : "Definir programa"}
+                    {a.programa_id ? "Trocar programa" : "Definir programa"}
                   </Button>
                 )}
                 {!a.arquivado && (
@@ -533,9 +533,9 @@ function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 // Blocos
 // ---------------------------------------------------------------------------
 
+// A mentoria não entra: vem do programa (não é mais editável; troca por "Trocar programa").
 const CABECALHO: (keyof CamposDiretosAluno)[] = [
   "nome",
-  "mentoria",
   "data_entrada",
   "data_termino",
   "objetivo",
@@ -545,7 +545,8 @@ const CABECALHO: (keyof CamposDiretosAluno)[] = [
 ];
 
 function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; acoes: ReactNode }) {
-  const b = useBloco(a, CABECALHO, [], config, ["nome", "mentoria", "data_entrada"]);
+  const b = useBloco(a, CABECALHO, [], config, ["nome", "data_entrada"]);
+  const programa = programaDoAluno(a, config);
   const etapas = etapasAtivas(config);
   if (!etapas.some((e) => e.id === a.etapa.id)) etapas.push({ id: a.etapa.id, nome: a.etapa.nome, ordem: 999, ativo: false });
   return (
@@ -561,7 +562,7 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
             <EtiquetaDemonstracao />
           </div>
           <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-6">
-            <Dado rotulo="Programa">{a.programa?.nome ?? "Sem programa"}</Dado>
+            <Dado rotulo="Programa">{programa?.nome ?? "Sem programa"}</Dado>
             <Dado rotulo="Mentoria">{a.mentoria}</Dado>
             <Dado rotulo="Entrada">{dataCurta(a.data_entrada)}</Dado>
             <Dado rotulo="Término">{dataCurta(a.data_termino)}</Dado>
@@ -572,12 +573,12 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
             <span className="text-texto-sec">Objetivo: </span>
             <span className="text-texto">{a.objetivo ?? "Não informado"}</span>
           </p>
-          {a.programa_observacao && (
+          {programa?.observacoes && (
             <p className="mt-3 flex items-start gap-2 rounded-lg border border-amarelo/25 bg-amarelo/[0.06] px-3 py-2 text-sm text-texto">
               <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amarelo" aria-hidden />
               <span>
-                <span className="text-texto-sec">{a.programa?.nome ?? "Programa"}: </span>
-                {a.programa_observacao}
+                <span className="text-texto-sec">{programa.nome}: </span>
+                {programa.observacoes}
               </span>
             </p>
           )}
@@ -586,8 +587,6 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
       edicao={
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Texto b={b} k="nome" rotulo="Nome *" className="sm:col-span-2" />
-          {/* Com programa, a mentoria vem dele (troca só por "Trocar programa"). */}
-          {!a.programa && <Texto b={b} k="mentoria" rotulo="Mentoria *" sugestoes={config?.mentorias} />}
           <Lista b={b} k="status_aluno" rotulo="Status do aluno" opcoes={STATUS_ALUNO.map((s) => ({ valor: s, rotulo: ROTULO_STATUS_ALUNO[s] }))} />
           <Texto b={b} k="data_entrada" rotulo="Data de entrada *" tipo="date" />
           <Texto b={b} k="data_termino" rotulo="Data de término" tipo="date" />

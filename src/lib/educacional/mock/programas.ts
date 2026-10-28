@@ -1,5 +1,5 @@
-import type { CheckpointModelo, Programa, Roteiro, StatusCheckpoint } from "../contrato";
-import { dataDoMarco, diasEntre } from "./motor";
+import { contagemDoMarco, type CheckpointModelo, type Programa, type Roteiro, type StatusCheckpoint } from "../contrato";
+import { dataPrevistaDoModelo, diasEntre } from "./motor";
 import type { Banco, CheckpointBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -55,9 +55,9 @@ const slug = (t: string) =>
 
 function roteiroDeExemplo(nome: string, bigWin: boolean): Roteiro {
   return {
-    objetivo: `Exemplo (${nome}): entender como o aluno está e combinar o próximo passo.`,
+    objetivo_contato: `Exemplo (${nome}): entender como o aluno está e combinar o próximo passo.`,
     perguntas_chave: "Exemplo: O que mudou desde o último contato? O que está travando? Qual o próximo resultado que você quer?",
-    sinais_upsell_renovacao: bigWin
+    sinais_upsell: bigWin
       ? "Exemplo: trouxe resultado concreto, fala em escalar, pergunta sobre a próxima turma."
       : "Exemplo: pede mais acompanhamento, cita um resultado, pergunta o que vem depois.",
     estrategia_monetizacao: bigWin
@@ -76,7 +76,7 @@ export function catalogoDeProgramas(): { programas: Programa[]; modelos: Checkpo
       nome: `${d.mentoria} ${d.meses} meses`,
       mentoria: d.mentoria,
       duracao_meses: d.meses,
-      observacao: d.observacao ?? null,
+      observacoes: d.observacao ?? null,
       ordem: i + 1,
       ativo: true,
     });
@@ -86,12 +86,11 @@ export function catalogoDeProgramas(): { programas: Programa[]; modelos: Checkpo
         id: `cpm-${slug(d.mentoria)}-${d.meses}-${k + 1}`,
         nome,
         ordem: k + 1,
-        dias_apos_entrada: null,
+        ...contagemDoMarco(marco)!, // exatamente uma: dias_apos_entrada OU meses_apos_inicio
         prazo_sla_dias: marco.startsWith("Dia") ? 2 : 7,
         big_win: bigWin,
         ativo: true,
         programa_id: id,
-        marco,
         roteiro: roteiroDeExemplo(nome, bigWin),
       });
     });
@@ -127,7 +126,7 @@ export function semearProgramas(banco: Banco, hoje: string) {
     modelos
       .filter((m) => m.programa_id === programa.id)
       .forEach((m) => {
-        const prevista = dataDoMarco(a.data_entrada, m.marco!)!;
+        const prevista = dataPrevistaDoModelo(a.data_entrada, m);
         let status: StatusCheckpoint = "previsto";
         let realizada: string | null = null;
         let observacao: string | null = null;

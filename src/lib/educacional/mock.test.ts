@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import semente from "@/lib/mock/data_educacional.json";
-import { AlunoDetalheSchema, ConfigSchema, FAIXAS_SAUDE, STATUS_CHECKPOINT } from "./contrato";
+import { AlunoDetalheSchema, ConfigSchema, FAIXAS_SAUDE, marcoDe, STATUS_CHECKPOINT } from "./contrato";
 import { bancoDaSemente } from "./mock/banco";
 import { diasEntre, faixaDoHealth, hojeBR, montarAluno, montarResumo, naJornada } from "./mock/motor";
 
@@ -28,7 +28,7 @@ describe("semente — contrato da Fase 2", () => {
       return banco.config.checkpoints_modelo
         .filter((m) => m.programa_id === p.id)
         .sort((x, y) => x.ordem - y.ordem)
-        .map((m) => `${m.marco} (${m.nome})`)
+        .map((m) => `${marcoDe(m)} (${m.nome})`)
         .join(", ");
     };
     expect(banco.config.programas.map((p) => p.nome)).toEqual([
@@ -47,20 +47,22 @@ describe("semente — contrato da Fase 2", () => {
     expect(lista("Private 12 meses")).toBe(lista("Prime 12 meses"));
     expect(banco.config.checkpoints_modelo.filter((m) => m.big_win).every((m) => m.nome === "Big Win")).toBe(true);
     expect(banco.config.checkpoints_modelo.filter((m) => m.big_win)).toHaveLength(6);
-    expect(banco.config.programas.filter((p) => p.observacao).map((p) => p.mentoria)).toEqual(["Blackbelt", "Blackbelt"]);
-    expect(banco.config.checkpoints_modelo.every((m) => m.roteiro?.objetivo && m.roteiro.estrategia_monetizacao)).toBe(true);
+    expect(banco.config.programas.filter((p) => p.observacoes).map((p) => p.mentoria)).toEqual(["Blackbelt", "Blackbelt"]);
+    expect(banco.config.checkpoints_modelo.every((m) => m.roteiro?.objetivo_contato && m.roteiro.estrategia_monetizacao)).toBe(true);
+    // Contagem: exatamente uma preenchida, a outra null (nunca 0 no lugar de null).
+    expect(banco.config.checkpoints_modelo.every((m) => (m.dias_apos_entrada === null) !== (m.meses_apos_inicio === null))).toBe(true);
   });
 
   it("todo aluno tem programa, a mentoria dele e os checkpoints da lista do programa", () => {
     for (const a of alunos) {
-      expect(a.programa).not.toBeNull();
-      expect(a.mentoria).toBe(a.programa!.mentoria);
+      const programa = banco.config.programas.find((p) => p.id === a.programa_id);
+      expect(programa).toBeTruthy();
+      expect(a.mentoria).toBe(programa!.mentoria);
       expect(a.checkpoints.map((c) => c.marco)).toEqual(
-        banco.config.checkpoints_modelo.filter((m) => m.programa_id === a.programa!.id).sort((x, y) => x.ordem - y.ordem).map((m) => m.marco),
+        banco.config.checkpoints_modelo.filter((m) => m.programa_id === a.programa_id).sort((x, y) => x.ordem - y.ordem).map((m) => marcoDe(m)),
       );
-      expect(a.checkpoints.every((c) => c.roteiro?.objetivo)).toBe(true);
+      expect(a.checkpoints.every((c) => c.roteiro?.objetivo_contato)).toBe(true);
     }
-    expect(alunos.filter((a) => a.programa_observacao).every((a) => a.programa!.mentoria === "Blackbelt")).toBe(true);
   });
 
   it("cobre etapas, status de checkpoint, faixas e um arquivado", () => {
