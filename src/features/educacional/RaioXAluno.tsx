@@ -4,7 +4,7 @@ import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Archive, ArrowLeft, CheckCircle2, PencilLine, Plus, RotateCcw, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, CheckCircle2, Lightbulb, PencilLine, Plus, RotateCcw, Undo2 } from "lucide-react";
 import {
   ajustarCampo,
   arquivarAluno,
@@ -550,7 +550,8 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
             <span className="tag">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>
             <EtiquetaDemonstracao />
           </div>
-          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-5">
+          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-6">
+            <Dado rotulo="Programa">{a.programa?.nome ?? "Sem programa"}</Dado>
             <Dado rotulo="Mentoria">{a.mentoria}</Dado>
             <Dado rotulo="Entrada">{dataCurta(a.data_entrada)}</Dado>
             <Dado rotulo="Término">{dataCurta(a.data_termino)}</Dado>
@@ -561,6 +562,15 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
             <span className="text-texto-sec">Objetivo: </span>
             <span className="text-texto">{a.objetivo ?? "Não informado"}</span>
           </p>
+          {a.programa_observacao && (
+            <p className="mt-3 flex items-start gap-2 rounded-lg border border-amarelo/25 bg-amarelo/[0.06] px-3 py-2 text-sm text-texto">
+              <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-amarelo" aria-hidden />
+              <span>
+                <span className="text-texto-sec">{a.programa?.nome ?? "Programa"}: </span>
+                {a.programa_observacao}
+              </span>
+            </p>
+          )}
         </div>
       }
       edicao={

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { Archive, Flag, PencilLine, Plus, Star } from "lucide-react";
+import { Archive, Flag, Plus, Star } from "lucide-react";
 import { arquivarCheckpoint, atualizarCheckpoint, criarCheckpoint, EducacionalError } from "@/lib/educacional/apiEducacional";
 import { STATUS_CHECKPOINT, type AlunoDetalhe, type Checkpoint, type StatusCheckpoint } from "@/lib/educacional/contrato";
 import { dataCurta, hojeEmBrasilia, PONTO_DO_TOM, ROTULO_STATUS_CHECKPOINT, TOM_STATUS_CHECKPOINT } from "@/lib/educacional/rotulos";
@@ -11,22 +11,30 @@ import { cn } from "@/lib/utils/cn";
 import { ConfirmarAcao } from "./Blocos";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
 import { BadgeCheckpoint } from "./partes";
+import { RoteiroDoContato } from "./Roteiro";
 import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
 // Timeline de checkpoints (spec Fase 2, seção 5): editar nome, datas, status e
 // observação de cada checkpoint; adicionar checkpoint avulso; arquivar (sai da
 // timeline, fica no histórico). Toda escrita leva a versão do aluno.
+// Programas (P3): clicar num checkpoint mostra o roteiro do contato abaixo da
+// timeline (só leitura; edita-se em Configurações). O do próximo checkpoint já
+// vem aberto. "Editar checkpoint" fica no painel.
 // ---------------------------------------------------------------------------
 
 export function Timeline({ a }: { a: AlunoDetalhe }) {
   const [editando, setEditando] = useState<Checkpoint | "novo" | null>(null);
+  const [escolhido, setEscolhido] = useState<string | null>(null);
   const ordenados = [...a.checkpoints].sort((x, y) => x.ordem - y.ordem);
+  // Sem escolha (ou se o escolhido saiu da timeline): o próximo checkpoint.
+  const padrao = a.proximo_checkpoint?.id ?? ordenados.find((c) => c.status !== "realizado")?.id ?? ordenados.at(-1)?.id ?? null;
+  const selecionado = ordenados.find((c) => c.id === escolhido) ?? ordenados.find((c) => c.id === padrao) ?? null;
   return (
     <Card>
       <CardHeader
         title="Timeline de checkpoints"
-        subtitle="Clique num checkpoint para editar. O Big Win tem marca própria."
+        subtitle="Clique num checkpoint para ver o roteiro do contato. O Big Win tem marca própria."
         action={
           <Button variant="secondary" size="sm" onClick={() => setEditando("novo")}>
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -44,13 +52,18 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
               {ordenados.map((c) => {
                 const tom = TOM_STATUS_CHECKPOINT[c.status];
                 const previsto = c.status === "previsto";
+                const ativo = selecionado?.id === c.id;
                 return (
                   <li key={c.id} className="relative flex w-24 flex-col items-center text-center">
                     <button
                       type="button"
-                      onClick={() => setEditando(c)}
-                      aria-label={`Editar o checkpoint ${c.nome}`}
-                      className="group flex flex-col items-center gap-1.5 rounded-lg px-1 pb-1 hover:bg-white/[0.05] focus-visible:bg-white/[0.05] focus-visible:outline-none"
+                      onClick={() => setEscolhido(c.id)}
+                      aria-label={`Ver o roteiro do checkpoint ${c.nome}`}
+                      aria-pressed={ativo}
+                      className={cn(
+                        "group flex flex-col items-center gap-1.5 rounded-lg px-1 pb-1 hover:bg-white/[0.05] focus-visible:bg-white/[0.05] focus-visible:outline-none",
+                        ativo && "bg-white/[0.07] ring-1 ring-white/20",
+                      )}
                     >
                       <span
                         className={cn(
@@ -66,9 +79,9 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
                           <Flag className={cn("h-3.5 w-3.5", previsto ? "text-cinza-claro" : "text-noite/80")} aria-hidden />
                         )}
                       </span>
-                      <span className={cn("inline-flex items-center gap-1 text-xs font-medium text-texto", c.big_win && "text-amarelo")}>
+                      <span className={cn("inline-flex flex-col items-center text-xs font-medium text-texto", c.big_win && "text-amarelo")}>
+                        {c.marco && <span className="text-[10px] font-normal uppercase tracking-wide text-texto-sec">{c.marco}</span>}
                         {c.nome}
-                        <PencilLine className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" aria-hidden />
                       </span>
                       <span className="text-[11px] tabular-nums text-texto-sec">{dataCurta(c.data_prevista)}</span>
                       <BadgeCheckpoint status={c.status} />
@@ -80,6 +93,7 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
             </ol>
           </div>
         )}
+        {selecionado && <RoteiroDoContato checkpoint={selecionado} proximo={selecionado.id === padrao} onEditar={() => setEditando(selecionado)} />}
       </CardContent>
       {editando && <FormCheckpoint aluno={a} checkpoint={editando === "novo" ? null : editando} onFechar={() => setEditando(null)} />}
     </Card>
