@@ -9,6 +9,7 @@ import { sair } from "@/lib/auth/clientSession";
 import type { Modulo } from "@/lib/api/contracts";
 import { CHAVE_MODULO_LEMBRADO, homeDoModulo, moduloAtivo } from "@/lib/auth/areas";
 import { Alternador } from "@/components/ui/Alternador";
+import { navegarComGuarda } from "@/lib/navegacao/guardaDeSaida";
 
 function iniciais(nome: string): string {
   return nome
@@ -44,13 +45,17 @@ export function Topbar({ user, onMenu }: { user: SessionUser; onMenu: () => void
   // Seletor de área (admin): leva à home do módulo e lembra a escolha (D1).
   const pathname = usePathname();
   const modulo = moduloAtivo(user, pathname);
+  // Passa pela guarda de saída (alterações não salvas no módulo atual).
   function trocarModulo(m: Modulo) {
-    try {
-      window.localStorage.setItem(CHAVE_MODULO_LEMBRADO, m);
-    } catch {
-      /* sem armazenamento: o seletor segue funcionando, só não lembra */
-    }
-    router.push(homeDoModulo(user, m));
+    const destino = homeDoModulo(user, m);
+    navegarComGuarda(destino, () => {
+      try {
+        window.localStorage.setItem(CHAVE_MODULO_LEMBRADO, m);
+      } catch {
+        /* sem armazenamento: o seletor segue funcionando, só não lembra */
+      }
+      router.push(destino);
+    });
   }
 
   async function fazerLogout() {

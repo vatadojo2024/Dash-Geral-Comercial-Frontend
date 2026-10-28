@@ -19,7 +19,10 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
 - [x] M2. Menu com 4 itens, Cockpit com "Precisam de atenção" e aba Alunos (busca, filtros, contador, URL).
   - O filtro de mentoria virou o filtro de programa (decisão dos programas, 28/10). Faixa de saúde segue em `risco` (aceito pela API hoje).
   - "Análise de aula" abre um marcador até o M5. Link salvo da Fase 2 (`/educacional?filtros`) vai para a aba Alunos; o Raio-X volta para a tela de origem (`?voltar=` com o caminho).
-- [ ] M3. Salvar em lote na aba Alunos: armazém de pendências, marca e "Desfazer", barra, envio sem travar, resultado parcial, 409 com "Ver versão atual" e "Reaplicar", rede, `sessionStorage`, guarda de saída.
+- [x] M3. Salvar em lote na aba Alunos: armazém de pendências, marca e "Desfazer", barra, envio sem travar, resultado parcial, 409 com "Ver versão atual" e "Reaplicar", rede, `sessionStorage`, guarda de saída.
+  - `lote/pendencias.ts` (puro), `lote/alteracoes.ts` (uma alteração por célula), `ProvedorLote` na casca do módulo, `BarraDeAlteracoes`, `MarcaPendente`. "Antes: X" no `title` da célula. O 409 fica fora do próximo "Salvar" até a escolha.
+  - Topbar (compartilhado): o seletor de módulo passa por `navegarComGuarda` (`src/lib/navegacao/guardaDeSaida.ts`); sem pendências, segue igual.
+  - Mock: `simular_gravacao=409` no lote sobe a versão do primeiro aluno; `400` devolve validação só para ele.
 - [ ] M4. Raio-X com "Editar ficha" e "Salvar ficha" em lote.
 - [ ] M5. Análise de aula: lista, nova análise, revisão e confirmação, observador e aviso de pronta, aba Aulas e origem das notas.
 

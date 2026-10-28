@@ -226,6 +226,11 @@ function simularGravacao(): SimularGravacao {
 const ERRO_DE_REDE = "Sem conexão com o servidor. Verifique a internet e tente de novo.";
 const NAO_ENCONTRADO = "Registro não encontrado. Ele pode ter sido arquivado ou removido; atualize a página.";
 
+// Tipos do mock (só tipos: o código do mock é carregado sob demanda).
+type ServidorMock = typeof import("./mock/servidor");
+type ArmazemMock = typeof import("./mock/banco");
+type BancoMock = import("./mock/tipos").Banco;
+
 async function transporteMock(p: Pedido): Promise<unknown> {
   const [{ carregarBanco, salvarBanco }, { atender }, { hojeBR }, { ErroDaApi }] = await Promise.all([
     import("./mock/banco"),
@@ -240,6 +245,8 @@ async function transporteMock(p: Pedido): Promise<unknown> {
   const escrita = p.metodo !== "GET";
   const forcar = escrita ? simularGravacao() : null;
   if (forcar === "rede") throw new EducacionalError(ERRO_DE_REDE, 0, { error: "rede", mensagem: ERRO_DE_REDE });
+  // Lote: o 400 simulado cai só no PRIMEIRO aluno (resultado parcial); os outros gravam.
+  if (forcar === "400" && p.caminho === "lote") return loteComErroSimulado(p, banco, { atender, salvarBanco, hoje, agora });
   if (forcar === "400") {
     const mensagem = "Erro de validação simulado (simular_gravacao=400).";
     throw new EducacionalError(mensagem, 400, { error: "validacao", campo: "simulado", mensagem });
@@ -287,12 +294,44 @@ async function corpoDoMock(corpo: unknown): Promise<unknown> {
   return o;
 }
 
-// Aluno dono de uma escrita (para o 409 simulado).
+// ?simular_gravacao=400 no lote: o primeiro aluno volta com erro de validação
+// no primeiro campo que mudou; os demais seguem para o servidor do mock.
+function loteComErroSimulado(
+  p: Pedido,
+  banco: BancoMock,
+  m: { atender: ServidorMock["atender"]; salvarBanco: ArmazemMock["salvarBanco"]; hoje: string; agora: string },
+): unknown {
+  const pedido = p.corpo as PedidoLote;
+  const [primeiro, ...resto] = pedido.alunos;
+  const campo =
+    Object.keys(primeiro?.campos ?? {})[0] ??
+    primeiro?.ajustes?.[0]?.campo ??
+    (primeiro?.checkpoints?.length ? Object.keys(primeiro.checkpoints[0]).find((k) => k !== "id") : undefined) ??
+    "simulado";
+  const simulado = {
+    aluno_id: primeiro?.aluno_id ?? "",
+    ok: false,
+    error: "validacao",
+    campo,
+    mensagem: "Erro de validação simulado (simular_gravacao=400).",
+  };
+  if (!resto.length) return { lote_id: "lote-simulado", resultados: [simulado] };
+  const r = m.atender(
+    banco,
+    { metodo: "POST", caminho: "lote", query: new URLSearchParams(), corpo: { ...pedido, alunos: resto } },
+    { usuario: usuarioDemo, hoje: m.hoje, agora: m.agora },
+  ) as RespostaLote;
+  m.salvarBanco(banco, m.hoje);
+  return JSON.parse(JSON.stringify({ ...r, resultados: [simulado, ...r.resultados] })) as unknown;
+}
+
+// Aluno dono de uma escrita (para o 409 simulado; no lote, o primeiro aluno).
 function alunoDoPedido(
   banco: { checkpoints: { id: string; aluno_id: string }[]; intervencoes: { id: string; aluno_id: string }[] },
   p: Pedido,
 ): string | null {
   const s = p.caminho.split("/");
+  if (s[0] === "lote") return (p.corpo as PedidoLote | undefined)?.alunos?.[0]?.aluno_id ?? null;
   if (s[0] === "alunos" && s[1]) return s[1];
   if (s[0] === "checkpoints") return banco.checkpoints.find((c) => c.id === s[1])?.aluno_id ?? null;
   if (s[0] === "intervencoes" && s[1]) return banco.intervencoes.find((i) => i.id === s[1])?.aluno_id ?? null;

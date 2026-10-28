@@ -40,6 +40,14 @@ function mapearLinhas(dados: unknown, id: string, f: (l: AlunoLinha) => AlunoLin
   return { ...p, itens: p.itens.map((l) => (l.id === id ? f(l) : l)) };
 }
 
+// O AlunoDetalhe devolvido pelo servidor passa a valer no Raio-X e nas listas
+// (também usado pelo salvar em lote).
+export function trocarAlunoNoCache(queryClient: QueryClient, aluno: AlunoDetalhe) {
+  queryClient.setQueriesData({ queryKey: CHAVES.aluno(aluno.id) }, aluno);
+  const linha = linhaDoDetalhe(aluno);
+  queryClient.setQueriesData({ queryKey: CHAVES.alunos }, (dados: unknown) => mapearLinhas(dados, aluno.id, () => linha));
+}
+
 type Dependencias = { queryClient: QueryClient; avisar: (a: Aviso) => void; irParaHome: () => void };
 
 // Lógica pura (testável sem React); o hook só injeta as dependências.
@@ -68,9 +76,7 @@ export async function gravarAluno(d: Dependencias, g: Gravacao): Promise<Resulta
   try {
     const aluno = await g.executar(g.versao);
     // 2. A resposta manda.
-    queryClient.setQueriesData({ queryKey: chaveAluno }, aluno);
-    const linha = linhaDoDetalhe(aluno);
-    queryClient.setQueriesData({ queryKey: CHAVES.alunos }, (dados: unknown) => mapearLinhas(dados, g.alunoId, () => linha));
+    trocarAlunoNoCache(queryClient, aluno);
     void queryClient.invalidateQueries({ queryKey: CHAVES.alunos });
     void queryClient.invalidateQueries({ queryKey: CHAVES.historico(g.alunoId) });
     if (g.afetaTotais) void queryClient.invalidateQueries({ queryKey: CHAVES.resumo });
@@ -81,11 +87,7 @@ export async function gravarAluno(d: Dependencias, g: Gravacao): Promise<Resulta
     for (const [chave, dados] of antes) queryClient.setQueryData(chave, dados);
     if (erro instanceof EducacionalError && erro.status === 409) {
       const atual = erro.alunoAtual;
-      if (atual) {
-        queryClient.setQueriesData({ queryKey: chaveAluno }, atual);
-        const linha = linhaDoDetalhe(atual);
-        queryClient.setQueriesData({ queryKey: CHAVES.alunos }, (dados: unknown) => mapearLinhas(dados, g.alunoId, () => linha));
-      }
+      if (atual) trocarAlunoNoCache(queryClient, atual);
       void queryClient.invalidateQueries({ queryKey: chaveAluno });
       void queryClient.invalidateQueries({ queryKey: CHAVES.alunos });
       avisar({ tipo: "erro", texto: MENSAGEM_409 });

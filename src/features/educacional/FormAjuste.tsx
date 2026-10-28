@@ -15,7 +15,8 @@ import { useGravacao } from "./useGravacao";
 // Ajuste manual de campo calculado (spec Fase 2, 5.1): novo valor + motivo
 // (obrigatório, mín. 5 caracteres) → PUT /alunos/:id/ajustes/:campo. "Voltar
 // ao automático" pede confirmação → DELETE. Mostra o valor automático e o
-// ajuste ativo (quem, quando, por quê).
+// ajuste ativo (quem, quando, por quê). Com `aoConfirmar` (aba Alunos, salvar
+// em lote), não grava: devolve valor e motivo (ou "remover") e fecha.
 // ---------------------------------------------------------------------------
 
 export function FormAjuste({
@@ -23,12 +24,14 @@ export function FormAjuste({
   campo,
   onFechar,
   iniciarVoltando = false,
+  aoConfirmar,
 }: {
   aluno: AlunoLinha | AlunoDetalhe;
   campo: CampoAjustavel | null;
   onFechar: () => void;
   // Abre direto na confirmação de "Voltar ao automático".
   iniciarVoltando?: boolean;
+  aoConfirmar?: (r: { valor: unknown; motivo: string } | { remover: true }) => void;
 }) {
   const id = useId();
   const user = useSession();
@@ -81,6 +84,10 @@ export function FormAjuste({
     if (motivo.trim().length < MOTIVO_MINIMO) novos.motivo = `Explique o motivo (pelo menos ${MOTIVO_MINIMO} caracteres).`;
     setErros(novos);
     if (!lido.ok || novos.motivo) return;
+    if (aoConfirmar) {
+      aoConfirmar({ valor: lido.v, motivo: motivo.trim() });
+      return onFechar();
+    }
     const ajuste = { valor: lido.v, motivo: motivo.trim(), ajustado_por: { id: user.id, nome: user.nome }, ajustado_em: new Date().toISOString() };
     const novo = { valor: lido.v, automatico: atual?.automatico ?? null, ajuste };
     setSalvando(true);
@@ -101,6 +108,10 @@ export function FormAjuste({
 
   async function voltar() {
     if (!campo) return;
+    if (aoConfirmar) {
+      aoConfirmar({ remover: true });
+      return onFechar();
+    }
     const novo = { valor: atual?.automatico ?? null, automatico: atual?.automatico ?? null, ajuste: null };
     setSalvando(true);
     const r = await gravar({
@@ -145,7 +156,7 @@ export function FormAjuste({
               Cancelar
             </Button>
             <Button type="submit" loading={salvando}>
-              Salvar ajuste
+              {aoConfirmar ? "Aplicar ajuste" : "Salvar ajuste"}
             </Button>
           </>
         )

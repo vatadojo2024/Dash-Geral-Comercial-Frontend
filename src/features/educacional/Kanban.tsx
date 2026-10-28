@@ -23,13 +23,15 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { ArrowRightLeft, PencilLine } from "lucide-react";
-import { atualizarAluno } from "@/lib/educacional/apiEducacional";
+import { ArrowRightLeft, Loader2, PencilLine } from "lucide-react";
 import type { AlunoLinha, Etapa } from "@/lib/educacional/contrato";
 import { cn } from "@/lib/utils/cn";
 import { temAjusteNoCard } from "./campos";
+import { alteracaoDaEtapa } from "./lote/alteracoes";
+import { MenuDesfazer } from "./lote/MarcaPendente";
+import type { Entrada, Pendencias } from "./lote/pendencias";
+import { useAcoesDoLote } from "./lote/ProvedorLote";
 import { BadgeCheckpoint, Faixa, NomeResponsavel } from "./partes";
-import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
 // Kanban (spec Fase 2, seção 3): uma coluna por etapa ativa, na ordem da
@@ -62,14 +64,16 @@ const porColuna: KeyboardCoordinateGetter = (event, { context: { droppableRects,
 
 export function Kanban({
   itens,
+  pendencias,
   etapas,
   hrefDoAluno,
 }: {
   itens: AlunoLinha[];
+  pendencias: Pendencias;
   etapas: Etapa[];
   hrefDoAluno: (a: AlunoLinha) => string;
 }) {
-  const gravar = useGravacao();
+  const acoes = useAcoesDoLote();
   const [arrastando, setArrastando] = useState<AlunoLinha | null>(null);
   const sensores = useSensors(
     // Distância mínima: clique simples continua abrindo o Raio-X.
@@ -81,28 +85,24 @@ export function Kanban({
   const nomeDaEtapa = (id: unknown) => etapas.find((e) => e.id === id)?.nome ?? "";
   const nomeDoAluno = (id: unknown) => itens.find((a) => a.id === id)?.nome ?? "";
 
-  // Estável: os cartões são memorizados e só redesenham quando o aluno deles muda.
+  // Estável: os cartões são memorizados e só redesenham quando o aluno deles
+  // muda. Mover vira alteração pendente (salvar em lote): o card muda de
+  // coluna na hora, com a marca, e nada vai para a API até "Salvar".
   const mover = useCallback(
     (a: AlunoLinha, etapa: Etapa) => {
       if (a.etapa.id === etapa.id) return;
-      void gravar({
-        alunoId: a.id,
-        versao: a.versao,
-        executar: (v) => atualizarAluno(a.id, v, { etapa_id: etapa.id }),
-        naLinha: (l) => ({ ...l, etapa: { id: etapa.id, nome: etapa.nome } }),
-        noAluno: (d) => ({ ...d, etapa: { id: etapa.id, nome: etapa.nome } }),
-        afetaTotais: true,
-      });
+      acoes.registrar(a, alteracaoDaEtapa(a, etapa));
     },
-    [gravar],
+    [acoes],
   );
+  const desfazer = useCallback((a: AlunoLinha) => acoes.desfazer(a.id, "campo:etapa_id"), [acoes]);
 
   const aoComecar = (e: DragStartEvent) => setArrastando(itens.find((a) => a.id === e.active.id) ?? null);
   const aoSoltar = (e: DragEndEvent) => {
     setArrastando(null);
     const a = itens.find((x) => x.id === e.active.id);
     const etapa = etapas.find((x) => x.id === e.over?.id);
-    if (a && etapa) mover(a, etapa);
+    if (a && etapa && pendencias[a.id]?.estado !== "salvando") mover(a, etapa);
   };
 
   const anuncios: Announcements = {
@@ -136,9 +136,11 @@ export function Kanban({
               key={etapa.id}
               etapa={etapa}
               alunos={itens.filter((a) => a.etapa.id === etapa.id)}
+              pendencias={pendencias}
               etapas={etapas}
               hrefDoAluno={hrefDoAluno}
               onMover={mover}
+              onDesfazer={desfazer}
             />
           ))}
         </div>
@@ -147,7 +149,17 @@ export function Kanban({
       {typeof document !== "undefined" &&
         createPortal(
           <DragOverlay dropAnimation={null}>
-            {arrastando && <Cartao aluno={arrastando} etapas={etapas} hrefDoAluno={hrefDoAluno} onMover={mover} flutuando />}
+            {arrastando && (
+              <Cartao
+                aluno={arrastando}
+                entrada={pendencias[arrastando.id]}
+                etapas={etapas}
+                hrefDoAluno={hrefDoAluno}
+                onMover={mover}
+                onDesfazer={desfazer}
+                flutuando
+              />
+            )}
           </DragOverlay>,
           document.body,
         )}
@@ -158,15 +170,19 @@ export function Kanban({
 function Coluna({
   etapa,
   alunos,
+  pendencias,
   etapas,
   hrefDoAluno,
   onMover,
+  onDesfazer,
 }: {
   etapa: Etapa;
   alunos: AlunoLinha[];
+  pendencias: Pendencias;
   etapas: Etapa[];
   hrefDoAluno: (a: AlunoLinha) => string;
   onMover: (a: AlunoLinha, e: Etapa) => void;
+  onDesfazer: (a: AlunoLinha) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: etapa.id });
   return (
@@ -186,7 +202,17 @@ function Coluna({
         {alunos.length === 0 ? (
           <p className="px-1 py-3 text-center text-[11px] text-texto-sec/70">Nenhum aluno</p>
         ) : (
-          alunos.map((a) => <CartaoArrastavel key={a.id} aluno={a} etapas={etapas} hrefDoAluno={hrefDoAluno} onMover={onMover} />)
+          alunos.map((a) => (
+            <CartaoArrastavel
+              key={a.id}
+              aluno={a}
+              entrada={pendencias[a.id]}
+              etapas={etapas}
+              hrefDoAluno={hrefDoAluno}
+              onMover={onMover}
+              onDesfazer={onDesfazer}
+            />
+          ))
         )}
       </div>
     </section>
@@ -195,13 +221,19 @@ function Coluna({
 
 type PropsCartao = {
   aluno: AlunoLinha;
+  entrada: Entrada | undefined;
   etapas: Etapa[];
   hrefDoAluno: (a: AlunoLinha) => string;
   onMover: (a: AlunoLinha, e: Etapa) => void;
+  onDesfazer: (a: AlunoLinha) => void;
 };
 
 const CartaoArrastavel = memo(function CartaoArrastavel(props: PropsCartao) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.aluno.id });
+  // Em envio, o card não sai do lugar.
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: props.aluno.id,
+    disabled: props.entrada?.estado === "salvando",
+  });
   return (
     <div
       ref={setNodeRef}
@@ -220,13 +252,53 @@ const CartaoArrastavel = memo(function CartaoArrastavel(props: PropsCartao) {
 // Parte visual do cartão, memorizada à parte: o arrasto re-renderiza os
 // useDraggable a cada medição das colunas, mas o conteúdo só redesenha quando
 // o aluno muda.
-const Cartao = memo(function Cartao({ aluno: a, etapas, hrefDoAluno, onMover, flutuando = false }: PropsCartao & { flutuando?: boolean }) {
+const Cartao = memo(function Cartao({
+  aluno: a,
+  entrada,
+  etapas,
+  hrefDoAluno,
+  onMover,
+  onDesfazer,
+  flutuando = false,
+}: PropsCartao & { flutuando?: boolean }) {
   const router = useRouter();
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const fecharMenu = useCallback(() => setMenu(null), []);
+  const salvando = entrada?.estado === "salvando";
+  const alteracoes = entrada ? Object.values(entrada.alteracoes) : [];
+  const etapaPendente = entrada?.alteracoes["campo:etapa_id"];
+  const erro = entrada?.erro;
+  const erroDaEtapa = erro?.tipo === "validacao" && (erro.chave === "campo:etapa_id" || erro.chave === null) ? erro.mensagem : null;
+  // "Desfazer" no card desfaz o movimento de etapa (o que o Kanban edita).
+  const podeDesfazer = Boolean(etapaPendente) && !salvando && !flutuando;
   return (
     <div
       onClick={() => router.push(hrefDoAluno(a))}
-      className={cn("card-interactive relative block cursor-grab select-none rounded-lg p-3", flutuando && "rotate-1 cursor-grabbing shadow-2xl")}
+      onContextMenu={(e) => {
+        if (!podeDesfazer) return;
+        e.preventDefault();
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}
+      onKeyDown={(e) => {
+        if (podeDesfazer && (e.key === "ContextMenu" || (e.key === "F10" && e.shiftKey))) {
+          e.preventDefault();
+          const r = e.currentTarget.getBoundingClientRect();
+          setMenu({ x: r.left + 8, y: r.bottom });
+        }
+      }}
+      title={alteracoes.length ? alteracoes.map((x) => `Antes: ${x.antes}`).join("\n") + (podeDesfazer ? "\nBotão direito: Desfazer" : "") : undefined}
+      data-pendente={alteracoes.length ? "" : undefined}
+      className={cn(
+        "card-interactive relative block cursor-grab select-none rounded-lg p-3",
+        flutuando && "rotate-1 cursor-grabbing shadow-2xl",
+        alteracoes.length > 0 && "bg-amarelo/[0.12] ring-1 ring-amarelo/40",
+        erroDaEtapa && "ring-1 ring-erro/70",
+        entrada?.estado === "revisar" && "outline outline-1 outline-aviso/70",
+        salvando && "cursor-progress opacity-80",
+      )}
     >
+      {alteracoes.length > 0 && <span className="absolute -left-0.5 -top-0.5 h-2 w-2 rounded-full bg-amarelo" aria-hidden />}
+      {alteracoes.length > 0 && <span className="sr-only">Alteração não salva. {alteracoes.map((x) => `Antes: ${x.antes}.`).join(" ")}</span>}
       <span className="flex items-start gap-1.5 pr-7">
         <Link
           href={hrefDoAluno(a)}
@@ -252,7 +324,20 @@ const Cartao = memo(function Cartao({ aluno: a, etapas, hrefDoAluno, onMover, fl
       <span className="mt-1 block text-xs">
         <NomeResponsavel responsavel={a.responsavel} />
       </span>
-      {!flutuando && <MoverPara aluno={a} etapas={etapas} onMover={onMover} />}
+      {salvando ? (
+        <span className="mt-1.5 flex items-center gap-1 text-[11px] text-texto-sec">
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+          Salvando…
+        </span>
+      ) : erro?.tipo === "versao" ? (
+        <span className="mt-1.5 block text-[11px] text-aviso">Alterado por outra pessoa · veja na barra</span>
+      ) : erroDaEtapa ? (
+        <span className="mt-1.5 block text-[11px] text-erro" role="alert">
+          {erroDaEtapa}
+        </span>
+      ) : null}
+      {!flutuando && !salvando && <MoverPara aluno={a} etapas={etapas} onMover={onMover} />}
+      {menu && <MenuDesfazer pos={menu} onDesfazer={() => onDesfazer(a)} onFechar={fecharMenu} />}
     </div>
   );
 });

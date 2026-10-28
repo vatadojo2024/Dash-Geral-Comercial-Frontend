@@ -4,11 +4,9 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Plus, RotateCcw, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Loader2, Plus, RotateCcw, Search, X } from "lucide-react";
 import {
   arquivarAluno,
-  atualizarAluno,
-  atualizarCheckpoint,
   buscaValida,
   buscarAlunos,
   RESPONSAVEL_NENHUM,
@@ -25,7 +23,6 @@ import {
   STATUS_CHECKPOINT,
   type AlunoLinha,
   type CampoAjustavel,
-  type CamposDiretosAluno,
   type Etapa,
   type NivelInicial,
   type Responsavel,
@@ -67,13 +64,29 @@ import { NovoAluno } from "./NovoAluno";
 import { BadgeCheckpoint, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
 import { COLUNAS_DA_TABELA, SeletorColunas, useColunasVisiveis, type IdColuna } from "./SeletorColunas";
 import { useGravacao } from "./useGravacao";
+import { useSession } from "@/features/session/SessionProvider";
+import {
+  alteracaoDaAcao,
+  alteracaoDaEtapa,
+  alteracaoDoAjuste,
+  alteracaoDoCheckpoint,
+  alteracaoDoNivel,
+  alteracaoDoNome,
+  alteracaoDoResponsavel,
+  alteracaoDoStatus,
+} from "./lote/alteracoes";
+import { MarcaPendente } from "./lote/MarcaPendente";
+import { comPendencias, type Alteracao, type Entrada } from "./lote/pendencias";
+import { useAcoesDoLote, usePendencias, type AcoesDoLote } from "./lote/ProvedorLote";
 
 // ---------------------------------------------------------------------------
 // Tabela tática (spec Fase 2, seção 4), na aba Alunos desde a Fase 3 (3.3):
 // busca por nome, filtros, contador, Lista | Kanban. A lista vem do adapter já
 // filtrada, ordenada e paginada; toda célula edita na linha (Enter/clique fora
-// salva, Esc cancela) e grava com atualização otimista. Campo calculado abre o
-// formulário de ajuste. O nome do aluno abre o Raio-X, que volta para esta URL.
+// confirma, Esc cancela) e a edição vira ALTERAÇÃO PENDENTE (salvar em lote,
+// seção 4): nada vai para a API até "Salvar" na barra. Campo calculado abre o
+// formulário de ajuste (o motivo vai junto). Arquivar e reativar seguem
+// imediatos. O nome do aluno abre o Raio-X, que volta para esta URL.
 // ---------------------------------------------------------------------------
 
 const SLA = "pendente,nao_respondeu";
@@ -99,6 +112,9 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
   });
   const config = useConfig();
   useRedirecionarSeSemPermissao([lista.error, config.error]);
+  // O que a pessoa editou e ainda não salvou aparece por cima do servidor.
+  const pendencias = usePendencias();
+  const itens = useMemo(() => lista.data?.itens.map((l) => comPendencias(l, pendencias[l.id])) ?? [], [lista.data, pendencias]);
   const etapas = useMemo(() => etapasAtivas(config.data), [config.data]);
   const responsaveis = ativos(config.data?.responsaveis);
   const { visiveis, alternar } = useColunasVisiveis();
@@ -261,7 +277,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             onRetry={() => lista.refetch()}
             retryLabel="Tentar de novo"
           />
-        ) : !lista.data || lista.data.itens.length === 0 ? (
+        ) : !lista.data || itens.length === 0 ? (
           <EmptyState
             titulo={filtrado ? "Nenhum aluno com esses filtros" : "Nenhum aluno na jornada"}
             descricao={filtrado ? "Limpe ou troque os filtros para ver outros alunos." : "Use “Novo aluno” para cadastrar o primeiro."}
@@ -275,9 +291,16 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
               </p>
             )}
             {!kanban ? (
-              <Lista itens={lista.data.itens} estado={estado} visiveis={visiveis} hrefDoAluno={hrefDoAluno} onOrdenar={(o) => mudar({ ordem: o })} />
+              <Lista
+                itens={itens}
+                pendencias={pendencias}
+                estado={estado}
+                visiveis={visiveis}
+                hrefDoAluno={hrefDoAluno}
+                onOrdenar={(o) => mudar({ ordem: o })}
+              />
             ) : (
-              <Kanban itens={lista.data.itens} etapas={etapas} hrefDoAluno={hrefDoAluno} />
+              <Kanban itens={itens} pendencias={pendencias} etapas={etapas} hrefDoAluno={hrefDoAluno} />
             )}
 
             {!kanban && (
@@ -322,18 +345,22 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
 
 function Lista({
   itens,
+  pendencias,
   estado,
   visiveis,
   hrefDoAluno,
   onOrdenar,
 }: {
   itens: AlunoLinha[];
+  pendencias: Readonly<Record<string, Entrada>>;
   estado: EstadoTabela;
   visiveis: IdColuna[];
   hrefDoAluno: (a: AlunoLinha) => string;
   onOrdenar: (o: OrdemAlunos) => void;
 }) {
   const config = useConfig();
+  const user = useSession();
+  const acoes = useAcoesDoLote();
   const [ajuste, setAjuste] = useState<{ aluno: AlunoLinha; campo: CampoAjustavel } | null>(null);
   // Props estáveis para as linhas memorizadas.
   const etapas = useMemo(() => etapasAtivas(config.data), [config.data]);
@@ -378,6 +405,8 @@ function Lista({
             <LinhaAluno
               key={a.id}
               a={a}
+              entrada={pendencias[a.id]}
+              acoes={acoes}
               colunas={colunas}
               etapas={etapas}
               responsaveis={responsaveis}
@@ -392,6 +421,11 @@ function Lista({
           aluno={itens.find((x) => x.id === ajuste.aluno.id) ?? ajuste.aluno}
           campo={ajuste.campo}
           onFechar={() => setAjuste(null)}
+          // Pendente: valor e motivo vão para o lote, nada é gravado agora.
+          aoConfirmar={(r) => {
+            const a = itens.find((x) => x.id === ajuste.aluno.id) ?? ajuste.aluno;
+            acoes.registrar(a, alteracaoDoAjuste(a, ajuste.campo, r, { id: user.id, nome: user.nome }));
+          }}
         />
       )}
     </div>
@@ -403,6 +437,8 @@ function Lista({
 type ColunaVisivel = (typeof COLUNAS_DA_TABELA)[number];
 type PropsLinha = {
   a: AlunoLinha;
+  entrada: Entrada | undefined;
+  acoes: AcoesDoLote;
   colunas: ColunaVisivel[];
   etapas: Etapa[];
   responsaveis: Responsavel[];
@@ -410,19 +446,39 @@ type PropsLinha = {
   onAjuste: (a: AlunoLinha, campo: CampoAjustavel) => void;
 };
 
-const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, hrefDoAluno, onAjuste }: PropsLinha) {
-  const gravar = useGravacao();
+// Célula de cada coluna nas pendências (null = coluna sem edição).
+function chaveDaColuna(a: AlunoLinha, coluna: IdColuna): string | null {
+  switch (coluna) {
+    case "nome":
+      return "campo:nome";
+    case "nivel_inicial":
+      return "campo:nivel_inicial";
+    case "etapa":
+      return "campo:etapa_id";
+    case "checkpoint":
+      return a.proximo_checkpoint ? `checkpoint:${a.proximo_checkpoint.id}` : null;
+    case "dias_na_etapa":
+    case "faixa_saude":
+    case "health_score":
+    case "dias_sem_atividade":
+      return `ajuste:${coluna}`;
+    case "proxima_acao":
+      return "campo:proxima_acao";
+    case "responsavel":
+      return "campo:responsavel_id";
+    case "status_aluno":
+      return "campo:status_aluno";
+    default:
+      return null;
+  }
+}
 
-  // PATCH /alunos/:id com o otimista dos mesmos campos.
-  const salvar = (a: AlunoLinha, campos: CamposDiretosAluno, otimista: (l: AlunoLinha) => AlunoLinha, afetaTotais = false) =>
-    gravar({
-      alunoId: a.id,
-      versao: a.versao,
-      executar: (v) => atualizarAluno(a.id, v, campos),
-      naLinha: otimista,
-      noAluno: (d) => ({ ...d, ...otimista(d) }),
-      afetaTotais,
-    });
+const LinhaAluno = memo(function LinhaAluno({ a, entrada, acoes, colunas, etapas, responsaveis, hrefDoAluno, onAjuste }: PropsLinha) {
+  const gravar = useGravacao();
+  const salvando = entrada?.estado === "salvando";
+
+  // Edição na linha = alteração pendente (vai no próximo "Salvar").
+  const pendente = (alt: Alteracao | null) => acoes.registrar(a, alt);
 
   const reativar = (a: AlunoLinha) =>
     gravar({
@@ -434,7 +490,7 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
     });
 
   function celula(a: AlunoLinha, coluna: IdColuna): ReactNode {
-    const bloqueada = a.arquivado;
+    const bloqueada = a.arquivado || salvando;
     const ajustavel = (campo: CampoAjustavel, exibir: ReactNode, rotulo: string) => (
       <CelulaEditavel rotulo={`Ajustar ${rotulo} de ${a.nome}`} bloqueada={bloqueada} onAbrir={() => onAjuste(a, campo)} exibir={exibir} />
     );
@@ -462,7 +518,10 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
                 valor={a.nome}
                 obrigatorio
                 onCancelar={cancelar}
-                onSalvar={(nome) => concluir(salvar(a, { nome: nome ?? a.nome }, (l) => ({ ...l, nome: nome ?? l.nome })))}
+                onSalvar={(nome) => {
+                  concluir();
+                  if (nome) pendente(alteracaoDoNome(a, nome));
+                }}
               />
             )}
           />
@@ -480,8 +539,8 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
                 opcoes={NIVEIS_INICIAIS.map((n) => ({ valor: n, rotulo: ROTULO_NIVEL[n] }))}
                 onCancelar={cancelar}
                 onSalvar={(v) => {
-                  const nivel = v as NivelInicial;
-                  concluir(salvar(a, { nivel_inicial: nivel }, (l) => ({ ...l, nivel_inicial: nivel })));
+                  concluir();
+                  pendente(alteracaoDoNivel(a, v as NivelInicial));
                 }}
               />
             )}
@@ -503,7 +562,8 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
                 onSalvar={(id) => {
                   const e = etapas.find((x) => x.id === id);
                   if (!e) return cancelar();
-                  concluir(salvar(a, { etapa_id: e.id }, (l) => ({ ...l, etapa: { id: e.id, nome: e.nome } }), true));
+                  concluir();
+                  pendente(alteracaoDaEtapa(a, e));
                 }}
               />
             )}
@@ -528,17 +588,10 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
               <EditorCheckpoint
                 status={cp.status}
                 onCancelar={cancelar}
-                onSalvar={(campos) =>
-                  concluir(
-                    gravar({
-                      alunoId: a.id,
-                      versao: a.versao,
-                      executar: (v) => atualizarCheckpoint(cp.id, v, campos),
-                      naLinha: (l) => ({ ...l, proximo_checkpoint: l.proximo_checkpoint && { ...l.proximo_checkpoint, status: campos.status } }),
-                      afetaTotais: true,
-                    }),
-                  )
-                }
+                onSalvar={(campos) => {
+                  concluir();
+                  pendente(alteracaoDoCheckpoint(a, campos));
+                }}
               />
             )}
           />
@@ -606,14 +659,10 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
                 descricao={a.proxima_acao?.descricao ?? ""}
                 prazo={a.proxima_acao?.prazo ?? ""}
                 onCancelar={cancelar}
-                onSalvar={({ descricao, prazo }) =>
-                  concluir(
-                    salvar(a, { proxima_acao: descricao, proxima_acao_prazo: prazo }, (l) => ({
-                      ...l,
-                      proxima_acao: descricao ? { descricao, prazo } : null,
-                    })),
-                  )
-                }
+                onSalvar={({ descricao, prazo }) => {
+                  concluir();
+                  pendente(alteracaoDaAcao(a, descricao, prazo));
+                }}
               />
             )}
           />
@@ -632,13 +681,8 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
                 opcoes={responsaveis.map((r) => ({ valor: r.id, rotulo: `${r.nome} · ${ROTULO_TIPO_RESPONSAVEL[r.tipo]}` }))}
                 onCancelar={cancelar}
                 onSalvar={(id) => {
-                  const r = responsaveis.find((x) => x.id === id);
-                  concluir(
-                    salvar(a, { responsavel_id: r?.id ?? null }, (l) => ({
-                      ...l,
-                      responsavel: r ? { id: r.id, nome: r.nome, tipo: r.tipo } : null,
-                    })),
-                  );
+                  concluir();
+                  pendente(alteracaoDoResponsavel(a, responsaveis.find((x) => x.id === id) ?? null));
                 }}
               />
             )}
@@ -657,8 +701,8 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
                 opcoes={STATUS_ALUNO.map((s) => ({ valor: s, rotulo: ROTULO_STATUS_ALUNO[s] }))}
                 onCancelar={cancelar}
                 onSalvar={(v) => {
-                  const s = v as StatusAluno;
-                  concluir(salvar(a, { status_aluno: s }, (l) => ({ ...l, status_aluno: s }), true));
+                  concluir();
+                  pendente(alteracaoDoStatus(a, v as StatusAluno));
                 }}
               />
             )}
@@ -670,26 +714,58 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
     }
   }
 
+  const erro = entrada?.erro;
+  const revisar = entrada?.estado === "revisar";
   return (
-    <tr className={cn("border-b border-borda/40 align-top", a.arquivado && "opacity-60")}>
-      {colunas.map((c) => (
-        <td key={c.id} className="px-2 py-1.5">
-          {c.id === "nome" && a.arquivado ? (
-            <span className="flex flex-col items-start gap-1">
+    <tr
+      className={cn("border-b border-borda/40 align-top", a.arquivado && "opacity-60", revisar && "outline outline-1 -outline-offset-1 outline-aviso/70")}
+      aria-busy={salvando || undefined}
+    >
+      {colunas.map((c) => {
+        const chave = chaveDaColuna(a, c.id);
+        const alteracao = chave ? entrada?.alteracoes[chave] : undefined;
+        // Erro de validação vai para a célula dele; sem célula conhecida, para o nome.
+        const erroDaCelula =
+          erro?.tipo === "validacao" && (erro.chave === chave || (erro.chave === null && c.id === "nome")) ? erro.mensagem : null;
+        return (
+          <td key={c.id} className="px-2 py-1.5">
+            <MarcaPendente
+              alteracao={alteracao}
+              erro={erroDaCelula}
+              onDesfazer={chave && alteracao && !salvando ? () => acoes.desfazer(a.id, chave) : undefined}
+            >
               {celula(a, c.id)}
-              <Button variant="outline" size="sm" onClick={() => void reativar(a)}>
+            </MarcaPendente>
+            {c.id === "nome" && <SituacaoDoAluno entrada={entrada} />}
+            {c.id === "nome" && a.arquivado && (
+              <Button variant="outline" size="sm" className="mt-1" onClick={() => void reativar(a)}>
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden />
                 Reativar
               </Button>
-            </span>
-          ) : (
-            celula(a, c.id)
-          )}
-        </td>
-      ))}
+            )}
+          </td>
+        );
+      })}
     </tr>
   );
 });
+
+// Situação do aluno no lote, embaixo do nome: salvando, 409, revisar.
+function SituacaoDoAluno({ entrada }: { entrada: Entrada | undefined }) {
+  if (!entrada) return null;
+  if (entrada.estado === "salvando") {
+    return (
+      <span className="mt-0.5 flex items-center gap-1 text-[11px] text-texto-sec">
+        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+        Salvando…
+      </span>
+    );
+  }
+  if (entrada.erro?.tipo === "versao") return <span className="mt-0.5 block text-[11px] text-aviso">Alterado por outra pessoa · veja na barra</span>;
+  if (entrada.erro?.tipo === "rede") return <span className="mt-0.5 block text-[11px] text-erro">Não salvo (sem conexão)</span>;
+  if (entrada.estado === "revisar") return <span className="mt-0.5 block text-[11px] text-aviso">Reaplicado · revise e salve de novo</span>;
+  return null;
+}
 
 // Busca por nome (padrão da aba Leads, com espera): vai para a URL 300 ms
 // depois da última tecla, a partir de 2 letras. Menos que isso = sem busca.
