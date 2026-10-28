@@ -27,5 +27,7 @@ describe("formatarDoHistorico", () => {
   it("texto do modo demonstração continua igual", () => {
     expect(formatarDoHistorico(item("aluno", "criado"), "Ana")).toBe("Ana");
     expect(formatarDoHistorico(item("aluno", "status_aluno"), "em_pausa")).toBe("Em pausa");
+    // Troca de programa: o status de quem saiu da jornada aparece com rótulo.
+    expect(formatarDoHistorico(item("checkpoint", "Fim · substituido"), "pendente")).toBe("Pendente");
   });
 });

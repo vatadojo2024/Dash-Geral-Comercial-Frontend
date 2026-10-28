@@ -4,7 +4,7 @@ import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Archive, ArrowLeft, CheckCircle2, Lightbulb, PencilLine, Plus, RotateCcw, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, CheckCircle2, Lightbulb, PencilLine, Plus, Repeat, RotateCcw, Undo2 } from "lucide-react";
 import {
   ajustarCampo,
   arquivarAluno,
@@ -59,6 +59,8 @@ import { CAMPO } from "./Dialogo";
 import { Sugestoes } from "./Edicao";
 import { lerSimular } from "./estado";
 import { HistoricoDoAluno } from "./Historico";
+import { temProgramas } from "./programas";
+import { TrocarPrograma } from "./TrocarPrograma";
 import { NovaIntervencao } from "./NovaIntervencao";
 import { EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
 import { useGravacao } from "./useGravacao";
@@ -80,6 +82,7 @@ export function RaioXAluno({ id }: { id: string }) {
   const [aba, setAba] = useState<Aba>("raiox");
   const [intervencao, setIntervencao] = useState<Intervencao | "nova" | null>(null);
   const [arquivar, setArquivar] = useState(false);
+  const [trocar, setTrocar] = useState(false);
   const gravar = useGravacao();
   const config = useConfig();
 
@@ -155,6 +158,12 @@ export function RaioXAluno({ id }: { id: string }) {
                   <Plus className="h-3.5 w-3.5" aria-hidden />
                   Nova intervenção
                 </Button>
+                {!a.arquivado && temProgramas(config.data) && (
+                  <Button size="sm" variant="outline" onClick={() => setTrocar(true)}>
+                    <Repeat className="h-3.5 w-3.5" aria-hidden />
+                    {a.programa ? "Trocar programa" : "Definir programa"}
+                  </Button>
+                )}
                 {!a.arquivado && (
                   <Button size="sm" variant="outline" onClick={() => setArquivar(true)}>
                     <Archive className="h-3.5 w-3.5" aria-hidden />
@@ -201,6 +210,7 @@ export function RaioXAluno({ id }: { id: string }) {
             intervencao={intervencao === "nova" ? null : intervencao}
             onFechar={() => setIntervencao(null)}
           />
+          <TrocarPrograma aluno={a} aberto={trocar} onFechar={() => setTrocar(false)} />
           <ConfirmarAcao
             aberto={arquivar}
             titulo="Arquivar aluno?"

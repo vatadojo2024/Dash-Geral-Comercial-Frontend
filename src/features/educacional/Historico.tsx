@@ -73,6 +73,10 @@ const ROTULO_CAMPO: Record<string, string> = {
   tipo_id: "Tipo",
   arquivado_em: "Arquivado em",
   concluida_em: "Concluída em",
+  // programas
+  programa: "Programa",
+  data_inicio_programa: "Início do programa",
+  substituido: "Saiu da jornada (troca de programa)",
 };
 
 // "Mês 1 · status" → { prefixo: "Mês 1", campo: "status" }
@@ -104,7 +108,7 @@ export function formatarDoHistorico(item: ItemHistorico, valor: unknown): string
   if (campo === "nivel_inicial") return ROTULO_NIVEL[valor as keyof typeof ROTULO_NIVEL] ?? valor;
   if (campo === "status_aluno") return ROTULO_STATUS_ALUNO[valor as keyof typeof ROTULO_STATUS_ALUNO] ?? valor;
   if (campo === "autorizacao_prova_social") return ROTULO_AUTORIZACAO[valor as keyof typeof ROTULO_AUTORIZACAO] ?? valor;
-  if (campo === "status" && item.entidade === "checkpoint") {
+  if ((campo === "status" || campo === "substituido") && item.entidade === "checkpoint") {
     return ROTULO_STATUS_CHECKPOINT[valor as keyof typeof ROTULO_STATUS_CHECKPOINT] ?? valor;
   }
   if (campo === "status" && item.entidade === "intervencao") {
