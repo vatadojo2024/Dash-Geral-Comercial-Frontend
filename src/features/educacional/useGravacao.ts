@@ -78,7 +78,7 @@ export async function gravarAluno(d: Dependencias, g: Gravacao): Promise<Resulta
     const aluno = await g.executar(g.versao);
     // 2. A resposta manda (e as pendências do aluno, se houver, passam para a versão nova).
     trocarAlunoNoCache(queryClient, aluno);
-    avisarGravacao(aluno);
+    avisarGravacao({ aluno, versaoEnviada: g.versao });
     void queryClient.invalidateQueries({ queryKey: CHAVES.alunos });
     void queryClient.invalidateQueries({ queryKey: CHAVES.historico(g.alunoId) });
     if (g.afetaTotais) void queryClient.invalidateQueries({ queryKey: CHAVES.resumo });

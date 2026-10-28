@@ -241,15 +241,18 @@ describe("ficha do Raio-X (M4)", () => {
     expect(registrar(q, depois, alteracaoDaIntervencao(i, { status: "aberta" }, {}, q[d.id].alteracoes[`intervencao:${i.id}`]))).toEqual({});
   });
 
-  it("ação imediata da própria pessoa sobre a versão das pendências: elas seguem na versão nova", async () => {
+  it("gravação imediata desta aba sobre a versão das pendências: elas seguem na versão da resposta", async () => {
     const d = await detalhe();
     let p = registrar(SEM_PENDENCIAS, d, alteracaoDeCampo(d, "diagnostico", "Novo diagnóstico"));
     const gravado = await atualizarAluno(d.id, d.versao, { objetivo: "Mudou na hora" }); // ex.: trocar programa, arquivar
-    p = rebasear(p, gravado, lerDoServidor);
+    p = rebasear(p, { aluno: gravado, versaoEnviada: d.versao }, lerDoServidor);
     expect(p[d.id]).toMatchObject({ versao: gravado.versao, estado: "pendente" });
-    // Salto maior (outra pessoa no meio): não mexe; o 409 decide.
+    // Outra pessoa grava (+1) e esta aba grava em cima: a versão enviada não é a
+    // das pendências, então não mexe; o 409 decide.
     const outro = await atualizarAluno(d.id, gravado.versao, { objetivo: "Outra pessoa" });
     const depois = await atualizarAluno(d.id, outro.versao, { objetivo: "De novo" });
-    expect(rebasear(p, depois, lerDoServidor)).toBe(p);
+    expect(rebasear(p, { aluno: depois, versaoEnviada: outro.versao }, lerDoServidor)).toBe(p);
+    // +1 sem ter sido esta aba a enviar a versão das pendências: também não.
+    expect(rebasear(p, { aluno: outro, versaoEnviada: gravado.versao - 1 }, lerDoServidor)).toBe(p);
   });
 });

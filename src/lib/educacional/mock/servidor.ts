@@ -118,7 +118,9 @@ function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
   const faixas = listaDaQuery(q, "faixa_saude");
   const mentorias = listaDaQuery(q, "mentoria");
   const programas = listaDaQuery(q, "programa_id");
+  // Busca como o backend: vazia = sem busca; 1 letra = 400; 2+ = contém (sem acento).
   const busca = normalizar((q.get("busca") ?? "").trim());
+  if (busca.length === 1) throw new ErroDaApi(400, { error: "validacao", campo: "busca", mensagem: "Digite ao menos 2 letras para buscar." });
   const healthMax = q.get("health_max");
   const todos = banco.alunos
     .filter((a) => arquivados || !a.arquivado_em)

@@ -228,9 +228,10 @@ export function ProvedorLote({ children }: { children: ReactNode }) {
     };
   }, [temPendencias, pedirSaida, router]);
 
-  // Gravação imediata de um aluno com pendências: elas seguem na versão nova.
+  // Gravação imediata feita por esta aba sobre a versão das pendências: elas
+  // seguem na versão que a resposta trouxe (decisão de 28/10).
   useEffect(
-    () => ouvirGravacoes((aluno) => armazem.set((e) => ({ ...e, pendencias: rebasear(e.pendencias, aluno, lerDoServidor) }))),
+    () => ouvirGravacoes((g) => armazem.set((e) => ({ ...e, pendencias: rebasear(e.pendencias, g, lerDoServidor) }))),
     [armazem],
   );
 

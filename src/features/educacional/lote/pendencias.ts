@@ -266,13 +266,20 @@ export function reaplicar(
   };
 }
 
-// Ação imediata da própria pessoa (arquivar, trocar programa, ajustar fora da
-// ficha) gravou por cima da versão das pendências: elas passam para a versão
-// nova, com o anterior relido. Só quando a gravação é exatamente a seguinte à
-// versão delas; qualquer outro salto continua sendo conferido no 409.
-export function rebasear(p: Pendencias, aluno: AlunoDetalhe, ler: LeituraDoServidor): Pendencias {
+// Ação imediata feita por ESTA aba (arquivar, trocar programa, ajustar fora da
+// ficha, "Nova intervenção" do Cockpit) gravou por cima da versão das
+// pendências: elas passam para a versão que a resposta trouxe, com o anterior
+// relido. Só quando a aba enviou a versão das pendências e a resposta veio com
+// a seguinte. Versão nova vinda de outro lugar (outra aba, outra pessoa,
+// recarga da lista) nunca passa por aqui: continua indo para o 409.
+export function rebasear(
+  p: Pendencias,
+  { aluno, versaoEnviada }: { aluno: AlunoDetalhe; versaoEnviada: number },
+  ler: LeituraDoServidor,
+): Pendencias {
   const e = p[aluno.id];
-  if (!e || e.estado === "salvando" || e.erro?.tipo === "versao" || e.versao + 1 !== aluno.versao) return p;
+  if (!e || e.estado === "salvando" || e.erro?.tipo === "versao") return p;
+  if (e.versao !== versaoEnviada || aluno.versao !== versaoEnviada + 1) return p;
   const r = reaplicar({ ...p, [aluno.id]: { ...e, erro: { tipo: "versao", atual: aluno } } }, aluno.id, ler);
   const n = r.pendencias[aluno.id];
   if (!n) return r.pendencias;

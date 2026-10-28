@@ -1,8 +1,11 @@
 import type { AlunoDetalhe } from "@/lib/educacional/contrato";
 
 // Aviso de "aluno gravado na hora" (useGravacao) para quem guarda pendências
-// (ProvedorLote), sem um importar o outro.
-type Ouvinte = (aluno: AlunoDetalhe) => void;
+// (ProvedorLote), sem um importar o outro. Vive na memória da aba: só chega
+// aqui a gravação que ESTA aba fez, depois da resposta do servidor, com a
+// versão que ela enviou e o aluno (com a versão nova) que voltou.
+export type GravacaoDaAba = { aluno: AlunoDetalhe; versaoEnviada: number };
+type Ouvinte = (g: GravacaoDaAba) => void;
 const ouvintes = new Set<Ouvinte>();
 
 export function ouvirGravacoes(o: Ouvinte): () => void {
@@ -12,6 +15,6 @@ export function ouvirGravacoes(o: Ouvinte): () => void {
   };
 }
 
-export function avisarGravacao(aluno: AlunoDetalhe) {
-  ouvintes.forEach((o) => o(aluno));
+export function avisarGravacao(g: GravacaoDaAba) {
+  ouvintes.forEach((o) => o(g));
 }

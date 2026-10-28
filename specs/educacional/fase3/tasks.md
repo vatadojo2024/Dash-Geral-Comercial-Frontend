@@ -26,9 +26,9 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
 - [x] M4. Raio-X com "Editar ficha" e "Salvar ficha" em lote.
   - Mesmo armazém da aba Alunos: o que foi editado na tabela aparece no Raio-X, que já abre em edição. Checkpoints (editar, avulso, arquivar) e intervenções (nova, editar, concluir/reabrir, arquivar) também viram pendências da ficha. `useBloco`/`BlocoEditavel` saíram.
   - Sobreposição na tela por operações (campo, dentro de grupo, item, novo, remover): duas edições no mesmo grupo não se apagam.
-  - Ação imediata da própria pessoa sobre a versão das pendências (ex.: arquivar) faz as pendências seguirem na versão nova; qualquer outro salto vai para o 409.
+  - Ação imediata feita por esta aba sobre a versão das pendências (ex.: arquivar) faz as pendências seguirem na versão que a resposta trouxe (aprovado em 28/10 com essa condição: a aba enviou a versão das pendências e a resposta veio com a seguinte). Versão +1 vinda de outro lugar vai para "alterado por outra pessoa".
   - Aba Aulas e origem das notas ficam no M5 (dependem das análises).
-- [ ] M5. Análise de aula: lista, nova análise, revisão e confirmação, observador e aviso de pronta, aba Aulas e origem das notas.
+- [ ] ~~M5.~~ **Adiado (28/10):** a IA fica para depois; "Análise de aula" continua "Em construção". Era: Análise de aula: lista, nova análise, revisão e confirmação, observador e aviso de pronta, aba Aulas e origem das notas.
 
 ## Verificação
 - [ ] V1. Todas as funções como educacional e como admin; lote com sucesso, erro parcial, 409 e rede; pendências após recarregar; análise completa no mock; nenhuma rota comercial; regressão comercial (desktop); números antes e depois em produção (desktop); relatório com screenshots e checklist da seção 8.

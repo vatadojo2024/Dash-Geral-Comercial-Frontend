@@ -127,6 +127,20 @@ describe("leitura", () => {
     expect(queryDaApi({ checkpoint: ["pendente", "nao_respondeu"] })).toBe("checkpoint=pendente%2Cnao_respondeu&ordem=risco&por_pagina=25");
   });
 
+  it("busca: a tela só manda a partir de 2 letras; o backend trata vazio como sem busca e 1 letra como 400", async () => {
+    expect(queryDaApi({ busca: "a" })).toBe("ordem=risco&por_pagina=25");
+    expect(queryDaApi({ busca: "  " })).toBe("ordem=risco&por_pagina=25");
+    expect(queryDaApi({ busca: " ana " })).toBe("busca=ana&ordem=risco&por_pagina=25");
+    const { atender } = await import("./mock/servidor");
+    const { carregarBanco } = await import("./mock/banco");
+    const banco = carregarBanco(hojeBR());
+    const ctx = { usuario: { id: "u", nome: "U" }, hoje: hojeBR(), agora: new Date().toISOString() };
+    const pedir = (query: string) => atender(banco, { metodo: "GET", caminho: "alunos", query: new URLSearchParams(query), corpo: undefined }, ctx);
+    const todos = (pedir("por_pagina=todos") as { total: number }).total;
+    expect((pedir("busca=&por_pagina=todos") as { total: number }).total).toBe(todos);
+    expect(() => pedir("busca=a")).toThrow();
+  });
+
   it("filtros pelos nomes do backend; dois status de checkpoint = união dos dois", async () => {
     const todos = (await buscarAlunos({ por_pagina: "todos" })).itens;
     const a = todos.find((x) => x.responsavel)!;
