@@ -619,6 +619,8 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
           />
         );
       case "mentoria":
+        // Com programa, a mentoria vem dele: só leitura (troca pelo Raio-X).
+        if (a.programa) return <span className="whitespace-nowrap text-texto-sec">{a.mentoria}</span>;
         return (
           <CelulaEditavel
             rotulo={`Editar a mentoria de ${a.nome}`}

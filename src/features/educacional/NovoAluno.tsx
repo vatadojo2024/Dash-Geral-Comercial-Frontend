@@ -24,15 +24,19 @@ import { cn } from "@/lib/utils/cn";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
 import { Sugestoes } from "./Edicao";
+import { programasPorMentoria, sugerirTermino, temProgramas } from "./programas";
 import { useAcaoComAviso } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
-// Novo aluno (spec Fase 2, 6.1). Obrigatórios: nome, mentoria, data de
+// Novo aluno (spec Fase 2, 6.1). Obrigatórios: nome, programa, data de
 // entrada, nível inicial e etapa (padrão: a primeira ativa). Os checkpoints
-// vêm do backend, gerados pelo modelo. Depois de criar, abre o Raio-X.
+// vêm do backend, gerados pela lista do programa. Depois de criar, abre o Raio-X.
+// Programas (P2): o programa substitui o texto livre de mentoria (a mentoria
+// vem dele) e sugere o término (início + duração), que continua editável. Se
+// a API ainda não tiver programas, volta o campo de mentoria.
 // ---------------------------------------------------------------------------
 
-type Erros = Partial<Record<"nome" | "mentoria" | "data_entrada" | "nivel_inicial" | "etapa_id" | "envio", string>>;
+type Erros = Partial<Record<"nome" | "mentoria" | "programa_id" | "data_entrada" | "nivel_inicial" | "etapa_id" | "envio", string>>;
 
 export function NovoAluno({
   aberto,
@@ -49,9 +53,14 @@ export function NovoAluno({
   const config = useConfig();
   const etapas = etapasAtivas(config.data);
   const responsaveis = ativos(config.data?.responsaveis);
+  const comProgramas = temProgramas(config.data);
+  const grupos = programasPorMentoria(config.data);
 
   const [nome, setNome] = useState("");
   const [mentoria, setMentoria] = useState("");
+  const [programaId, setProgramaId] = useState("");
+  // Término mexido à mão: a sugestão não sobrescreve mais.
+  const [terminoManual, setTerminoManual] = useState(false);
   const [entrada, setEntrada] = useState("");
   const [termino, setTermino] = useState("");
   const [nivel, setNivel] = useState<NivelInicial | "">("");
@@ -68,6 +77,8 @@ export function NovoAluno({
     if (!aberto) return;
     setNome("");
     setMentoria("");
+    setProgramaId("");
+    setTerminoManual(false);
     setEntrada(hojeEmBrasilia());
     setTermino("");
     setNivel("");
@@ -81,11 +92,20 @@ export function NovoAluno({
   }, [aberto]);
 
   const etapaEscolhida = etapa || etapas[0]?.id || "";
+  const programa = config.data?.programas.find((p) => p.id === programaId) ?? null;
+
+  // Sugere o término ao escolher o programa ou mudar a entrada.
+  function sugerir(proximoPrograma: string, proximaEntrada: string) {
+    if (terminoManual) return;
+    const p = config.data?.programas.find((x) => x.id === proximoPrograma);
+    setTermino(p && proximaEntrada ? sugerirTermino(proximaEntrada, p.duracao_meses) : "");
+  }
 
   async function enviar() {
     const novos: Erros = {};
     if (!nome.trim()) novos.nome = "Informe o nome.";
-    if (!mentoria.trim()) novos.mentoria = "Informe a mentoria.";
+    if (comProgramas && !programaId) novos.programa_id = "Escolha o programa.";
+    if (!comProgramas && !mentoria.trim()) novos.mentoria = "Informe a mentoria.";
     if (!entrada) novos.data_entrada = "Informe a data de entrada.";
     if (!nivel) novos.nivel_inicial = "Escolha o nível inicial.";
     if (!etapaEscolhida) novos.etapa_id = "Escolha a etapa.";
@@ -96,7 +116,7 @@ export function NovoAluno({
       () =>
         criarAluno({
           nome: nome.trim(),
-          mentoria: mentoria.trim(),
+          ...(comProgramas ? { programa_id: programaId } : { mentoria: mentoria.trim() }),
           data_entrada: entrada,
           nivel_inicial: nivel,
           etapa_id: etapaEscolhida,
@@ -127,7 +147,11 @@ export function NovoAluno({
     <Dialogo
       aberto={aberto}
       titulo="Novo aluno"
-      subtitulo="Os checkpoints são criados a partir do modelo padrão e da data de entrada."
+      subtitulo={
+        comProgramas
+          ? "Os checkpoints são criados a partir do programa e da data de entrada."
+          : "Os checkpoints são criados a partir do modelo padrão e da data de entrada."
+      }
       onFechar={onFechar}
       onEnviar={enviar}
       largura="max-w-2xl"
@@ -146,22 +170,76 @@ export function NovoAluno({
         <Campo id={`${id}-nome`} rotulo="Nome" obrigatorio erro={erros.nome}>
           <input id={`${id}-nome`} value={nome} onChange={(e) => setNome(e.target.value)} className={CAMPO} autoComplete="off" />
         </Campo>
-        <Campo id={`${id}-mentoria`} rotulo="Mentoria" obrigatorio erro={erros.mentoria}>
+        {comProgramas ? (
+          <Campo
+            id={`${id}-programa`}
+            rotulo="Programa"
+            obrigatorio
+            erro={erros.programa_id}
+            dica={programa ? `Mentoria ${programa.mentoria} · ${programa.duracao_meses} meses` : undefined}
+          >
+            <select
+              id={`${id}-programa`}
+              value={programaId}
+              onChange={(e) => {
+                setProgramaId(e.target.value);
+                sugerir(e.target.value, entrada);
+                setErros(({ programa_id: _, ...resto }) => resto);
+              }}
+              className={CAMPO}
+            >
+              <option value="">Escolha…</option>
+              {grupos.map((g) => (
+                <optgroup key={g.mentoria} label={g.mentoria}>
+                  {g.programas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </Campo>
+        ) : (
+          <Campo id={`${id}-mentoria`} rotulo="Mentoria" obrigatorio erro={erros.mentoria}>
+            <input
+              id={`${id}-mentoria`}
+              value={mentoria}
+              onChange={(e) => setMentoria(e.target.value)}
+              list={`${id}-mentorias`}
+              autoComplete="off"
+              className={CAMPO}
+            />
+            <Sugestoes id={`${id}-mentorias`} opcoes={config.data?.mentorias} />
+          </Campo>
+        )}
+        <Campo id={`${id}-entrada`} rotulo="Data de entrada" obrigatorio erro={erros.data_entrada}>
           <input
-            id={`${id}-mentoria`}
-            value={mentoria}
-            onChange={(e) => setMentoria(e.target.value)}
-            list={`${id}-mentorias`}
-            autoComplete="off"
+            id={`${id}-entrada`}
+            type="date"
+            value={entrada}
+            onChange={(e) => {
+              setEntrada(e.target.value);
+              sugerir(programaId, e.target.value);
+            }}
             className={CAMPO}
           />
-          <Sugestoes id={`${id}-mentorias`} opcoes={config.data?.mentorias} />
         </Campo>
-        <Campo id={`${id}-entrada`} rotulo="Data de entrada" obrigatorio erro={erros.data_entrada}>
-          <input id={`${id}-entrada`} type="date" value={entrada} onChange={(e) => setEntrada(e.target.value)} className={CAMPO} />
-        </Campo>
-        <Campo id={`${id}-termino`} rotulo="Data de término">
-          <input id={`${id}-termino`} type="date" value={termino} onChange={(e) => setTermino(e.target.value)} className={CAMPO} />
+        <Campo
+          id={`${id}-termino`}
+          rotulo="Data de término"
+          dica={programa && !terminoManual ? "Sugerida: entrada + duração do programa. Pode mudar." : undefined}
+        >
+          <input
+            id={`${id}-termino`}
+            type="date"
+            value={termino}
+            onChange={(e) => {
+              setTermino(e.target.value);
+              setTerminoManual(true);
+            }}
+            className={CAMPO}
+          />
         </Campo>
         <Campo id={`${id}-nivel`} rotulo="Nível inicial" obrigatorio erro={erros.nivel_inicial}>
           <select id={`${id}-nivel`} value={nivel} onChange={(e) => setNivel(e.target.value as NivelInicial)} className={CAMPO}>
@@ -227,4 +305,4 @@ export function NovoAluno({
   );
 }
 
-const rotulosDosCampos = { nome: 1, mentoria: 1, data_entrada: 1, nivel_inicial: 1, etapa_id: 1 } as const;
+const rotulosDosCampos = { nome: 1, mentoria: 1, programa_id: 1, data_entrada: 1, nivel_inicial: 1, etapa_id: 1 } as const;

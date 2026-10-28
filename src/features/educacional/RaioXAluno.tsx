@@ -566,7 +566,8 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
       edicao={
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Texto b={b} k="nome" rotulo="Nome *" className="sm:col-span-2" />
-          <Texto b={b} k="mentoria" rotulo="Mentoria *" sugestoes={config?.mentorias} />
+          {/* Com programa, a mentoria vem dele (troca só por "Trocar programa"). */}
+          {!a.programa && <Texto b={b} k="mentoria" rotulo="Mentoria *" sugestoes={config?.mentorias} />}
           <Lista b={b} k="status_aluno" rotulo="Status do aluno" opcoes={STATUS_ALUNO.map((s) => ({ valor: s, rotulo: ROTULO_STATUS_ALUNO[s] }))} />
           <Texto b={b} k="data_entrada" rotulo="Data de entrada *" tipo="date" />
           <Texto b={b} k="data_termino" rotulo="Data de término" tipo="date" />
