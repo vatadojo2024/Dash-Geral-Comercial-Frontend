@@ -23,7 +23,7 @@ import {
   restaurarDemonstracao,
   type ColecaoConfig,
 } from "@/lib/educacional/apiEducacional";
-import { TIPOS_RESPONSAVEL, type Config } from "@/lib/educacional/contrato";
+import { CAMPOS_ROTEIRO, RE_MARCO, TIPOS_RESPONSAVEL, type Config, type Roteiro } from "@/lib/educacional/contrato";
 import { ROTULO_TIPO_RESPONSAVEL } from "@/lib/educacional/rotulos";
 import { Alternador } from "@/components/ui/Alternador";
 import { Button } from "@/components/ui/Button";
@@ -37,20 +37,28 @@ import { ConfirmarAcao } from "./Blocos";
 import { CHAVES, useConfig } from "./dados";
 import { CAMPO } from "./Dialogo";
 import { EtiquetaDemonstracao, mensagemDoErro, useRedirecionarSeSemPermissao } from "./partes";
+import { programasPorMentoria, temProgramas } from "./programas";
+import { ROTULO_ROTEIRO } from "./Roteiro";
 
 // ---------------------------------------------------------------------------
 // Configurações do módulo (spec Fase 2, 6.3) — /educacional/configuracoes.
-// Quatro abas: Etapas (arrastar para reordenar), Checkpoints padrão, Tipos de
-// intervenção e Responsáveis. Itens inativos aparecem aqui, mas não nas listas
-// de escolha. Inativar etapa com alunos mostra o erro da API com a contagem.
+// Abas: Etapas (arrastar para reordenar), Programas, Checkpoints padrão, Tipos
+// de intervenção e Responsáveis. Itens inativos aparecem aqui, mas não nas
+// listas de escolha. Inativar etapa ou programa com alunos mostra o erro da API
+// com a contagem.
+// Programas (P5): Checkpoints padrão tem um seletor de programa no topo (a
+// lista e o item novo são do programa escolhido), o marco "Dia N"/"Mês N" e os
+// 4 textos do roteiro, que valem para todos os alunos (são referência).
 // ---------------------------------------------------------------------------
 
-type Aba = "etapas" | "checkpoints" | "tipos" | "responsaveis";
+type Aba = "etapas" | "programas" | "checkpoints" | "tipos" | "responsaveis";
 
 type Coluna = {
   chave: string;
   rotulo: string;
-  tipo: "texto" | "numero" | "numero_opcional" | "booleano" | "lista";
+  // "roteiro": não entra na linha do formulário; os 4 textos vão abaixo dela.
+  tipo: "texto" | "texto_opcional" | "numero" | "numero_opcional" | "booleano" | "lista" | "marco" | "roteiro";
+  dica?: string;
   opcoes?: { valor: string; rotulo: string }[];
   largura?: string;
   exibir?: (v: unknown) => ReactNode;
@@ -99,6 +107,25 @@ const ABAS: Record<Aba, { colecao: ColecaoConfig; chave: keyof Config; titulo: s
       },
     ],
   },
+  programas: {
+    colecao: "programas",
+    chave: "programas",
+    titulo: "Programas",
+    novo: "Novo programa",
+    ordenavel: true,
+    colunas: [
+      { chave: "nome", rotulo: "Nome", tipo: "texto", largura: "min-w-[10rem] flex-1", dica: "Ex.: Blackbelt 6 meses" },
+      { chave: "mentoria", rotulo: "Mentoria", tipo: "texto", largura: "w-32" },
+      { chave: "duracao_meses", rotulo: "Duração (meses)", tipo: "numero", largura: "w-32", exibir: (v) => `${v} meses` },
+      {
+        chave: "observacao",
+        rotulo: "Observação",
+        tipo: "texto_opcional",
+        largura: "min-w-[12rem] flex-[2]",
+        exibir: (v) => (v ? <span className="line-clamp-2">{String(v)}</span> : <span className="text-texto-sec/60">—</span>),
+      },
+    ],
+  },
   tipos: {
     colecao: "tipos-intervencao",
     chave: "tipos_intervencao",
@@ -127,6 +154,35 @@ const ABAS: Record<Aba, { colecao: ColecaoConfig; chave: keyof Config; titulo: s
   },
 };
 
+// Checkpoints padrão por programa: o marco no lugar de "dias após a entrada" e
+// o roteiro do contato.
+const ABA_CHECKPOINTS_PROGRAMA: (typeof ABAS)[Aba] = {
+  ...ABAS.checkpoints,
+  colunas: [
+    { chave: "marco", rotulo: "Dia N ou Mês N", tipo: "marco", largura: "w-32", exibir: (v) => (v ? String(v) : "—") },
+    { chave: "nome", rotulo: "Nome", tipo: "texto", largura: "min-w-[9rem] flex-1" },
+    ...ABAS.checkpoints.colunas.filter((c) => c.chave === "prazo_sla_dias" || c.chave === "big_win"),
+    {
+      chave: "roteiro",
+      rotulo: "Roteiro",
+      tipo: "roteiro",
+      largura: "w-28",
+      exibir: (v) => {
+        const n = CAMPOS_ROTEIRO.filter((k) => (v as Roteiro | null)?.[k]).length;
+        return n === 4 ? "Completo" : <span className="text-aviso">{n === 0 ? "Vazio" : `${n} de 4`}</span>;
+      },
+    },
+  ],
+};
+
+// "mes 3", "MÊS 3", "dia 0" → "Mês 3", "Dia 0". Só formato: a data é do backend.
+export function normalizarMarco(v: string): string | null {
+  const m = /^\s*(dia|m[eê]s)\s*(\d{1,3})\s*$/i.exec(v);
+  if (!m) return null;
+  const marco = `${m[1].toLowerCase() === "dia" ? "Dia" : "Mês"} ${Number(m[2])}`;
+  return RE_MARCO.test(marco) ? marco : null;
+}
+
 export function ConfiguracoesView() {
   const user = useSession();
   const config = useConfig();
@@ -148,7 +204,7 @@ export function ConfiguracoesView() {
             <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">Configurações</h1>
             <EtiquetaDemonstracao />
           </div>
-          <p className="mt-1 text-sm opacity-80">Etapas, checkpoints, tipos de intervenção e responsáveis do módulo</p>
+          <p className="mt-1 text-sm opacity-80">Etapas, programas, checkpoints, tipos de intervenção e responsáveis do módulo</p>
         </div>
         {FONTE_EDUCACIONAL === "mock" && (
           <Button variant="secondary" size="sm" onClick={() => setRestaurar(true)}>
@@ -171,6 +227,7 @@ export function ConfiguracoesView() {
           onChange={setAba}
           opcoes={[
             { valor: "etapas", label: "Etapas" },
+            { valor: "programas", label: "Programas" },
             { valor: "checkpoints", label: "Checkpoints padrão" },
             { valor: "tipos", label: "Tipos de intervenção" },
             { valor: "responsaveis", label: "Responsáveis" },
@@ -214,12 +271,18 @@ export function ConfiguracoesView() {
 // ---------------------------------------------------------------------------
 
 function ListaConfig({ aba, config }: { aba: Aba; config: Config }) {
-  const def = ABAS[aba];
+  const porPrograma = aba === "checkpoints" && temProgramas(config);
+  const def = porPrograma ? ABA_CHECKPOINTS_PROGRAMA : ABAS[aba];
   const queryClient = useQueryClient();
   const avisar = useAvisos();
   const [editando, setEditando] = useState<string | "novo" | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const itens = [...(config[def.chave] as unknown as Item[])].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  const grupos = programasPorMentoria(config, true);
+  const [programaId, setProgramaId] = useState(() => (config.programas.find((p) => p.ativo) ?? config.programas[0])?.id ?? "");
+  const programa = config.programas.find((p) => p.id === programaId) ?? null;
+  const itens = [...(config[def.chave] as unknown as Item[])]
+    .filter((i) => !porPrograma || i.programa_id === programaId)
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
   const sensores = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
@@ -238,12 +301,16 @@ function ListaConfig({ aba, config }: { aba: Aba; config: Config }) {
       return true;
     } catch (e) {
       void queryClient.invalidateQueries({ queryKey: CHAVES.config });
-      if (e instanceof EducacionalError && e.status === 409 && e.corpo.error === "etapa_com_alunos") {
+      if (e instanceof EducacionalError && e.status === 409 && (e.corpo.error === "etapa_com_alunos" || e.corpo.error === "programa_com_alunos")) {
         const n = e.corpo.alunos ?? 0;
+        const alunos = `${n} ${n === 1 ? "aluno" : "alunos"}`;
         avisar({
           tipo: "erro",
           texto:
-            e.corpo.mensagem ?? `Esta etapa ainda tem ${n} ${n === 1 ? "aluno" : "alunos"}. Mova-os para outra etapa antes de inativar.`,
+            e.corpo.mensagem ??
+            (e.corpo.error === "etapa_com_alunos"
+              ? `Esta etapa ainda tem ${alunos}. Mova-os para outra etapa antes de inativar.`
+              : `Este programa ainda tem ${alunos}. Troque o programa deles antes de inativar.`),
         });
       } else if (e instanceof EducacionalError && e.rede) {
         avisar({ tipo: "erro", texto: "Não foi possível salvar: sem conexão com o servidor." });
@@ -259,7 +326,7 @@ function ListaConfig({ aba, config }: { aba: Aba; config: Config }) {
   // Item novo de lista ordenável entra no fim: o backend exige `ordem` no POST.
   const proximaOrdem = Math.max(0, ...itens.map((i) => i.ordem ?? 0)) + 1;
   const salvarItem = async (id: string | null, campos: Record<string, unknown>) => {
-    const novo = def.ordenavel ? { ordem: proximaOrdem, ...campos } : campos;
+    const novo = { ...(def.ordenavel ? { ordem: proximaOrdem } : {}), ...(porPrograma ? { programa_id: programaId } : {}), ...campos };
     const ok = await gravar(() => (id ? atualizarItemConfig(def.colecao, id, campos) : criarItemConfig(def.colecao, novo)));
     if (ok) setEditando(null);
   };
@@ -317,10 +384,47 @@ function ListaConfig({ aba, config }: { aba: Aba; config: Config }) {
         }
       />
       <CardContent className="space-y-3">
+        {porPrograma && (
+          <label className="flex flex-wrap items-center gap-2 text-sm text-texto">
+            <span className="text-xs font-medium text-texto-sec">Programa</span>
+            <select
+              aria-label="Programa"
+              value={programaId}
+              onChange={(e) => {
+                setProgramaId(e.target.value);
+                setEditando(null);
+              }}
+              className={cn(CAMPO, "w-auto min-w-[14rem]")}
+            >
+              {grupos.map((g) => (
+                <optgroup key={g.mentoria} label={g.mentoria}>
+                  {g.programas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                      {p.ativo ? "" : " (inativo)"}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            {programa && (
+              <span className="text-xs text-texto-sec">
+                {itens.length} {itens.length === 1 ? "checkpoint" : "checkpoints"} · {programa.duracao_meses} meses
+              </span>
+            )}
+          </label>
+        )}
         {aba === "checkpoints" && (
           <p className="flex items-start gap-2 rounded-xl border border-info/30 bg-info-forte/10 px-3 py-2 text-xs text-texto" role="note">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-info" aria-hidden />
-            Mudanças nos checkpoints padrão valem só para alunos novos. Os checkpoints de quem já está na jornada não mudam.
+            {porPrograma
+              ? "A lista e as datas valem para alunos novos (e na troca de programa); quem já está na jornada não muda. O roteiro do contato vale para todos os alunos na hora."
+              : "Mudanças nos checkpoints padrão valem só para alunos novos. Os checkpoints de quem já está na jornada não mudam."}
+          </p>
+        )}
+        {aba === "programas" && (
+          <p className="text-xs text-texto-sec">
+            A mentoria aparece para o aluno; a duração sugere o término. Só é possível inativar um programa sem alunos na jornada.
           </p>
         )}
         {aba === "etapas" && (
@@ -458,14 +562,19 @@ function FormItem({
   onCancelar: () => void;
   onSalvar: (campos: Record<string, unknown>) => void;
 }) {
-  const inicial = Object.fromEntries(
-    def.colunas.map((c) => {
-      const v = item?.[c.chave];
-      if (c.tipo === "booleano") return [c.chave, v ? "true" : "false"];
-      if (c.tipo === "lista") return [c.chave, String(v ?? c.opcoes?.[0]?.valor ?? "")];
-      return [c.chave, v == null ? "" : String(v)];
-    }),
-  );
+  const roteiro = def.colunas.some((c) => c.tipo === "roteiro");
+  const roteiroAtual = (item?.roteiro ?? null) as Roteiro | null;
+  const inicial = Object.fromEntries([
+    ...def.colunas
+      .filter((c) => c.tipo !== "roteiro")
+      .map((c) => {
+        const v = item?.[c.chave];
+        if (c.tipo === "booleano") return [c.chave, v ? "true" : "false"];
+        if (c.tipo === "lista") return [c.chave, String(v ?? c.opcoes?.[0]?.valor ?? "")];
+        return [c.chave, v == null ? "" : String(v)];
+      }),
+    ...(roteiro ? CAMPOS_ROTEIRO.map((k) => [`roteiro.${k}`, roteiroAtual?.[k] ?? ""]) : []),
+  ]);
   const [valores, setValores] = useState<Record<string, string>>(inicial);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -473,9 +582,17 @@ function FormItem({
     const campos: Record<string, unknown> = {};
     for (const c of def.colunas) {
       const v = valores[c.chave] ?? "";
-      if (c.tipo === "texto") {
+      if (c.tipo === "roteiro") {
+        campos.roteiro = Object.fromEntries(CAMPOS_ROTEIRO.map((k) => [k, valores[`roteiro.${k}`]?.trim() || null]));
+      } else if (c.tipo === "texto") {
         if (!v.trim()) return setErro(`Informe ${c.rotulo.toLowerCase()}.`);
         campos[c.chave] = v.trim();
+      } else if (c.tipo === "texto_opcional") {
+        campos[c.chave] = v.trim() || null;
+      } else if (c.tipo === "marco") {
+        const marco = normalizarMarco(v);
+        if (!marco) return setErro("Dia N ou Mês N: use, por exemplo, Dia 3 ou Mês 1.");
+        campos[c.chave] = marco;
       } else if (c.tipo === "numero" || c.tipo === "numero_opcional") {
         if (v === "" && c.tipo === "numero_opcional") campos[c.chave] = null;
         else {
@@ -487,7 +604,8 @@ function FormItem({
       else campos[c.chave] = v;
     }
     // Só o que mudou (na criação, tudo).
-    const mudou = item ? Object.fromEntries(Object.entries(campos).filter(([k, v]) => item[k] !== v)) : campos;
+    const igual = (a: unknown, b: unknown) => (a && typeof a === "object" ? JSON.stringify(a) === JSON.stringify(b) : a === b);
+    const mudou = item ? Object.fromEntries(Object.entries(campos).filter(([k, v]) => !igual(v, item[k] ?? (k === "roteiro" ? null : undefined)))) : campos;
     if (item && !Object.keys(mudou).length) return onCancelar();
     setErro(null);
     onSalvar(mudou);
@@ -504,7 +622,7 @@ function FormItem({
       className="space-y-2 rounded-xl border border-azul/30 bg-azul/5 p-3"
     >
       <div className="flex flex-wrap items-end gap-3">
-        {def.colunas.map((c) => (
+        {def.colunas.filter((c) => c.tipo !== "roteiro").map((c) => (
           <label key={c.chave} className={cn("flex min-w-0 flex-col gap-1 text-xs font-medium text-texto-sec", c.largura)}>
             {c.rotulo}
             {c.tipo === "booleano" ? (
@@ -533,9 +651,9 @@ function FormItem({
             ) : (
               <input
                 aria-label={c.rotulo}
-                type={c.tipo === "texto" ? "text" : "number"}
-                min={c.tipo === "texto" ? undefined : 0}
-                placeholder={c.tipo === "numero_opcional" ? "Sem prazo" : undefined}
+                type={c.tipo.startsWith("numero") ? "number" : "text"}
+                min={c.tipo.startsWith("numero") ? 0 : undefined}
+                placeholder={c.tipo === "numero_opcional" ? "Sem prazo" : c.tipo === "marco" ? "Dia 3 ou Mês 1" : c.dica}
                 value={valores[c.chave]}
                 onChange={(e) => setValores({ ...valores, [c.chave]: e.target.value })}
                 className={CAMPO}
@@ -553,6 +671,23 @@ function FormItem({
           </Button>
         </span>
       </div>
+      {roteiro && (
+        <fieldset className="grid gap-3 border-t border-white/10 pt-3 md:grid-cols-2">
+          <legend className="mb-1 text-xs font-semibold text-texto">Roteiro do contato</legend>
+          {CAMPOS_ROTEIRO.map((k) => (
+            <label key={k} className="flex min-w-0 flex-col gap-1 text-xs font-medium text-texto-sec">
+              {ROTULO_ROTEIRO[k]}
+              <textarea
+                aria-label={ROTULO_ROTEIRO[k]}
+                rows={4}
+                value={valores[`roteiro.${k}`]}
+                onChange={(e) => setValores({ ...valores, [`roteiro.${k}`]: e.target.value })}
+                className={cn(CAMPO, "h-auto py-2")}
+              />
+            </label>
+          ))}
+        </fieldset>
+      )}
       {erro && (
         <p className="text-xs text-erro" role="alert">
           {erro}

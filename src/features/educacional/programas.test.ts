@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Config } from "@/lib/educacional/contrato";
+import { normalizarMarco } from "./Configuracoes";
 import { programasPorMentoria, sugerirTermino, temProgramas } from "./programas";
 
 const programa = (id: string, mentoria: string, meses: number, ativo = true) => ({
@@ -31,5 +32,14 @@ describe("apoio de programas na tela", () => {
     expect(programasPorMentoria(config, true)[1].programas.map((p) => p.id)).toEqual(["p6", "x"]);
     expect(temProgramas(config)).toBe(true);
     expect(temProgramas({ programas: [] } as unknown as Config)).toBe(false);
+  });
+
+  it("marco digitado solto vira Dia N / Mês N; o resto é recusado", () => {
+    expect(normalizarMarco("mes 3")).toBe("Mês 3");
+    expect(normalizarMarco(" MÊS 12 ")).toBe("Mês 12");
+    expect(normalizarMarco("dia 0")).toBe("Dia 0");
+    expect(normalizarMarco("Dia 03")).toBe("Dia 3");
+    expect(normalizarMarco("Semana 2")).toBeNull();
+    expect(normalizarMarco("Mês")).toBeNull();
   });
 });
