@@ -218,31 +218,37 @@ describe("escrita em aluno — seção 5 do backend", () => {
     expect(volta.arquivado).toBe(false);
   });
 
-  it("aluno novo recebe os checkpoints ativos do modelo (entrada + dias, previsto)", async () => {
+  it("aluno novo recebe os checkpoints do programa: Dia N = +N dias, Mês N no calendário (fim do mês)", async () => {
     const c = await buscarConfig();
+    const prime6 = c.programas.find((p) => p.nome === "Prime 6 meses")!;
     const novo = await criarAluno({
       nome: "Paula Teste",
-      mentoria: "Mentoria Prime",
-      data_entrada: "2026-11-02",
+      programa_id: prime6.id,
+      data_entrada: "2026-01-31",
       nivel_inicial: "iniciante",
       etapa_id: c.etapas[0].id,
     });
     expect(novo.versao).toBe(1);
     expect(novo.status_aluno).toBe("ativo");
     expect(novo.autorizacao_prova_social).toBe("pendente");
-    expect(novo.checkpoints.map((x) => [x.nome, x.data_prevista, x.status])).toEqual([
-      ["Dia 0", "2026-11-02", "previsto"],
-      ["Semana 1", "2026-11-09", "previsto"],
-      ["Mês 1", "2026-12-02", "previsto"],
-      ["Mês 2", "2027-01-01", "previsto"],
-      ["Mês 3", "2027-01-31", "previsto"],
-      ["Mês 4", "2027-03-02", "previsto"],
-      ["Mês 5", "2027-04-01", "previsto"],
-      ["Mês 6", "2027-05-01", "previsto"],
+    expect(novo.mentoria).toBe("Prime");
+    expect(novo.programa).toMatchObject({ id: prime6.id, nome: "Prime 6 meses", duracao_meses: 6 });
+    expect(novo.data_inicio_programa).toBe("2026-01-31");
+    expect(novo.data_termino).toBe("2026-07-31"); // início + duração, sugerido quando não vem
+    expect(novo.checkpoints.map((x) => [x.marco, x.nome, x.data_prevista, x.status])).toEqual([
+      ["Dia 0", "Welcome", "2026-01-31", "previsto"],
+      ["Dia 3", "Check-in", "2026-02-03", "previsto"],
+      ["Mês 1", "Revisão", "2026-02-28", "previsto"],
+      ["Mês 3", "Big Win", "2026-04-30", "previsto"],
+      ["Mês 5", "Pré-fim", "2026-06-30", "previsto"],
+      ["Mês 6", "Fim", "2026-07-31", "previsto"],
     ]);
-    expect(novo.checkpoints.find((x) => x.nome === "Mês 3")?.big_win).toBe(true);
+    expect(novo.checkpoints.find((x) => x.nome === "Big Win")?.big_win).toBe(true);
+    expect(novo.checkpoints[0].roteiro?.objetivo).toBeTruthy();
     expect((await buscarAlunos({ por_pagina: "todos" })).itens.some((x) => x.id === novo.id)).toBe(true);
-    const e = await erroDe(criarAluno({ nome: "", mentoria: "X", data_entrada: "2026-11-02", nivel_inicial: "iniciante", etapa_id: c.etapas[0].id }));
+    const sem = await erroDe(criarAluno({ nome: "Sem Programa", data_entrada: "2026-11-02", nivel_inicial: "iniciante", etapa_id: c.etapas[0].id }));
+    expect(sem.corpo.campo).toBe("programa_id");
+    const e = await erroDe(criarAluno({ nome: "", programa_id: prime6.id, data_entrada: "2026-11-02", nivel_inicial: "iniciante", etapa_id: c.etapas[0].id }));
     expect(e.corpo.campo).toBe("nome");
   });
 });
@@ -345,16 +351,18 @@ describe("configuração", () => {
     expect(c2.etapas.find((x) => x.id === nova.id)?.ativo).toBe(false);
   });
 
-  it("checkpoint modelo novo vale só para alunos novos", async () => {
+  it("checkpoint padrão novo vale só para alunos novos do programa dele; marco validado", async () => {
     const antigo = await primeiro();
-    await criarItemConfig("checkpoints-modelo", { nome: "Mês 7", dias_apos_entrada: 210 });
-    expect((await buscarAluno(antigo.id)).checkpoints.some((x) => x.nome === "Mês 7")).toBe(false);
+    const prog = antigo.programa!;
+    await criarItemConfig("checkpoints-modelo", { programa_id: prog.id, nome: "Extra", marco: "Mês 7" });
+    expect((await buscarAluno(antigo.id)).checkpoints.some((x) => x.nome === "Extra")).toBe(false);
     const c = await buscarConfig();
-    const novo = await criarAluno({ nome: "Rita Nova", mentoria: "Mentoria Prime", data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
-    expect(novo.checkpoints.at(-1)?.nome).toBe("Mês 7");
-    expect((await erroDe(criarItemConfig("checkpoints-modelo", { nome: "X", dias_apos_entrada: -1 }))).corpo.campo).toBe(
-      "dias_apos_entrada",
-    );
+    const novo = await criarAluno({ nome: "Rita Nova", programa_id: prog.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
+    expect(novo.checkpoints.at(-1)).toMatchObject({ nome: "Extra", marco: "Mês 7" });
+    const outro = c.programas.find((p) => p.id !== prog.id)!;
+    const deOutro = await criarAluno({ nome: "Outro Programa", programa_id: outro.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
+    expect(deOutro.checkpoints.some((x) => x.nome === "Extra")).toBe(false);
+    expect((await erroDe(criarItemConfig("checkpoints-modelo", { programa_id: prog.id, nome: "X", marco: "Semana 2" }))).corpo.campo).toBe("marco");
   });
 });
 

@@ -38,6 +38,9 @@ export type AlunoBanco = {
   highlights: { data_aula: string; texto: string }[];
   arquivado_em: string | null;
   versao: number;
+  // Programas: null = aluno antigo, sem programa.
+  programa_id: string | null;
+  data_inicio_programa: string | null;
 };
 
 export type CheckpointBanco = {
@@ -52,6 +55,9 @@ export type CheckpointBanco = {
   big_win: boolean;
   observacao: string | null;
   arquivado_em: string | null;
+  // Troca de programa: o não realizado do programa antigo sai da jornada sem ser
+  // apagado (fora da timeline e do SLA; continua no histórico).
+  substituido_em?: string | null;
 };
 
 export type IntervencaoBanco = {

@@ -11,6 +11,7 @@ import type {
   StatusCheckpoint,
   StatusFinanceiro,
 } from "../contrato";
+import { RE_MARCO } from "../contrato";
 import { confirmadasDoAluno } from "./analises";
 import type { AlunoBanco, Banco } from "./tipos";
 
@@ -61,9 +62,31 @@ function campo<T>(banco: Banco, alunoId: string, nome: CampoAjustavel, automatic
   return { valor: ajuste ? ajuste.valor : automatico, automatico, ajuste };
 }
 
+// Datas do programa: "Dia N" = início + N dias; "Mês N" = N meses de calendário,
+// caindo no último dia do mês quando o dia não existe (31/01 + 1 mês = 28/02).
+export function dataDoMarco(inicio: string, marco: string): string | null {
+  const m = RE_MARCO.exec(marco);
+  if (!m) return null;
+  const n = Number(m[2]);
+  const [ano, mes, dia] = inicio.slice(0, 10).split("-").map(Number);
+  if (m[1] === "Dia") {
+    const d = new Date(Date.UTC(ano, mes - 1, dia + n));
+    return d.toISOString().slice(0, 10);
+  }
+  const alvo = new Date(Date.UTC(ano, mes - 1 + n, 1));
+  const ultimo = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(dia, ultimo));
+  return alvo.toISOString().slice(0, 10);
+}
+
+export const somarMeses = (inicio: string, meses: number) => dataDoMarco(inicio, `Mês ${meses}`) as string;
+
 function checkpointsDoAluno(banco: Banco, alunoId: string): Checkpoint[] {
+  // Roteiro e marco são REFERÊNCIA ao checkpoint padrão (editar em Configurações
+  // vale para todos os alunos). Avulso: sem roteiro.
+  const modelo = new Map(banco.config.checkpoints_modelo.map((m) => [m.id, m]));
   return banco.checkpoints
-    .filter((c) => c.aluno_id === alunoId && !c.arquivado_em)
+    .filter((c) => c.aluno_id === alunoId && !c.arquivado_em && !c.substituido_em)
     .sort((a, b) => a.ordem - b.ordem || (a.data_prevista ?? "").localeCompare(b.data_prevista ?? ""))
     .map((c) => ({
       id: c.id,
@@ -74,6 +97,8 @@ function checkpointsDoAluno(banco: Banco, alunoId: string): Checkpoint[] {
       status: c.status,
       big_win: c.big_win,
       observacao: c.observacao,
+      marco: (c.modelo_id && modelo.get(c.modelo_id)?.marco) || null,
+      roteiro: (c.modelo_id && modelo.get(c.modelo_id)?.roteiro) || null,
     }));
 }
 
@@ -134,6 +159,7 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
   const health = c<number>("health_score", null); // fórmula pendente: só ajuste
   const faixa = c<FaixaSaude>("faixa_saude", faixaDoHealth(health.valor)); // pelo Health EFETIVO
   const ultimaEtapa = etapasAtivas(banco).at(-1);
+  const programa = a.programa_id ? (banco.config.programas ?? []).find((p) => p.id === a.programa_id) : null;
   const bigWinRealizado = checkpoints.some((x) => x.big_win && x.status === "realizado");
   // Progresso automático = notas da análise confirmada mais recente da etapa atual
   // (sem análise na etapa: null). Ajuste manual continua prevalecendo.
@@ -189,6 +215,9 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
       prova_social: c<boolean>("sinal_prova_social", bigWinRealizado && a.etapa_id === ultimaEtapa?.id),
     },
     arquivado: Boolean(a.arquivado_em),
+    programa: programa ? { id: programa.id, nome: programa.nome, mentoria: programa.mentoria, duracao_meses: programa.duracao_meses } : null,
+    data_inicio_programa: a.data_inicio_programa ?? null,
+    programa_observacao: programa?.observacao ?? null,
     data_entrada: a.data_entrada,
     data_termino: a.data_termino,
     etapa_desde: a.etapa_desde,

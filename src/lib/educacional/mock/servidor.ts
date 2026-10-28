@@ -35,6 +35,7 @@ const COLECOES: Record<string, escrita.ColecaoConfig> = {
   "checkpoints-modelo": "checkpoints_modelo",
   "tipos-intervencao": "tipos_intervencao",
   responsaveis: "responsaveis",
+  programas: "programas",
 };
 
 const PESO_FAIXA: Record<FaixaSaude, number> = { risco: 0, atencao: 1, saudavel: 2 };
@@ -114,6 +115,7 @@ function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
   const statusAluno = listaDaQuery(q, "status_aluno");
   const faixas = listaDaQuery(q, "faixa_saude");
   const mentorias = listaDaQuery(q, "mentoria");
+  const programas = listaDaQuery(q, "programa_id");
   const busca = normalizar((q.get("busca") ?? "").trim());
   const healthMax = q.get("health_max");
   const todos = banco.alunos
@@ -128,6 +130,7 @@ function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
       if (statusAluno.length && !statusAluno.includes(a.status_aluno)) return false;
       if (faixas.length && !(a.faixa_saude.valor && faixas.includes(a.faixa_saude.valor))) return false;
       if (mentorias.length && !mentorias.includes(a.mentoria)) return false;
+      if (programas.length && !(a.programa && programas.includes(a.programa.id))) return false;
       if (busca.length >= 2 && !normalizar(a.nome).includes(busca)) return false;
       const sinal = q.get("sinal") as keyof AlunoLinha["sinais"] | null;
       if (sinal && a.sinais[sinal]?.valor !== true) return false;
@@ -256,6 +259,12 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
     }
     if (s.length === 4 && s[2] === "ajustes" && metodo === "DELETE") {
       return escrita.removerAjuste(banco, id, s[3], versaoDo(corpo, q), ctx);
+    }
+    if (s.length === 4 && s[2] === "programa" && s[3] === "previa" && metodo === "POST") {
+      return escrita.previaTrocaPrograma(banco, id, corpo);
+    }
+    if (s.length === 3 && s[2] === "programa" && metodo === "POST") {
+      return escrita.trocarPrograma(banco, id, semVersao(corpo), versaoDo(corpo), ctx);
     }
     if (s.length === 3 && s[2] === "checkpoints" && metodo === "POST") {
       return escrita.criarCheckpoint(banco, id, semVersao(corpo), versaoDo(corpo), ctx);

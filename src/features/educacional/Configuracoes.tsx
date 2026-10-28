@@ -75,7 +75,14 @@ const ABAS: Record<Aba, { colecao: ColecaoConfig; chave: keyof Config; titulo: s
     ordenavel: true,
     colunas: [
       { chave: "nome", rotulo: "Nome", tipo: "texto", largura: "min-w-[9rem] flex-1" },
-      { chave: "dias_apos_entrada", rotulo: "Dias após a entrada", tipo: "numero", largura: "w-32", exibir: (v) => `${v} dias` },
+      {
+        chave: "dias_apos_entrada",
+        rotulo: "Dias após a entrada",
+        tipo: "numero",
+        largura: "w-32",
+        // Com programas a data vem do marco (a aba ganha o campo no P5).
+        exibir: (v) => (v == null ? <span className="text-texto-sec/60">—</span> : `${v} dias`),
+      },
       {
         chave: "prazo_sla_dias",
         rotulo: "Prazo de SLA",

@@ -5,6 +5,8 @@ import {
   CheckpointModeloSchema,
   LIMITE_LOTE,
   OpcaoAlunoSchema,
+  PreviaTrocaSchema,
+  ProgramaSchema,
   EtapaSchema,
   ItemHistoricoSchema,
   ResponsavelSchema,
@@ -28,6 +30,8 @@ import {
   type NovoAluno,
   type OpcaoAluno,
   type PedidoLote,
+  type PedidoTroca,
+  type PreviaTroca,
   type RespostaLote,
   type ResultadoAnalise,
   type ResultadoLoteAluno,
@@ -123,6 +127,8 @@ export type FiltrosAlunos = {
   busca?: string | null; // nome, a partir de BUSCA_MINIMA letras
   mentoria?: string[];
   faixa_saude?: FaixaSaude[];
+  // Programas: vários ao mesmo tempo (ex.: Blackbelt 6 e 12 meses).
+  programa?: string[];
   incluir_arquivados?: boolean;
   ordem?: OrdemAlunos;
   pagina?: number;
@@ -156,6 +162,7 @@ export function queryDosFiltros(f: FiltrosAlunos): string {
   if (buscaValida(f.busca)) qs.set("busca", buscaValida(f.busca)!);
   if (f.mentoria?.length) qs.set("mentoria", f.mentoria.join(","));
   if (f.faixa_saude?.length) qs.set("faixa_saude", f.faixa_saude.join(","));
+  if (f.programa?.length) qs.set("programa", f.programa.join(","));
   if (f.incluir_arquivados) qs.set("incluir_arquivados", "1");
   if (f.ordem && f.ordem !== "risco") qs.set("ordem", f.ordem);
   if (f.por_pagina != null) qs.set("por_pagina", String(f.por_pagina));
@@ -180,6 +187,7 @@ export function queryDaApi(f: FiltrosAlunos): string {
   if (buscaValida(f.busca)) qs.set("busca", buscaValida(f.busca)!);
   if (f.mentoria?.length) qs.set("mentoria", f.mentoria.join(","));
   if (f.faixa_saude?.length) qs.set("faixa_saude", f.faixa_saude.join(","));
+  if (f.programa?.length) qs.set("programa_id", f.programa.join(","));
   if (f.incluir_arquivados) qs.set("incluir_arquivados", "true");
   qs.set("ordem", f.ordem ?? "risco");
   qs.set("por_pagina", String(f.por_pagina ?? TAMANHO_PAGINA));
@@ -428,6 +436,7 @@ function validarConfig(bruto: unknown): Config {
     responsaveis: validarLista(c.responsaveis, ResponsavelSchema, "responsável").validos,
     sync_planilha_erros: typeof c.sync_planilha_erros === "number" ? c.sync_planilha_erros : 0,
     // D2: mentorias existentes (filtro e sugestões). Só textos não vazios, sem repetição.
+    programas: validarLista(c.programas, ProgramaSchema, "programa").validos.sort((a, b) => a.ordem - b.ordem),
     mentorias: Array.isArray(c.mentorias)
       ? [...new Set(c.mentorias.filter((m): m is string => typeof m === "string" && m.trim() !== ""))]
       : [],
@@ -509,6 +518,23 @@ export function atualizarIntervencao(intervencaoId: string, versao: number, camp
 
 export function arquivarIntervencao(intervencaoId: string, versao: number): Promise<AlunoDetalhe> {
   return escreverAluno({ metodo: "POST", caminho: `intervencoes/${id(intervencaoId)}/arquivar`, corpo: { versao } });
+}
+
+// ---------------------------------------------------------------------------
+// Programas: troca com prévia (ação própria, fora do lote). A regra do que fica,
+// sai e é criado é do backend; a tela só mostra a prévia e confirma com motivo.
+// ---------------------------------------------------------------------------
+
+export async function previaTrocaPrograma(alunoId: string, pedido: PedidoTroca): Promise<PreviaTroca> {
+  const r = PreviaTrocaSchema.safeParse(
+    await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/programa/previa`, corpo: pedido }),
+  );
+  if (!r.success) throw new EducacionalError("Prévia da troca fora do contrato.", 502);
+  return r.data;
+}
+
+export function trocarPrograma(alunoId: string, versao: number, pedido: PedidoTroca & { motivo: string }): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: `alunos/${id(alunoId)}/programa`, corpo: { ...pedido, versao } });
 }
 
 // ---------------------------------------------------------------------------
@@ -652,7 +678,7 @@ export async function reprocessarAnalise(analiseId: string): Promise<void> {
 // Escrita em configuração (sem versão: não é escrita em aluno)
 // ---------------------------------------------------------------------------
 
-export type ColecaoConfig = "etapas" | "checkpoints-modelo" | "tipos-intervencao" | "responsaveis";
+export type ColecaoConfig = "etapas" | "checkpoints-modelo" | "tipos-intervencao" | "responsaveis" | "programas";
 
 export async function criarItemConfig(colecao: ColecaoConfig, campos: Record<string, unknown>): Promise<Config> {
   return validarConfig(await chamar({ metodo: "POST", caminho: `config/${colecao}`, corpo: campos }));

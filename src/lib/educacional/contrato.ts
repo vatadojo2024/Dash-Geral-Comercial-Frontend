@@ -69,14 +69,45 @@ const Data = z.string(); // AAAA-MM-DD ou ISO
 export const EtapaSchema = z.object({ id: z.string(), nome: z.string(), ordem: z.number().int(), ativo: z.boolean() });
 export type Etapa = z.infer<typeof EtapaSchema>;
 
+// ---------- programas e roteiros (specs/educacional/programas) ----------
+// Programa = mentoria + duração, com a sua lista de checkpoints padrão.
+export const ProgramaSchema = z.object({
+  id: z.string(),
+  nome: z.string(), // "Blackbelt 6 meses"
+  mentoria: z.string(), // "Blackbelt" — é o que a tela mostra como mentoria
+  duracao_meses: z.number().int().positive(),
+  observacao: z.string().nullable().default(null),
+  ordem: z.number().int().default(0),
+  ativo: z.boolean(),
+});
+export type Programa = z.infer<typeof ProgramaSchema>;
+
+// Roteiro do contato de um checkpoint. É referência ao checkpoint padrão: o
+// backend devolve os 4 textos junto com o checkpoint do aluno (só leitura no Raio-X).
+export const RoteiroSchema = z.object({
+  objetivo: z.string().nullable().default(null),
+  perguntas_chave: z.string().nullable().default(null),
+  sinais_upsell_renovacao: z.string().nullable().default(null),
+  estrategia_monetizacao: z.string().nullable().default(null),
+});
+export type Roteiro = z.infer<typeof RoteiroSchema>;
+export const CAMPOS_ROTEIRO = ["objetivo", "perguntas_chave", "sinais_upsell_renovacao", "estrategia_monetizacao"] as const;
+
+// "Dia N" ou "Mês N" (Dia = início + N dias; Mês = N meses de calendário).
+export const RE_MARCO = /^(Dia|Mês) (\d{1,3})$/;
+
 export const CheckpointModeloSchema = z.object({
   id: z.string(),
   nome: z.string(),
   ordem: z.number().int(),
-  dias_apos_entrada: z.number().int(),
+  // Antes dos programas, a data vinha daqui; com programas, do `marco`.
+  dias_apos_entrada: z.number().int().nullable().default(null),
   prazo_sla_dias: z.number().int().nullable(),
   big_win: z.boolean(),
   ativo: z.boolean(),
+  programa_id: z.string().nullable().default(null),
+  marco: z.string().nullable().default(null),
+  roteiro: RoteiroSchema.nullable().default(null),
 });
 export type CheckpointModelo = z.infer<typeof CheckpointModeloSchema>;
 
@@ -94,6 +125,7 @@ export const ConfigSchema = z.object({
   sync_planilha_erros: z.number().int().min(0),
   // Fase 3 (D2): mentorias existentes, para o filtro e as sugestões do campo.
   mentorias: z.array(z.string()).default([]),
+  programas: z.array(ProgramaSchema).default([]),
 });
 export type Config = z.infer<typeof ConfigSchema>;
 
@@ -113,6 +145,8 @@ export type ResumoEducacional = z.infer<typeof ResumoEducacionalSchema>;
 
 // ---------- aluno ----------
 const ResponsavelDoAluno = z.object({ id: z.string(), nome: z.string(), tipo: TipoResponsavelSchema });
+const ProgramaDoAluno = z.object({ id: z.string(), nome: z.string(), mentoria: z.string(), duracao_meses: z.number().int() });
+export type ProgramaResumo = z.infer<typeof ProgramaDoAluno>;
 
 export const AlunoLinhaSchema = z.object({
   id: z.string().min(1),
@@ -137,6 +171,8 @@ export const AlunoLinhaSchema = z.object({
     prova_social: CampoCalculadoSchema(z.boolean()),
   }),
   arquivado: z.boolean(),
+  // Programas: null = aluno sem programa (antigo). `mentoria` continua vindo.
+  programa: ProgramaDoAluno.nullable().default(null),
 });
 export type AlunoLinha = z.infer<typeof AlunoLinhaSchema>;
 
@@ -149,6 +185,9 @@ export const CheckpointSchema = z.object({
   status: StatusCheckpointSchema,
   big_win: z.boolean(),
   observacao: z.string().nullable(),
+  // Programas: marco e roteiro do checkpoint padrão (null no avulso).
+  marco: z.string().nullable().default(null),
+  roteiro: RoteiroSchema.nullable().default(null),
 });
 export type Checkpoint = z.infer<typeof CheckpointSchema>;
 
@@ -256,6 +295,9 @@ export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
   highlights: z.array(HighlightSchema),
   checkpoints: z.array(CheckpointSchema),
   intervencoes: z.array(IntervencaoSchema),
+  // Programas: início do programa (a troca grava) e observação do programa.
+  data_inicio_programa: z.string().nullable().default(null),
+  programa_observacao: z.string().nullable().default(null),
   // Fase 3: com padrão, para a tela não cair enquanto a API ainda não manda.
   analises: z.array(AnaliseResumoSchema).default([]),
   progresso_origem: z
@@ -268,6 +310,25 @@ export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
     .default({ consumiu: SEM_ORIGEM, entendeu: SEM_ORIGEM, aplicou: SEM_ORIGEM, validou: SEM_ORIGEM }),
 });
 export type AlunoDetalhe = z.infer<typeof AlunoDetalheSchema>;
+
+// ---------- troca de programa (prévia do backend) ----------
+const CheckpointDaPrevia = z.object({
+  id: z.string(),
+  nome: z.string(),
+  marco: z.string().nullable().default(null),
+  status: StatusCheckpointSchema,
+  data_prevista: z.string().nullable(),
+});
+export const PreviaTrocaSchema = z.object({
+  programa: z.object({ id: z.string(), nome: z.string() }),
+  inicio: Data,
+  data_termino_sugerida: Data,
+  ficam: z.array(CheckpointDaPrevia),
+  saem: z.array(CheckpointDaPrevia),
+  criados: z.array(z.object({ nome: z.string(), marco: z.string(), data_prevista: Data })),
+});
+export type PreviaTroca = z.infer<typeof PreviaTrocaSchema>;
+export type PedidoTroca = { programa_id: string; inicio: string };
 
 // ---------- lote (Fase 3, seção 7; POST /lote) ----------
 export type AjusteLote = { campo: CampoAjustavelNome; valor: unknown; motivo?: string } | { campo: CampoAjustavelNome; remover: true };
@@ -348,7 +409,9 @@ export type CamposDiretosAluno = Partial<{
 
 export type NovoAluno = {
   nome: string;
-  mentoria: string;
+  // Com programas, o programa é obrigatório e a mentoria vem dele.
+  programa_id?: string;
+  mentoria?: string;
   data_entrada: string;
   nivel_inicial: NivelInicial;
   etapa_id: string;
@@ -386,13 +449,14 @@ function motivo(erro: z.ZodError): string {
   return erro.issues.map((i) => `${i.path.join(".") || "(raiz)"} — ${i.message}`).join("; ");
 }
 
-export function validarLista<T>(
+// Tipado pela SAÍDA do schema (campos com padrão chegam preenchidos).
+export function validarLista<S extends z.ZodTypeAny>(
   itens: unknown,
-  schema: z.ZodType<T>,
+  schema: S,
   rotulo: string,
-): { validos: T[]; descartados: number } {
+): { validos: z.output<S>[]; descartados: number } {
   if (!Array.isArray(itens)) return { validos: [], descartados: 0 };
-  const validos: T[] = [];
+  const validos: z.output<S>[] = [];
   let descartados = 0;
   itens.forEach((bruto, i) => {
     const r = schema.safeParse(bruto);
@@ -408,9 +472,14 @@ export function validarLista<T>(
 export function validarAlunoDetalhe(bruto: unknown): AlunoDetalhe | null {
   if (!bruto || typeof bruto !== "object") return null;
   const b = bruto as Record<string, unknown>;
+  // Checkpoint substituído numa troca de programa não é da jornada: sai sem aviso
+  // (o backend ainda vai definir a marcação; o histórico continua mostrando).
+  const daJornada = Array.isArray(b.checkpoints)
+    ? b.checkpoints.filter((c) => (c as { status?: unknown } | null)?.status !== "substituido")
+    : b.checkpoints;
   const candidato = {
     ...b,
-    checkpoints: validarLista(b.checkpoints, CheckpointSchema, "checkpoint").validos,
+    checkpoints: validarLista(daJornada, CheckpointSchema, "checkpoint").validos,
     intervencoes: validarLista(b.intervencoes, IntervencaoSchema, "intervenção").validos,
     highlights: validarLista(b.highlights, HighlightSchema, "highlight").validos,
     // Fase 3: cada análise validada sozinha (uma ruim não derruba o aluno).

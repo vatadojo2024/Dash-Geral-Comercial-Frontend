@@ -22,18 +22,45 @@ describe("semente — contrato da Fase 2", () => {
     expect(new Set(alunos.map((a) => a.id)).size).toBe(alunos.length);
   });
 
-  it("modelo de checkpoints aprovado: Dia 0 … Mês 6, Big Win no Mês 3, SLA vazio", () => {
-    expect(banco.config.checkpoints_modelo.map((m) => [m.nome, m.dias_apos_entrada, m.big_win])).toEqual([
-      ["Dia 0", 0, false],
-      ["Semana 1", 7, false],
-      ["Mês 1", 30, false],
-      ["Mês 2", 60, false],
-      ["Mês 3", 90, true],
-      ["Mês 4", 120, false],
-      ["Mês 5", 150, false],
-      ["Mês 6", 180, false],
+  it("programas (28/10): as 6 listas, Big Win marcado, observação só no Blackbelt, roteiro em todos", () => {
+    const lista = (nome: string) => {
+      const p = banco.config.programas.find((x) => x.nome === nome)!;
+      return banco.config.checkpoints_modelo
+        .filter((m) => m.programa_id === p.id)
+        .sort((x, y) => x.ordem - y.ordem)
+        .map((m) => `${m.marco} (${m.nome})`)
+        .join(", ");
+    };
+    expect(banco.config.programas.map((p) => p.nome)).toEqual([
+      "Blackbelt 6 meses",
+      "Blackbelt 12 meses",
+      "Prime 6 meses",
+      "Prime 12 meses",
+      "Private 6 meses",
+      "Private 12 meses",
     ]);
-    expect(banco.config.checkpoints_modelo.every((m) => m.prazo_sla_dias === null)).toBe(true);
+    expect(lista("Blackbelt 6 meses")).toBe("Dia 0 (Boas-vindas), Dia 3 (Sprint), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Reta Final), Mês 6 (Fim)");
+    expect(lista("Blackbelt 12 meses")).toBe("Dia 0 (Boas-vindas), Dia 3 (Onboarding), Mês 1 (Revisão), Mês 4 (Big Win), Mês 6 (Metade), Mês 12 (Fim)");
+    expect(lista("Prime 6 meses")).toBe("Dia 0 (Welcome), Dia 3 (Check-in), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Pré-fim), Mês 6 (Fim)");
+    expect(lista("Prime 12 meses")).toBe("Dia 0 (Welcome), Dia 3 (Check-in), Mês 1 (Avaliação), Mês 6 (Metade), Mês 9 (Big Win), Mês 12 (Decisão)");
+    expect(lista("Private 6 meses")).toBe(lista("Prime 6 meses"));
+    expect(lista("Private 12 meses")).toBe(lista("Prime 12 meses"));
+    expect(banco.config.checkpoints_modelo.filter((m) => m.big_win).every((m) => m.nome === "Big Win")).toBe(true);
+    expect(banco.config.checkpoints_modelo.filter((m) => m.big_win)).toHaveLength(6);
+    expect(banco.config.programas.filter((p) => p.observacao).map((p) => p.mentoria)).toEqual(["Blackbelt", "Blackbelt"]);
+    expect(banco.config.checkpoints_modelo.every((m) => m.roteiro?.objetivo && m.roteiro.estrategia_monetizacao)).toBe(true);
+  });
+
+  it("todo aluno tem programa, a mentoria dele e os checkpoints da lista do programa", () => {
+    for (const a of alunos) {
+      expect(a.programa).not.toBeNull();
+      expect(a.mentoria).toBe(a.programa!.mentoria);
+      expect(a.checkpoints.map((c) => c.marco)).toEqual(
+        banco.config.checkpoints_modelo.filter((m) => m.programa_id === a.programa!.id).sort((x, y) => x.ordem - y.ordem).map((m) => m.marco),
+      );
+      expect(a.checkpoints.every((c) => c.roteiro?.objetivo)).toBe(true);
+    }
+    expect(alunos.filter((a) => a.programa_observacao).every((a) => a.programa!.mentoria === "Blackbelt")).toBe(true);
   });
 
   it("cobre etapas, status de checkpoint, faixas e um arquivado", () => {

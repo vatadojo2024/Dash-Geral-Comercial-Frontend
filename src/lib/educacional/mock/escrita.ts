@@ -4,6 +4,7 @@ import {
   LIMITE_LOTE,
   MOTIVO_MINIMO,
   NIVEIS_INICIAIS,
+  RE_MARCO,
   STATUS_ALUNO,
   STATUS_CHECKPOINT,
   ResultadoAnaliseSchema,
@@ -17,6 +18,8 @@ import {
   type Etapa,
   type EntidadeHistorico,
   type NovoAluno,
+  type PreviaTroca,
+  type Programa,
   type RespostaLote,
   type ResultadoLoteAluno,
   type Responsavel,
@@ -24,8 +27,8 @@ import {
   type Usuario,
 } from "../contrato";
 import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
-import { montarAluno, naJornada } from "./motor";
-import { ErroDaApi, type AlunoBanco, type AnaliseBanco, type Banco } from "./tipos";
+import { dataDoMarco, montarAluno, naJornada, somarMeses } from "./motor";
+import { ErroDaApi, type AlunoBanco, type AnaliseBanco, type Banco, type CheckpointBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // Escritas do modo demonstração, no MESMO caminho da seção 5 do backend:
@@ -178,6 +181,9 @@ export function patchAluno(banco: Banco, id: string, campos: CamposDiretosAluno,
       case "responsavel_id":
         novos.responsavel_id = responsavelAtivo(banco, valor)?.id ?? null;
         break;
+      case "programa_id":
+        erro400("programa_id", "Para mudar o programa, use Trocar programa.");
+        break;
       default:
         erro400(chave, "Campo desconhecido.");
     }
@@ -218,12 +224,19 @@ export function arquivarAluno(banco: Banco, id: string, arquivar: boolean, versa
 
 export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
   const etapaId = dados.etapa_id ?? banco.config.etapas.filter((e) => e.ativo).sort((x, y) => x.ordem - y.ordem)[0]?.id;
+  // Com programas: o programa é obrigatório e dá a mentoria, o início (= entrada),
+  // o término padrão (início + duração) e os checkpoints.
+  const comProgramas = (banco.config.programas ?? []).length > 0;
+  const programa = comProgramas || dados.programa_id ? programaAtivo(banco, dados.programa_id) : null;
+  const entrada = data("data_entrada", dados.data_entrada, true) as string;
   const a: AlunoBanco = {
     id: novoId("aluno"),
     nome: texto("nome", dados.nome, true) as string,
-    mentoria: texto("mentoria", dados.mentoria, true) as string,
-    data_entrada: data("data_entrada", dados.data_entrada, true) as string,
-    data_termino: data("data_termino", dados.data_termino, false),
+    mentoria: programa ? programa.mentoria : (texto("mentoria", dados.mentoria, true) as string),
+    data_entrada: entrada,
+    data_termino: data("data_termino", dados.data_termino, false) ?? (programa ? somarMeses(entrada, programa.duracao_meses) : null),
+    programa_id: programa?.id ?? null,
+    data_inicio_programa: programa ? entrada : null,
     objetivo: texto("objetivo", dados.objetivo, false),
     nivel_inicial: umDe("nivel_inicial", NIVEIS_INICIAIS, dados.nivel_inicial),
     status_aluno: dados.status_aluno ? umDe("status_aluno", STATUS_ALUNO, dados.status_aluno) : "ativo",
@@ -243,8 +256,11 @@ export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
     versao: 0,
   };
   banco.alunos.push(a);
-  // Checkpoints a partir do modelo ATIVO: data_prevista = entrada + dias, status previsto.
-  const modelo = banco.config.checkpoints_modelo.filter((m) => m.ativo).sort((x, y) => x.ordem - y.ordem);
+  // Checkpoints a partir do modelo ATIVO do programa (sem programa: os sem
+  // programa), status previsto.
+  const modelo = banco.config.checkpoints_modelo
+    .filter((m) => m.ativo && (m.programa_id ?? null) === (programa?.id ?? null))
+    .sort((x, y) => x.ordem - y.ordem);
   modelo.forEach((m, i) => {
     banco.checkpoints.push({
       id: novoId("cp"),
@@ -252,7 +268,7 @@ export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
       modelo_id: m.id,
       nome: m.nome,
       ordem: i + 1,
-      data_prevista: somarDias(a.data_entrada, m.dias_apos_entrada),
+      data_prevista: dataPrevista(m, a.data_entrada),
       data_realizada: null,
       status: "previsto",
       big_win: m.big_win,
@@ -491,9 +507,10 @@ export function arquivarIntervencao(banco: Banco, id: string, versao: number, ct
 // ---------------------------------------------------------------------------
 
 type ItemConfig = { id: string; ativo: boolean };
-export type ColecaoConfig = "etapas" | "checkpoints_modelo" | "tipos_intervencao" | "responsaveis";
+export type ColecaoConfig = "etapas" | "checkpoints_modelo" | "tipos_intervencao" | "responsaveis" | "programas";
 
-function validarItem(colecao: ColecaoConfig, campos: Record<string, unknown>, parcial: boolean) {
+function validarItem(banco: Banco, colecao: ColecaoConfig, campos: Record<string, unknown>, parcial: boolean) {
+  const idsDosProgramas = (banco.config.programas ?? []).map((p) => p.id);
   const v: Record<string, unknown> = {};
   if (!parcial || "nome" in campos) v.nome = texto("nome", campos.nome, true);
   if ("ativo" in campos) v.ativo = Boolean(campos.ativo);
@@ -501,12 +518,41 @@ function validarItem(colecao: ColecaoConfig, campos: Record<string, unknown>, pa
     if (!Number.isInteger(campos.ordem)) erro400("ordem", "Ordem inválida.");
     v.ordem = campos.ordem;
   }
-  if (colecao === "checkpoints_modelo") {
-    if (!parcial || "dias_apos_entrada" in campos) {
-      const d = campos.dias_apos_entrada;
-      if (!Number.isInteger(d) || (d as number) < 0) erro400("dias_apos_entrada", "Use um número inteiro de dias, 0 ou mais.");
-      v.dias_apos_entrada = d;
+  if (colecao === "programas") {
+    if (!parcial || "mentoria" in campos) v.mentoria = texto("mentoria", campos.mentoria, true);
+    if (!parcial || "duracao_meses" in campos) {
+      const d = campos.duracao_meses;
+      if (!Number.isInteger(d) || (d as number) < 1) erro400("duracao_meses", "Use um número inteiro de meses, 1 ou mais.");
+      v.duracao_meses = d;
     }
+    if ("observacao" in campos) v.observacao = texto("observacao", campos.observacao, false);
+  }
+  if (colecao === "checkpoints_modelo") {
+    if ("programa_id" in campos) {
+      if (!(idsDosProgramas as string[]).includes(campos.programa_id as string)) erro400("programa_id", "Programa inexistente.");
+      v.programa_id = campos.programa_id;
+    }
+    if ("marco" in campos) {
+      const m = typeof campos.marco === "string" ? campos.marco.trim() : "";
+      if (!RE_MARCO.test(m)) erro400("marco", "Use \"Dia N\" ou \"Mês N\" (ex.: Dia 3, Mês 1).");
+      v.marco = m;
+    }
+    if ("roteiro" in campos) {
+      const r = campos.roteiro && typeof campos.roteiro === "object" ? (campos.roteiro as Record<string, unknown>) : {};
+      v.roteiro = {
+        objetivo: texto("roteiro.objetivo", r.objetivo, false),
+        perguntas_chave: texto("roteiro.perguntas_chave", r.perguntas_chave, false),
+        sinais_upsell_renovacao: texto("roteiro.sinais_upsell_renovacao", r.sinais_upsell_renovacao, false),
+        estrategia_monetizacao: texto("roteiro.estrategia_monetizacao", r.estrategia_monetizacao, false),
+      };
+    }
+    // Antes dos programas, a data vinha de dias_apos_entrada; segue aceito.
+    if ("dias_apos_entrada" in campos) {
+      const d = campos.dias_apos_entrada;
+      if (d != null && (!Number.isInteger(d) || (d as number) < 0)) erro400("dias_apos_entrada", "Use um número inteiro de dias, 0 ou mais.");
+      v.dias_apos_entrada = d ?? null;
+    }
+    if (!parcial && !("marco" in campos) && !("dias_apos_entrada" in campos)) erro400("marco", "Informe Dia N ou Mês N.");
     if ("prazo_sla_dias" in campos) {
       const p = campos.prazo_sla_dias;
       if (p != null && (!Number.isInteger(p) || (p as number) < 0)) erro400("prazo_sla_dias", "Use um número inteiro de dias ou deixe em branco.");
@@ -520,15 +566,20 @@ function validarItem(colecao: ColecaoConfig, campos: Record<string, unknown>, pa
 
 export function criarItemConfig(banco: Banco, colecao: ColecaoConfig, campos: Record<string, unknown>) {
   const lista = banco.config[colecao] as unknown as (ItemConfig & { ordem?: number })[];
-  const v = validarItem(colecao, campos, false);
+  const v = validarItem(banco, colecao, campos, false);
   const base: Record<string, unknown> = { id: novoId(colecao.slice(0, 4)), ativo: true, ...v };
-  if (colecao === "etapas" || colecao === "checkpoints_modelo") {
+  if (colecao === "etapas" || colecao === "checkpoints_modelo" || colecao === "programas") {
     base.ordem = Math.max(0, ...lista.map((x) => x.ordem ?? 0)) + 1;
   }
   if (colecao === "checkpoints_modelo") {
     base.prazo_sla_dias = base.prazo_sla_dias ?? null;
     base.big_win = base.big_win ?? false;
+    base.programa_id = base.programa_id ?? null;
+    base.marco = base.marco ?? null;
+    base.roteiro = base.roteiro ?? null;
+    base.dias_apos_entrada = base.dias_apos_entrada ?? null;
   }
+  if (colecao === "programas") base.observacao = base.observacao ?? null;
   lista.push(base as unknown as ItemConfig);
   return banco.config;
 }
@@ -537,7 +588,7 @@ export function patchItemConfig(banco: Banco, colecao: ColecaoConfig, id: string
   const lista = banco.config[colecao] as unknown as (ItemConfig & Record<string, unknown>)[];
   const item = lista.find((x) => x.id === id);
   if (!item) throw new ErroDaApi(404, { error: "nao_encontrado", mensagem: "Item não encontrado." });
-  const v = validarItem(colecao, campos, true);
+  const v = validarItem(banco, colecao, campos, true);
   // Inativar etapa com alunos ativos → 409 com a contagem (Q4).
   if (colecao === "etapas" && v.ativo === false && item.ativo) {
     const n = banco.alunos.filter((a) => naJornada(a) && a.etapa_id === id).length;
@@ -546,6 +597,17 @@ export function patchItemConfig(banco: Banco, colecao: ColecaoConfig, id: string
         error: "etapa_com_alunos",
         alunos: n,
         mensagem: `Esta etapa ainda tem ${n} ${n === 1 ? "aluno" : "alunos"}. Mova-os antes de inativar.`,
+      });
+    }
+  }
+  // Inativar programa com alunos na jornada → 409 com a contagem (como a etapa).
+  if (colecao === "programas" && v.ativo === false && item.ativo) {
+    const n = banco.alunos.filter((a) => naJornada(a) && a.programa_id === id).length;
+    if (n > 0) {
+      throw new ErroDaApi(409, {
+        error: "programa_com_alunos",
+        alunos: n,
+        mensagem: `Este programa ainda tem ${n} ${n === 1 ? "aluno" : "alunos"}. Troque o programa deles antes de inativar.`,
       });
     }
   }
@@ -734,6 +796,110 @@ export function reprocessarAnalise(banco: Banco, id: string, ctx: Contexto): Ana
   an.inicio = ctx.agora;
   an.resultado_ia = resultadoDeExemplo(an.transcricao);
   return an;
+}
+
+// ---------------------------------------------------------------------------
+// Programas: troca com prévia (specs/educacional/programas, respostas de 28/10).
+//   - Ficam os realizados.
+//   - Os não realizados do programa antigo saem da jornada sem ser apagados
+//     (substituídos: fora da timeline e do SLA, com linha no histórico).
+//   - Os do programa novo são criados a partir do início, pulando os de data
+//     igual ou anterior à do último realizado.
+//   - Grava início, mentoria e término (início + duração).
+// ---------------------------------------------------------------------------
+
+function programaAtivo(banco: Banco, id: unknown): Programa {
+  const p = (banco.config.programas ?? []).find((x) => x.id === id);
+  if (!p || !p.ativo) erro400("programa_id", "Programa inexistente ou inativo.");
+  return p;
+}
+
+function modelosDoPrograma(banco: Banco, programaId: string) {
+  return banco.config.checkpoints_modelo
+    .filter((m) => m.ativo && m.programa_id === programaId)
+    .sort((x, y) => x.ordem - y.ordem);
+}
+
+// Data prevista de um checkpoint padrão a partir do início do programa.
+function dataPrevista(m: CheckpointModelo, inicio: string): string {
+  return (m.marco && dataDoMarco(inicio, m.marco)) || somarDias(inicio, m.dias_apos_entrada ?? 0);
+}
+
+function planoDaTroca(banco: Banco, a: AlunoBanco, corpo: Record<string, unknown>) {
+  const programa = programaAtivo(banco, corpo.programa_id);
+  const inicio = data("inicio", corpo.inicio, true) as string;
+  const atuais = banco.checkpoints.filter((c) => c.aluno_id === a.id && !c.arquivado_em && !c.substituido_em);
+  const ficam = atuais.filter((c) => c.status === "realizado");
+  const saem = atuais.filter((c) => c.status !== "realizado");
+  const ultimoRealizado = ficam.map((c) => c.data_realizada ?? c.data_prevista ?? "").sort().at(-1) ?? "";
+  const criados = modelosDoPrograma(banco, programa.id)
+    .map((m) => ({ modelo: m, data_prevista: dataPrevista(m, inicio) }))
+    .filter((x) => x.data_prevista > ultimoRealizado);
+  return { programa, inicio, ficam, saem, criados, termino: somarMeses(inicio, programa.duracao_meses) };
+}
+
+const resumoDoCheckpoint = (banco: Banco) => (c: CheckpointBanco) => ({
+  id: c.id,
+  nome: c.nome,
+  marco: (c.modelo_id && banco.config.checkpoints_modelo.find((m) => m.id === c.modelo_id)?.marco) || null,
+  status: c.status,
+  data_prevista: c.data_prevista,
+});
+
+export function previaTrocaPrograma(banco: Banco, id: string, corpo: Record<string, unknown>): PreviaTroca {
+  const a = alunoOu404(banco, id);
+  const t = planoDaTroca(banco, a, corpo);
+  return {
+    programa: { id: t.programa.id, nome: t.programa.nome },
+    inicio: t.inicio,
+    data_termino_sugerida: t.termino,
+    ficam: t.ficam.map(resumoDoCheckpoint(banco)),
+    saem: t.saem.map(resumoDoCheckpoint(banco)),
+    criados: t.criados.map((x) => ({ nome: x.modelo.nome, marco: x.modelo.marco ?? "", data_prevista: x.data_prevista })),
+  };
+}
+
+export function trocarPrograma(banco: Banco, id: string, corpo: Record<string, unknown>, versao: number, ctx: Contexto) {
+  const a = alunoOu404(banco, id);
+  conferirVersao(banco, a, versao, ctx);
+  const motivo = corpo.motivo;
+  if (typeof motivo !== "string" || motivo.trim().length < MOTIVO_MINIMO) {
+    erro400("motivo", `O motivo precisa ter pelo menos ${MOTIVO_MINIMO} caracteres.`);
+  }
+  const t = planoDaTroca(banco, a, corpo);
+  const nomeAntes = (banco.config.programas ?? []).find((p) => p.id === a.programa_id)?.nome ?? null;
+  for (const c of t.saem) {
+    c.substituido_em = ctx.agora;
+    registrar(banco, ctx, a, "checkpoint", c.id, `${c.nome} · substituido`, c.status, "Substituído pela troca de programa", motivo.trim());
+  }
+  const ordem = Math.max(0, ...banco.checkpoints.filter((c) => c.aluno_id === a.id).map((c) => c.ordem));
+  t.criados.forEach((x, i) => {
+    const c: CheckpointBanco = {
+      id: novoId("cp"),
+      aluno_id: a.id,
+      modelo_id: x.modelo.id,
+      nome: x.modelo.nome,
+      ordem: ordem + i + 1,
+      data_prevista: x.data_prevista,
+      data_realizada: null,
+      status: "previsto",
+      big_win: x.modelo.big_win,
+      observacao: null,
+      arquivado_em: null,
+      substituido_em: null,
+    };
+    banco.checkpoints.push(c);
+    registrar(banco, ctx, a, "checkpoint", c.id, `${c.nome} · criado`, null, { nome: c.nome, data_prevista: c.data_prevista });
+  });
+  registrar(banco, ctx, a, "aluno", a.id, "programa", nomeAntes, t.programa.nome, motivo.trim());
+  if (a.data_inicio_programa !== t.inicio) registrar(banco, ctx, a, "aluno", a.id, "data_inicio_programa", a.data_inicio_programa, t.inicio);
+  if (a.mentoria !== t.programa.mentoria) registrar(banco, ctx, a, "aluno", a.id, "mentoria", a.mentoria, t.programa.mentoria);
+  if (a.data_termino !== t.termino) registrar(banco, ctx, a, "aluno", a.id, "data_termino", a.data_termino, t.termino);
+  a.programa_id = t.programa.id;
+  a.data_inicio_programa = t.inicio;
+  a.mentoria = t.programa.mentoria;
+  a.data_termino = t.termino;
+  return fim(banco, a, ctx);
 }
 
 export type { CheckpointModelo };

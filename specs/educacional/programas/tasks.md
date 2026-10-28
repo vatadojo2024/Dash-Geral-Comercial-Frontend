@@ -2,7 +2,7 @@
 
 Plano aprovado em 28/10 (6 decisões aprovadas; filtro com vários programas agrupados por mentoria). Um commit por item. Sem push até a verificação, como M1 a M5. Desktop. Nomes finais de rotas e campos: os do plano do backend; até lá, os da proposta.
 
-- [ ] P1. Contrato (Programa, Roteiro, PreviaTroca; acréscimos em Config, CheckpointModelo, Checkpoint, Aluno) com padrões tolerantes; adapter (programas na config, `/previa`, troca, filtro `programa_id`); mock (6 programas, roteiros de exemplo, semente v3, troca) e testes.
+- [x] P1. Contrato (Programa, Roteiro, PreviaTroca; acréscimos em Config, CheckpointModelo, Checkpoint, Aluno) com padrões tolerantes; adapter (programas na config, `/previa`, troca, filtro `programa_id`); mock (6 programas, roteiros de exemplo, semente v3, troca) e testes.
 - [ ] P2. Cadastro: Programa obrigatório, término sugerido editável; mentoria exibida como hoje.
 - [ ] P3. Raio-X: programa e observação; painel "Roteiro do contato" (próximo checkpoint aberto); editar checkpoint pelo painel.
 - [ ] P4. Trocar programa: diálogo em 2 passos com prévia, motivo, 400/409.
