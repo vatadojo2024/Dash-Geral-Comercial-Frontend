@@ -171,14 +171,14 @@ export function queryDosFiltros(f: FiltrosAlunos): string {
 }
 
 // Query de GET /alunos no backend. A URL da página (acima) não muda; aqui vão os
-// nomes da API: etapa_id, responsavel_id, incluir_arquivados=true, um status de
-// checkpoint só (mais de um: ver buscarAlunos) e health_max INCLUSIVO. Ordem e
+// nomes da API: etapa_id, responsavel_id, incluir_arquivados=true, status de
+// checkpoint em lista por vírgula (backend a971add) e health_max INCLUSIVO. Ordem e
 // tamanho da página vão sempre, porque os padrões do backend são nome e 50.
 export function queryDaApi(f: FiltrosAlunos): string {
   const qs = new URLSearchParams();
   if (f.etapa) qs.set("etapa_id", f.etapa);
   if (f.risco) qs.set("risco", f.risco);
-  if (f.checkpoint?.length === 1) qs.set("checkpoint", f.checkpoint[0]);
+  if (f.checkpoint?.length) qs.set("checkpoint", f.checkpoint.join(","));
   if (f.responsavel) qs.set("responsavel_id", f.responsavel);
   if (f.sinal) qs.set("sinal", f.sinal);
   // A tela diz "abaixo de 50"; o backend devolve "até N" com N inteiro.
@@ -420,22 +420,12 @@ export async function buscarAlunos(f: FiltrosAlunos, simular?: Simular): Promise
   falhaSimulada(simular);
   if (simular === "vazio" && FONTE_EDUCACIONAL === "mock") return { itens: [], total: 0, descartados: 0 };
   const pagina = Math.max(1, f.pagina ?? 1);
-  // Mais de um status de checkpoint (o card de SLA: pendente + não respondeu): o
-  // backend filtra um por vez. Busca a lista inteira, na mesma ordem, e fica com
-  // quem tem o próximo checkpoint (devolvido pela API) num dos status.
-  const varios = f.checkpoint && f.checkpoint.length > 1 ? f.checkpoint : null;
-  const query = queryDaApi(varios ? { ...f, checkpoint: [], pagina: 1, por_pagina: "todos" } : { ...f, pagina });
+  const query = queryDaApi({ ...f, pagina });
   const corpo = (await chamar({ metodo: "GET", caminho: "alunos", query })) as {
     itens?: unknown;
     total?: unknown;
   } | null;
   const { validos, descartados } = validarLista(corpo?.itens, AlunoLinhaSchema, "aluno");
-  if (varios) {
-    const itens = validos.filter((a) => a.proximo_checkpoint && varios.includes(a.proximo_checkpoint.status));
-    if (f.por_pagina === "todos") return { itens, total: itens.length, descartados };
-    const tamanho = f.por_pagina ?? TAMANHO_PAGINA;
-    return { itens: itens.slice((pagina - 1) * tamanho, pagina * tamanho), total: itens.length, descartados };
-  }
   const total = typeof corpo?.total === "number" ? corpo.total : validos.length;
   return { itens: validos, total, descartados };
 }

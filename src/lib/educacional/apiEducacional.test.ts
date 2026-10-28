@@ -123,8 +123,8 @@ describe("leitura", () => {
     ).toBe("etapa_id=e1&checkpoint=pendente&responsavel_id=r1&health_max=49&incluir_arquivados=true&ordem=risco&por_pagina=25&pagina=2");
     expect(queryDaApi({})).toBe("ordem=risco&por_pagina=25");
     expect(queryDaApi({ ordem: "-nome", por_pagina: "todos" })).toBe("ordem=-nome&por_pagina=todos");
-    // Mais de um status não vai na query (o backend aceita um só).
-    expect(queryDaApi({ checkpoint: ["pendente", "nao_respondeu"] })).toBe("ordem=risco&por_pagina=25");
+    // Vários status em lista por vírgula (backend a971add): o filtro de SLA vai para a API.
+    expect(queryDaApi({ checkpoint: ["pendente", "nao_respondeu"] })).toBe("checkpoint=pendente%2Cnao_respondeu&ordem=risco&por_pagina=25");
   });
 
   it("filtros pelos nomes do backend; dois status de checkpoint = união dos dois", async () => {
