@@ -16,7 +16,9 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
 - [x] M1. Contrato da seção 7, adapter (lote, opções, análises, filtros novos), proxy multipart, mock (lote, opções, `ordem=atencao`, mentorias no `/config`, análises, semente D4) e testes. Campo mentoria com sugestões (novo aluno e edição).
   - Alinhar com o backend quando ele publicar a Fase 3: corpo de `POST /analises/:id/confirmar` (o front manda `{ versao, resultado }`) e a resposta de `descartar`/`reprocessar` (o front não depende dela).
   - Filtro de SLA (dois status de checkpoint): continua filtrado no front até o backend publicar o `a971add`; aí volta para a API (decisão de 27/10).
-- [ ] M2. Menu com 4 itens, Cockpit com "Precisam de atenção" e aba Alunos (busca, filtros, contador, URL).
+- [x] M2. Menu com 4 itens, Cockpit com "Precisam de atenção" e aba Alunos (busca, filtros, contador, URL).
+  - O filtro de mentoria virou o filtro de programa (decisão dos programas, 28/10). Faixa de saúde segue em `risco` (aceito pela API hoje).
+  - "Análise de aula" abre um marcador até o M5. Link salvo da Fase 2 (`/educacional?filtros`) vai para a aba Alunos; o Raio-X volta para a tela de origem (`?voltar=` com o caminho).
 - [ ] M3. Salvar em lote na aba Alunos: armazém de pendências, marca e "Desfazer", barra, envio sem travar, resultado parcial, 409 com "Ver versão atual" e "Reaplicar", rede, `sessionStorage`, guarda de saída.
 - [ ] M4. Raio-X com "Editar ficha" e "Salvar ficha" em lote.
 - [ ] M5. Análise de aula: lista, nova análise, revisão e confirmação, observador e aviso de pronta, aba Aulas e origem das notas.

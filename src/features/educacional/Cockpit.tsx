@@ -14,9 +14,9 @@ import { mensagemDoErro } from "./partes";
 
 // ---------------------------------------------------------------------------
 // Cockpit (spec, seção 4): 4 KPIs, Funil da Jornada e Sinais para o Comercial,
-// todos lidos do ResumoEducacional. Cliques preenchem os filtros da Tabela
-// tática (via URL) e descem até ela. Nada aqui é calculado: contagens e score
-// vêm prontos; só a LARGURA das barras é proporcional à maior etapa.
+// todos lidos do ResumoEducacional. Cliques abrem a aba Alunos já filtrada
+// (Fase 3, 3.2). Nada aqui é calculado: contagens e score vêm prontos; só a
+// LARGURA das barras é proporcional à maior etapa.
 // ---------------------------------------------------------------------------
 
 const ICONE_SINAL: Record<Sinal, LucideIcon> = { upgrade: TrendingUp, renovacao: RefreshCw, prova_social: Megaphone };
@@ -26,7 +26,6 @@ type Props = {
   carregando: boolean;
   erro: unknown;
   onTentarDeNovo: () => void;
-  estado: EstadoTabela;
   simular: Simular;
 };
 
@@ -36,7 +35,7 @@ type Props = {
 const VAZIO = "\u00a0";
 const ETAPAS_CARREGANDO = Array.from({ length: 5 }, (_, i) => ({ etapa_id: `carregando-${i}`, nome: VAZIO, alunos: 0 }));
 
-export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simular }: Props) {
+export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, simular }: Props) {
   if (!carregando && (erro || !resumo)) {
     return (
       <Card>
@@ -52,8 +51,8 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
 
   const r = carregando ? null : resumo!;
   const k = r?.kpis;
-  const link = (filtro: Partial<EstadoTabela>) => hrefDoFiltro(estado, filtro, simular);
-  const limpar = link({}); // sem filtros, mantendo a visão
+  const link = (filtro: Partial<EstadoTabela>) => hrefDoFiltro(filtro, simular);
+  const limpar = link({}); // sem filtros
   const funil = r ? r.funil : ETAPAS_CARREGANDO;
   const maiorEtapa = Math.max(1, ...funil.map((f) => f.alunos));
   const semAlunos = !!k && k.alunos_ativos === 0;
@@ -94,7 +93,7 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
         <Card className="lg:col-span-2">
           <CardHeader
             title="Funil da Jornada Educacional"
-            subtitle="Alunos atualmente em cada etapa. Clique numa etapa para ver os alunos na tabela."
+            subtitle="Alunos atualmente em cada etapa. Clique numa etapa para ver os alunos."
           />
           <CardContent>
             {semAlunos ? (
@@ -108,7 +107,6 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
                       tabIndex={carregando ? -1 : undefined}
                       className={cn(
                         "group block rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] focus-visible:bg-white/[0.06]",
-                        estado.etapa === f.etapa_id && "bg-azul/10 ring-1 ring-azul/40",
                         carregando && "pointer-events-none",
                       )}
                     >
@@ -142,7 +140,7 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
         </Card>
 
         <Card className="flex flex-col">
-          <CardHeader title="Sinais para o Comercial" subtitle="Clique num sinal para ver os alunos na tabela." />
+          <CardHeader title="Sinais para o Comercial" subtitle="Clique num sinal para ver os alunos." />
           <CardContent className={cn("flex flex-1 flex-col gap-3", pulsando)}>
             {(["upgrade", "renovacao", "prova_social"] as const).map((s) => {
               const Icone = ICONE_SINAL[s];
@@ -153,7 +151,6 @@ export function Cockpit({ resumo, carregando, erro, onTentarDeNovo, estado, simu
                   tabIndex={carregando ? -1 : undefined}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 transition-colors hover:border-white/25 hover:bg-white/10",
-                    estado.sinal === s && "border-azul/50 bg-azul/10",
                     carregando && "pointer-events-none",
                   )}
                 >

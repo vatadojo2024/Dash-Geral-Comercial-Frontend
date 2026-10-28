@@ -144,7 +144,7 @@ export type PaginaHistorico = { itens: ItemHistorico[]; total: number };
 // `responsavel_id=sem`: alunos sem responsável (Fase 3).
 export const RESPONSAVEL_NENHUM = "sem";
 export const BUSCA_MINIMA = 2;
-const buscaValida = (b: string | null | undefined) => {
+export const buscaValida = (b: string | null | undefined) => {
   const t = b?.trim() ?? "";
   return t.length >= BUSCA_MINIMA ? t : null;
 };

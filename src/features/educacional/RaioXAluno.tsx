@@ -57,7 +57,7 @@ import { Timeline } from "./Checkpoints";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { CAMPO } from "./Dialogo";
 import { Sugestoes } from "./Edicao";
-import { lerSimular } from "./estado";
+import { hrefDeVolta, lerSimular, ROTA_ALUNOS } from "./estado";
 import { HistoricoDoAluno } from "./Historico";
 import { programaDoAluno, temProgramas } from "./programas";
 import { TrocarPrograma } from "./TrocarPrograma";
@@ -69,7 +69,7 @@ import { useGravacao } from "./useGravacao";
 // Raio-X do aluno (spec Fase 2, seção 5) — /educacional/alunos/[id]. Todos os
 // blocos têm "Editar"; campos diretos gravam com PATCH, campos calculados
 // viram ajuste manual (motivo obrigatório). Aba Histórico. "Voltar" devolve a
-// Tabela tática exatamente como estava (`?voltar=`).
+// tela de origem (aba Alunos com os filtros, ou o Cockpit) como estava (`?voltar=`).
 // ---------------------------------------------------------------------------
 
 type Aba = "raiox" | "historico";
@@ -77,8 +77,7 @@ type Aba = "raiox" | "historico";
 export function RaioXAluno({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const simular = lerSimular(searchParams);
-  const voltar = searchParams.get("voltar");
-  const hrefVoltar = `/educacional${voltar ? `?${voltar}` : ""}#tabela-tatica`;
+  const hrefVoltar = hrefDeVolta(searchParams.get("voltar"));
   const [aba, setAba] = useState<Aba>("raiox");
   const [intervencao, setIntervencao] = useState<Intervencao | "nova" | null>(null);
   const [arquivar, setArquivar] = useState(false);
@@ -111,7 +110,7 @@ export function RaioXAluno({ id }: { id: string }) {
     <>
       <Link href={hrefVoltar} className="mb-4 inline-flex items-center gap-1.5 text-sm text-texto-sec hover:text-texto">
         <ArrowLeft className="h-4 w-4" aria-hidden />
-        Voltar para a tabela
+        {hrefVoltar.startsWith(ROTA_ALUNOS) ? "Voltar para os alunos" : "Voltar para a Saúde da Jornada"}
       </Link>
 
       {consulta.isLoading ? (

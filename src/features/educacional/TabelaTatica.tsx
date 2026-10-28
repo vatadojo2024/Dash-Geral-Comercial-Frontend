@@ -1,15 +1,17 @@
 "use client";
 
-import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Plus, RotateCcw, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Plus, RotateCcw, Search, X } from "lucide-react";
 import {
   arquivarAluno,
   atualizarAluno,
   atualizarCheckpoint,
+  buscaValida,
   buscarAlunos,
+  RESPONSAVEL_NENHUM,
   TAMANHO_PAGINA,
   type ChaveOrdem,
   type OrdemAlunos,
@@ -47,7 +49,16 @@ import { cn } from "@/lib/utils/cn";
 import { formatarValor } from "./campos";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { CelulaEditavel, EditorAcao, EditorCheckpoint, EditorLista, EditorTexto, MarcaAjuste } from "./Edicao";
-import { descreverFiltros, queryDoEstado, semFiltros, temFiltro, type EstadoTabela, type Visao } from "./estado";
+import {
+  descreverFiltros,
+  hrefDoRaioX,
+  queryDoEstado,
+  ROTA_ALUNOS,
+  semFiltros,
+  temFiltro,
+  type EstadoTabela,
+  type Visao,
+} from "./estado";
 import { FiltroProgramas } from "./FiltroProgramas";
 import { programasPorMentoria, temProgramas } from "./programas";
 import { FormAjuste } from "./FormAjuste";
@@ -58,9 +69,10 @@ import { COLUNAS_DA_TABELA, SeletorColunas, useColunasVisiveis, type IdColuna } 
 import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
-// Tabela tática (spec Fase 2, seção 4). A lista vem do adapter já filtrada,
-// ordenada e paginada; toda célula edita na linha (Enter/clique fora salva,
-// Esc cancela) e grava com atualização otimista. Campo calculado abre o
+// Tabela tática (spec Fase 2, seção 4), na aba Alunos desde a Fase 3 (3.3):
+// busca por nome, filtros, contador, Lista | Kanban. A lista vem do adapter já
+// filtrada, ordenada e paginada; toda célula edita na linha (Enter/clique fora
+// salva, Esc cancela) e grava com atualização otimista. Campo calculado abre o
 // formulário de ajuste. O nome do aluno abre o Raio-X, que volta para esta URL.
 // ---------------------------------------------------------------------------
 
@@ -92,11 +104,9 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
   const { visiveis, alternar } = useColunasVisiveis();
   const [novoAberto, setNovoAberto] = useState(false);
 
-  const voltar = queryDoEstado(estado, simular);
-  const hrefDoAluno = useCallback(
-    (a: { id: string }) => `/educacional/alunos/${encodeURIComponent(a.id)}${voltar ? `?voltar=${encodeURIComponent(voltar)}` : ""}`,
-    [voltar],
-  );
+  const q = queryDoEstado(estado, simular);
+  const voltar = `${ROTA_ALUNOS}${q ? `?${q}` : ""}`;
+  const hrefDoAluno = useCallback((a: { id: string }) => hrefDoRaioX(a.id, voltar), [voltar]);
 
   const mudar = (parcial: Partial<EstadoTabela>) => onMudar({ ...estado, ...parcial, pagina: parcial.pagina ?? 1 });
 
@@ -109,6 +119,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
   const total = lista.data?.total ?? 0;
   const totalPaginas = Math.max(1, Math.ceil(total / TAMANHO_PAGINA));
   const valorCheckpoint = estado.checkpoint?.join(",") ?? "";
+  const filtrado = temFiltro(estado);
 
   return (
     <Card id="tabela-tatica" className="scroll-mt-20">
@@ -135,8 +146,22 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
         }
       />
       <CardContent className="space-y-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <BuscaPorNome valor={estado.busca ?? null} onBuscar={(busca) => mudar({ busca })} />
+          {!kanban && (
+            <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-texto-sec">
+              <input
+                type="checkbox"
+                checked={Boolean(estado.incluir_arquivados)}
+                onChange={(e) => mudar({ incluir_arquivados: e.target.checked })}
+                className="accent-azul"
+              />
+              Mostrar arquivados
+            </label>
+          )}
+        </div>
         <div
-          className={cn("grid grid-cols-2 gap-2 sm:grid-cols-3", comProgramas ? "lg:grid-cols-6" : "lg:grid-cols-5")}
+          className={cn("grid grid-cols-2 gap-2 sm:grid-cols-4", comProgramas ? "xl:grid-cols-7" : "xl:grid-cols-6")}
           role="group"
           aria-label="Filtros da tabela"
         >
@@ -173,11 +198,21 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             ]}
           />
           <Selecao
+            id="filtro-status-aluno"
+            rotulo="Status do aluno"
+            valor={typeof estado.status_aluno === "string" ? estado.status_aluno : ""}
+            onChange={(v) => mudar({ status_aluno: (v || null) as StatusAluno | null })}
+            opcoes={STATUS_ALUNO.map((s) => ({ valor: s, label: ROTULO_STATUS_ALUNO[s] }))}
+          />
+          <Selecao
             id="filtro-responsavel"
             rotulo="Responsável"
             valor={estado.responsavel ?? ""}
             onChange={(v) => mudar({ responsavel: v || null })}
-            opcoes={responsaveis.map((r) => ({ valor: r.id, label: r.nome }))}
+            opcoes={[
+              { valor: RESPONSAVEL_NENHUM, label: "Sem responsável" },
+              ...responsaveis.map((r) => ({ valor: r.id, label: r.nome })),
+            ]}
           />
           <Selecao
             id="filtro-sinal"
@@ -187,23 +222,21 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             opcoes={SINAIS.map((s) => ({ valor: s, label: ROTULO_SINAL[s] }))}
           />
         </div>
-        {!kanban && (
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-texto-sec">
-            <input
-              type="checkbox"
-              checked={Boolean(estado.incluir_arquivados)}
-              onChange={(e) => mudar({ incluir_arquivados: e.target.checked })}
-              className="accent-azul"
-            />
-            Mostrar arquivados
-          </label>
-        )}
 
-        {descricao.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-azul/40 bg-azul/10 px-3 py-2 text-xs" role="status">
-            <Filter className="h-3.5 w-3.5 text-azul-claro" aria-hidden />
-            <span className="font-medium text-texto">Filtro ativo:</span>
-            <span className="text-texto-sec">{descricao.join(" · ")}</span>
+        {/* Contador: a linha existe desde o início (vazia enquanto carrega). */}
+        <div
+          className={cn(
+            "flex min-h-[2.25rem] flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-xs",
+            filtrado ? "border-azul/40 bg-azul/10" : "border-transparent",
+          )}
+          role="status"
+        >
+          {filtrado && <Filter className="h-3.5 w-3.5 text-azul-claro" aria-hidden />}
+          <span className="font-semibold tabular-nums text-texto">
+            {lista.data ? `${total} ${total === 1 ? "aluno" : "alunos"}` : "\u00a0"}
+          </span>
+          {descricao.length > 0 && <span className="text-texto-sec">· {descricao.join(" · ")}</span>}
+          {filtrado && (
             <button
               type="button"
               onClick={() => onMudar(semFiltros(estado))}
@@ -212,8 +245,8 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
               <X className="h-3.5 w-3.5" aria-hidden />
               Limpar filtros
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {lista.isLoading ? (
           <div className="space-y-2" aria-busy="true" aria-label="Carregando a tabela">
@@ -230,8 +263,8 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
           />
         ) : !lista.data || lista.data.itens.length === 0 ? (
           <EmptyState
-            titulo={temFiltro(estado) ? "Nenhum aluno com esses filtros" : "Nenhum aluno na jornada"}
-            descricao={temFiltro(estado) ? "Limpe ou troque os filtros para ver outros alunos." : "Use “Novo aluno” para cadastrar o primeiro."}
+            titulo={filtrado ? "Nenhum aluno com esses filtros" : "Nenhum aluno na jornada"}
+            descricao={filtrado ? "Limpe ou troque os filtros para ver outros alunos." : "Use “Novo aluno” para cadastrar o primeiro."}
           />
         ) : (
           <>
@@ -250,7 +283,7 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
             {!kanban && (
               <nav className="flex flex-wrap items-center justify-between gap-2 text-xs text-texto-sec" aria-label="Paginação">
                 <span>
-                  {total} {total === 1 ? "aluno" : "alunos"} · página {estado.pagina} de {totalPaginas}
+                  Página {estado.pagina} de {totalPaginas}
                 </span>
                 <span className="flex gap-1">
                   <Button
@@ -657,6 +690,44 @@ const LinhaAluno = memo(function LinhaAluno({ a, colunas, etapas, responsaveis, 
     </tr>
   );
 });
+
+// Busca por nome (padrão da aba Leads, com espera): vai para a URL 300 ms
+// depois da última tecla, a partir de 2 letras. Menos que isso = sem busca.
+const ESPERA_BUSCA_MS = 300;
+
+function BuscaPorNome({ valor, onBuscar }: { valor: string | null; onBuscar: (busca: string | null) => void }) {
+  const [texto, setTexto] = useState(valor ?? "");
+  const aoBuscar = useRef(onBuscar);
+  aoBuscar.current = onBuscar;
+
+  // A URL mudou por fora (Limpar filtros, voltar do navegador): acompanha, sem
+  // apagar o que a pessoa ainda está digitando (espaço no fim, 1 letra).
+  useEffect(() => {
+    setTexto((t) => (buscaValida(t) === valor ? t : (valor ?? "")));
+  }, [valor]);
+
+  useEffect(() => {
+    const alvo = buscaValida(texto);
+    if (alvo === valor) return;
+    const espera = setTimeout(() => aoBuscar.current(alvo), ESPERA_BUSCA_MS);
+    return () => clearTimeout(espera);
+  }, [texto, valor]);
+
+  return (
+    <div role="search" className="relative min-w-[220px] max-w-md flex-1">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-sec" aria-hidden />
+      <input
+        type="search"
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Buscar por nome…"
+        aria-label="Buscar aluno por nome"
+        autoComplete="off"
+        className="h-9 w-full rounded-lg border border-borda bg-noite pl-9 pr-3 text-sm text-texto placeholder:text-texto-sec/70"
+      />
+    </div>
+  );
+}
 
 function Selecao({
   id,

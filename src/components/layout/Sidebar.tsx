@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   CalendarClock,
+  FileText,
   Flame,
   Gauge,
   GraduationCap,
@@ -51,6 +52,8 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: "/retencao", label: "Retenção da audiência", icon: Activity, areas: ["retencao"] },
   { href: "/educacional", label: "Saúde da Jornada", icon: GraduationCap, areas: ["educacional"], modulo: "educacional" },
+  { href: "/educacional/alunos", label: "Alunos", icon: Users, areas: ["educacional"], modulo: "educacional" },
+  { href: "/educacional/analises", label: "Análise de aula", icon: FileText, areas: ["educacional"], modulo: "educacional" },
   {
     href: "/educacional/configuracoes",
     label: "Configurações",
