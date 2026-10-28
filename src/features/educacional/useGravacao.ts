@@ -7,6 +7,7 @@ import { EducacionalError, type PaginaAlunos } from "@/lib/educacional/apiEducac
 import { linhaDoDetalhe, type AlunoDetalhe, type AlunoLinha } from "@/lib/educacional/contrato";
 import { useAvisos, type Aviso } from "./Avisos";
 import { CHAVES } from "./dados";
+import { avisarGravacao } from "./lote/eventos";
 import { mensagemDoErro } from "./partes";
 
 // ---------------------------------------------------------------------------
@@ -75,8 +76,9 @@ export async function gravarAluno(d: Dependencias, g: Gravacao): Promise<Resulta
 
   try {
     const aluno = await g.executar(g.versao);
-    // 2. A resposta manda.
+    // 2. A resposta manda (e as pendências do aluno, se houver, passam para a versão nova).
     trocarAlunoNoCache(queryClient, aluno);
+    avisarGravacao(aluno);
     void queryClient.invalidateQueries({ queryKey: CHAVES.alunos });
     void queryClient.invalidateQueries({ queryKey: CHAVES.historico(g.alunoId) });
     if (g.afetaTotais) void queryClient.invalidateQueries({ queryKey: CHAVES.resumo });

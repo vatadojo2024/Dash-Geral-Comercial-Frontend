@@ -23,7 +23,11 @@ Um commit por item. Correções de desempenho: push só depois da regressão de 
   - `lote/pendencias.ts` (puro), `lote/alteracoes.ts` (uma alteração por célula), `ProvedorLote` na casca do módulo, `BarraDeAlteracoes`, `MarcaPendente`. "Antes: X" no `title` da célula. O 409 fica fora do próximo "Salvar" até a escolha.
   - Topbar (compartilhado): o seletor de módulo passa por `navegarComGuarda` (`src/lib/navegacao/guardaDeSaida.ts`); sem pendências, segue igual.
   - Mock: `simular_gravacao=409` no lote sobe a versão do primeiro aluno; `400` devolve validação só para ele.
-- [ ] M4. Raio-X com "Editar ficha" e "Salvar ficha" em lote.
+- [x] M4. Raio-X com "Editar ficha" e "Salvar ficha" em lote.
+  - Mesmo armazém da aba Alunos: o que foi editado na tabela aparece no Raio-X, que já abre em edição. Checkpoints (editar, avulso, arquivar) e intervenções (nova, editar, concluir/reabrir, arquivar) também viram pendências da ficha. `useBloco`/`BlocoEditavel` saíram.
+  - Sobreposição na tela por operações (campo, dentro de grupo, item, novo, remover): duas edições no mesmo grupo não se apagam.
+  - Ação imediata da própria pessoa sobre a versão das pendências (ex.: arquivar) faz as pendências seguirem na versão nova; qualquer outro salto vai para o 409.
+  - Aba Aulas e origem das notas ficam no M5 (dependem das análises).
 - [ ] M5. Análise de aula: lista, nova análise, revisão e confirmação, observador e aviso de pronta, aba Aulas e origem das notas.
 
 ## Verificação

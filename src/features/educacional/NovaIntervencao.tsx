@@ -8,18 +8,21 @@ import {
   criarIntervencao,
   EducacionalError,
 } from "@/lib/educacional/apiEducacional";
-import type { AlunoDetalhe, Intervencao } from "@/lib/educacional/contrato";
+import type { AlunoDetalhe, CamposIntervencao, Intervencao } from "@/lib/educacional/contrato";
 import { ROTULO_TIPO_RESPONSAVEL } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { ativos, CHAVES, useConfig } from "./dados";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
+import type { IntervencaoNaTela } from "./lote/alteracoes";
 import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
 // Nova intervenção / editar intervenção. Obrigatórios: aluno, tipo,
 // responsável e descrição. Tipos e responsáveis vêm da configuração (ativos;
 // na edição, o atual aparece mesmo se inativo). Grava com a versão do aluno.
+// Com `aoAplicar` (ficha do Raio-X, Fase 3): não grava; devolve os campos e o
+// que a tela mostra, e a intervenção vira alteração pendente.
 // ---------------------------------------------------------------------------
 
 type Erros = Partial<Record<"aluno" | "tipo" | "responsavel" | "descricao" | "envio", string>>;
@@ -31,12 +34,14 @@ export function NovaIntervencao({
   onCriada,
   alunoInicial,
   intervencao,
+  aoAplicar,
 }: {
   aberto: boolean;
   onFechar: () => void;
   onCriada?: (aluno: AlunoDetalhe) => void;
   alunoInicial?: AlunoEscolhido | null;
   intervencao?: Intervencao | null; // edição
+  aoAplicar?: (campos: CamposIntervencao, tela: IntervencaoNaTela) => void;
 }) {
   const id = useId();
   const gravar = useGravacao();
@@ -95,6 +100,17 @@ export function NovaIntervencao({
     if (Object.keys(novos).length > 0 || !aluno) return;
 
     const campos = { tipo_id: tipo, descricao: descricao.trim(), responsavel_id: responsavel, prazo: prazo || null };
+    if (aoAplicar) {
+      const t = tipos.find((x) => x.id === tipo);
+      const r = responsaveis.find((x) => x.id === responsavel);
+      aoAplicar(campos, {
+        descricao: campos.descricao,
+        prazo: campos.prazo,
+        ...(t ? { tipo: { id: t.id, nome: t.nome } } : {}),
+        responsavel: r ? { id: r.id, nome: r.nome, tipo: r.tipo } : null,
+      });
+      return onFechar();
+    }
     setEnviando(true);
     const r = await gravar({
       alunoId: aluno.id,
@@ -140,7 +156,7 @@ export function NovaIntervencao({
             Cancelar
           </Button>
           <Button type="submit" loading={enviando}>
-            {editando ? "Salvar" : "Registrar intervenção"}
+            {aoAplicar ? (editando ? "Aplicar" : "Adicionar") : editando ? "Salvar" : "Registrar intervenção"}
           </Button>
         </>
       }

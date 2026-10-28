@@ -1,103 +1,52 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { PencilLine, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import type { AlunoDetalhe, CampoAjustavel } from "@/lib/educacional/contrato";
 import { dataHoraBr } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import { useSession } from "@/features/session/SessionProvider";
 import { cn } from "@/lib/utils/cn";
 import { campoDe, formatarValor } from "./campos";
-import { Dialogo, ErroDoEnvio } from "./Dialogo";
+import { Dialogo } from "./Dialogo";
+import { useFichaOpcional } from "./Ficha";
 import { FormAjuste } from "./FormAjuste";
+import { alteracaoDoAjuste } from "./lote/alteracoes";
+import { MarcaPendente } from "./lote/MarcaPendente";
 
 // ---------------------------------------------------------------------------
-// Peças do Raio-X editável (spec Fase 2, seção 5): bloco com Editar / Salvar /
-// Cancelar, campo calculado com selo "Ajustado" e valor automático, e
-// confirmação de ação.
+// Peças do Raio-X (spec Fase 2, seção 5; Fase 3, 6.1): bloco, campo calculado
+// com selo "Ajustado" e valor automático, e confirmação de ação.
 // ---------------------------------------------------------------------------
 
-export function BlocoEditavel({
+// Bloco do Raio-X: cartão com título e ações. A edição é da ficha inteira
+// (Fase 3, 6.1): o conteúdo muda conforme `editando`.
+export function Bloco({
   titulo,
   subtitulo,
-  editando,
-  salvando = false,
-  erro,
-  onEditar,
-  onCancelar,
-  onSalvar,
-  leitura,
-  edicao,
   acoes,
   className,
+  children,
 }: {
   titulo: string;
   subtitulo?: string;
-  editando: boolean;
-  salvando?: boolean;
-  erro?: string | null;
-  onEditar: () => void;
-  onCancelar: () => void;
-  onSalvar: () => void;
-  leitura: ReactNode;
-  edicao: ReactNode;
-  acoes?: ReactNode; // botões extras no cabeçalho (fora da edição)
+  acoes?: ReactNode;
   className?: string;
+  children: ReactNode;
 }) {
   return (
     <Card className={className}>
-      <CardHeader
-        title={titulo}
-        subtitle={subtitulo}
-        action={
-          !editando && (
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {acoes}
-              <Button variant="secondary" size="sm" onClick={onEditar} aria-label={`Editar ${titulo.toLowerCase()}`}>
-                <PencilLine className="h-3.5 w-3.5" aria-hidden />
-                Editar
-              </Button>
-            </div>
-          )
-        }
-      />
-      <CardContent>
-        {editando ? (
-          <form
-            noValidate
-            onSubmit={(e) => {
-              e.preventDefault();
-              onSalvar();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.stopPropagation();
-                onCancelar();
-              }
-            }}
-            className="space-y-4"
-          >
-            {edicao}
-            <ErroDoEnvio texto={erro} />
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={onCancelar}>
-                Cancelar
-              </Button>
-              <Button type="submit" loading={salvando}>
-                Salvar
-              </Button>
-            </div>
-          </form>
-        ) : (
-          leitura
-        )}
-      </CardContent>
+      <CardHeader title={titulo} subtitle={subtitulo} action={acoes} />
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }
 
 // Campo calculado: valor efetivo, selo "Ajustado" (quem, quando, por quê),
-// valor automático logo abaixo, "Ajustar" e "Voltar ao automático".
+// valor automático logo abaixo, "Ajustar" e "Voltar ao automático". Fora da
+// ficha em edição, grava na hora; na ficha, vira alteração pendente (o motivo
+// vai junto), com a marca.
 export function CampoCalculadoView({
   aluno,
   campo,
@@ -112,39 +61,61 @@ export function CampoCalculadoView({
   className?: string;
 }) {
   const [form, setForm] = useState<"ajustar" | "voltar" | null>(null);
+  const user = useSession();
+  const ficha = useFichaOpcional();
+  const pendente = ficha?.editando ? ficha : null;
+  const chave = `ajuste:${campo}`;
+  const alteracao = pendente?.entrada?.alteracoes[chave];
+  const erro =
+    pendente?.entrada?.erro?.tipo === "validacao" && pendente.entrada.erro.chave === chave ? pendente.entrada.erro.mensagem : null;
   const c = campoDe(aluno, campo);
   if (!c) return null;
   return (
-    <div className={cn("min-w-0", className)}>
-      <p className="text-xs text-texto-sec">{rotulo}</p>
-      <div className="mt-0.5">{exibir ?? <span className="text-texto">{formatarValor(campo, c.valor)}</span>}</div>
-      {c.ajuste ? (
-        <div className="mt-1.5 space-y-0.5 text-[11px] leading-snug text-texto-sec">
-          <span className="tag tag-warning">Ajustado</span>
-          <p>
-            {c.ajuste.ajustado_por.nome} · {dataHoraBr(c.ajuste.ajustado_em)}
-          </p>
-          <p className="italic">“{c.ajuste.motivo}”</p>
-          <p>Automático: {c.automatico == null ? "sem cálculo" : formatarValor(campo, c.automatico)}</p>
-        </div>
-      ) : null}
-      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-        <button type="button" onClick={() => setForm("ajustar")} className="text-xs font-medium text-azul-claro hover:underline">
-          Ajustar
-        </button>
-        {c.ajuste && (
-          <button
-            type="button"
-            onClick={() => setForm("voltar")}
-            className="inline-flex items-center gap-1 text-xs font-medium text-texto-sec hover:text-texto hover:underline"
-          >
-            <RotateCcw className="h-3 w-3" aria-hidden />
-            Voltar ao automático
+    <MarcaPendente
+      alteracao={alteracao}
+      erro={erro}
+      onDesfazer={alteracao && pendente && !pendente.bloqueada ? () => pendente.desfazer(chave) : undefined}
+      className={cn(alteracao || erro ? "p-1" : undefined)}
+    >
+      <div className={cn("min-w-0", className)}>
+        <p className="text-xs text-texto-sec">{rotulo}</p>
+        <div className="mt-0.5">{exibir ?? <span className="text-texto">{formatarValor(campo, c.valor)}</span>}</div>
+        {c.ajuste ? (
+          <div className="mt-1.5 space-y-0.5 text-[11px] leading-snug text-texto-sec">
+            <span className="tag tag-warning">Ajustado</span>
+            <p>
+              {c.ajuste.ajustado_por.nome} · {dataHoraBr(c.ajuste.ajustado_em)}
+            </p>
+            <p className="italic">“{c.ajuste.motivo}”</p>
+            <p>Automático: {c.automatico == null ? "sem cálculo" : formatarValor(campo, c.automatico)}</p>
+          </div>
+        ) : null}
+        <div className={cn("mt-1.5 flex flex-wrap gap-x-3 gap-y-1", pendente?.bloqueada && "pointer-events-none opacity-50")}>
+          <button type="button" onClick={() => setForm("ajustar")} className="text-xs font-medium text-azul-claro hover:underline">
+            Ajustar
           </button>
+          {c.ajuste && (
+            <button
+              type="button"
+              onClick={() => setForm("voltar")}
+              className="inline-flex items-center gap-1 text-xs font-medium text-texto-sec hover:text-texto hover:underline"
+            >
+              <RotateCcw className="h-3 w-3" aria-hidden />
+              Voltar ao automático
+            </button>
+          )}
+        </div>
+        {form && (
+          <FormAjuste
+            aluno={aluno}
+            campo={campo}
+            iniciarVoltando={form === "voltar"}
+            onFechar={() => setForm(null)}
+            aoConfirmar={pendente ? (r) => pendente.registrar(alteracaoDoAjuste(aluno, campo, r, { id: user.id, nome: user.nome })) : undefined}
+          />
         )}
       </div>
-      {form && <FormAjuste aluno={aluno} campo={campo} iniciarVoltando={form === "voltar"} onFechar={() => setForm(null)} />}
-    </div>
+    </MarcaPendente>
   );
 }
 

@@ -69,8 +69,8 @@ import {
   alteracaoDaAcao,
   alteracaoDaEtapa,
   alteracaoDoAjuste,
-  alteracaoDoCheckpoint,
   alteracaoDoNivel,
+  alteracaoDoProximoCheckpoint,
   alteracaoDoNome,
   alteracaoDoResponsavel,
   alteracaoDoStatus,
@@ -590,7 +590,7 @@ const LinhaAluno = memo(function LinhaAluno({ a, entrada, acoes, colunas, etapas
                 onCancelar={cancelar}
                 onSalvar={(campos) => {
                   concluir();
-                  pendente(alteracaoDoCheckpoint(a, campos));
+                  pendente(alteracaoDoProximoCheckpoint(a, campos, entrada?.alteracoes[`checkpoint:${cp.id}`]));
                 }}
               />
             )}

@@ -19,7 +19,7 @@ export const ROTULO_ROTEIRO: Record<keyof Roteiro, string> = {
   estrategia_monetizacao: "Estratégia de monetização",
 };
 
-export function RoteiroDoContato({ checkpoint: c, proximo, onEditar }: { checkpoint: Checkpoint; proximo: boolean; onEditar: () => void }) {
+export function RoteiroDoContato({ checkpoint: c, proximo, onEditar }: { checkpoint: Checkpoint; proximo: boolean; onEditar?: () => void }) {
   return (
     <section aria-label={`Roteiro do contato: ${c.nome}`} className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -37,7 +37,7 @@ export function RoteiroDoContato({ checkpoint: c, proximo, onEditar }: { checkpo
             </span>
           </h3>
         </div>
-        <Button variant="outline" size="sm" onClick={onEditar} aria-label={`Editar o checkpoint ${c.nome}`}>
+        <Button variant="outline" size="sm" onClick={onEditar} disabled={!onEditar} aria-label={`Editar o checkpoint ${c.nome}`}>
           <PencilLine className="h-3.5 w-3.5" aria-hidden />
           Editar checkpoint
         </Button>

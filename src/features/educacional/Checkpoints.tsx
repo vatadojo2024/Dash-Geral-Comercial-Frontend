@@ -2,22 +2,24 @@
 
 import { useEffect, useId, useState } from "react";
 import { Archive, Flag, Plus, Star } from "lucide-react";
-import { arquivarCheckpoint, atualizarCheckpoint, criarCheckpoint, EducacionalError } from "@/lib/educacional/apiEducacional";
-import { STATUS_CHECKPOINT, type AlunoDetalhe, type Checkpoint, type StatusCheckpoint } from "@/lib/educacional/contrato";
+import { STATUS_CHECKPOINT, type AlunoDetalhe, type CamposCheckpoint, type Checkpoint, type StatusCheckpoint } from "@/lib/educacional/contrato";
 import { dataCurta, hojeEmBrasilia, PONTO_DO_TOM, ROTULO_STATUS_CHECKPOINT, TOM_STATUS_CHECKPOINT } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 import { ConfirmarAcao } from "./Blocos";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
+import { useFicha, useMarca } from "./Ficha";
+import { alteracaoDoCheckpoint, checkpointArquivado, checkpointNovo, ID_NOVO } from "./lote/alteracoes";
+import { MarcaPendente } from "./lote/MarcaPendente";
 import { BadgeCheckpoint } from "./partes";
 import { RoteiroDoContato } from "./Roteiro";
-import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
 // Timeline de checkpoints (spec Fase 2, seção 5): editar nome, datas, status e
 // observação de cada checkpoint; adicionar checkpoint avulso; arquivar (sai da
-// timeline, fica no histórico). Toda escrita leva a versão do aluno.
+// timeline, fica no histórico). Desde a Fase 3 (6.1), tudo isso faz parte da
+// ficha: vira alteração pendente do aluno e vai no "Salvar ficha".
 // Programas (P3): clicar num checkpoint mostra o roteiro do contato abaixo da
 // timeline (só leitura; edita-se em Configurações). O do próximo checkpoint já
 // vem aberto. "Editar checkpoint" fica no painel.
@@ -30,13 +32,14 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
   // Sem escolha (ou se o escolhido saiu da timeline): o próximo checkpoint.
   const padrao = a.proximo_checkpoint?.id ?? ordenados.find((c) => c.status !== "realizado")?.id ?? ordenados.at(-1)?.id ?? null;
   const selecionado = ordenados.find((c) => c.id === escolhido) ?? ordenados.find((c) => c.id === padrao) ?? null;
+  const bloqueada = useFicha().bloqueada;
   return (
     <Card>
       <CardHeader
         title="Timeline de checkpoints"
         subtitle="Clique num checkpoint para ver o roteiro do contato. O Big Win tem marca própria."
         action={
-          <Button variant="secondary" size="sm" onClick={() => setEditando("novo")}>
+          <Button variant="secondary" size="sm" disabled={bloqueada} onClick={() => setEditando("novo")}>
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Checkpoint avulso
           </Button>
@@ -55,6 +58,7 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
                 const ativo = selecionado?.id === c.id;
                 return (
                   <li key={c.id} className="relative flex w-24 flex-col items-center text-center">
+                    <MarcaDoCheckpoint id={c.id}>
                     <button
                       type="button"
                       onClick={() => setEscolhido(c.id)}
@@ -87,23 +91,41 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
                       <BadgeCheckpoint status={c.status} />
                       {c.data_realizada && <span className="text-[10px] text-texto-sec">feito {dataCurta(c.data_realizada)}</span>}
                     </button>
+                    </MarcaDoCheckpoint>
                   </li>
                 );
               })}
             </ol>
           </div>
         )}
-        {selecionado && <RoteiroDoContato checkpoint={selecionado} proximo={selecionado.id === padrao} onEditar={() => setEditando(selecionado)} />}
+        {selecionado && (
+          <RoteiroDoContato
+            checkpoint={selecionado}
+            proximo={selecionado.id === padrao}
+            onEditar={bloqueada ? undefined : () => setEditando(selecionado)}
+          />
+        )}
       </CardContent>
       {editando && <FormCheckpoint aluno={a} checkpoint={editando === "novo" ? null : editando} onFechar={() => setEditando(null)} />}
     </Card>
   );
 }
 
+// Marca de checkpoint alterado (com "Desfazer" no menu de contexto).
+function MarcaDoCheckpoint({ id, children }: { id: string; children: React.ReactNode }) {
+  const m = useMarca(`checkpoint:${id}`);
+  return <MarcaPendente {...m}>{children}</MarcaPendente>;
+}
+
+const tempNovo = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+// Formulário do checkpoint: na ficha, "Aplicar" registra só os campos que
+// mudaram; "Arquivar" vira alteração (ou desfaz o avulso ainda não salvo).
 function FormCheckpoint({ aluno, checkpoint, onFechar }: { aluno: AlunoDetalhe; checkpoint: Checkpoint | null; onFechar: () => void }) {
   const id = useId();
-  const gravar = useGravacao();
+  const f = useFicha();
   const novo = checkpoint === null;
+  const pendenteNovo = checkpoint?.id.startsWith(ID_NOVO) ? checkpoint.id.slice(ID_NOVO.length) : null;
   const [nome, setNome] = useState(checkpoint?.nome ?? "");
   const [prevista, setPrevista] = useState(checkpoint?.data_prevista ?? "");
   const [realizada, setRealizada] = useState(checkpoint?.data_realizada ?? "");
@@ -111,7 +133,6 @@ function FormCheckpoint({ aluno, checkpoint, onFechar }: { aluno: AlunoDetalhe; 
   const [observacao, setObservacao] = useState(checkpoint?.observacao ?? "");
   const [bigWin, setBigWin] = useState(checkpoint?.big_win ?? false);
   const [erro, setErro] = useState<string | null>(null);
-  const [salvando, setSalvando] = useState(false);
   const [arquivar, setArquivar] = useState(false);
 
   // Ao marcar realizado sem data, sugere hoje (a API também usaria hoje).
@@ -119,9 +140,9 @@ function FormCheckpoint({ aluno, checkpoint, onFechar }: { aluno: AlunoDetalhe; 
     if (status === "realizado" && !realizada) setRealizada(hojeEmBrasilia());
   }, [status, realizada]);
 
-  async function salvar() {
+  function aplicar() {
     if (!nome.trim()) return setErro("Informe o nome do checkpoint.");
-    const campos = {
+    const todos: CamposCheckpoint = {
       nome: nome.trim(),
       data_prevista: prevista || null,
       data_realizada: realizada || null,
@@ -129,32 +150,24 @@ function FormCheckpoint({ aluno, checkpoint, onFechar }: { aluno: AlunoDetalhe; 
       observacao: observacao.trim() || null,
       big_win: bigWin,
     };
-    setSalvando(true);
-    const r = await gravar({
-      alunoId: aluno.id,
-      versao: aluno.versao,
-      executar: (v) => (checkpoint ? atualizarCheckpoint(checkpoint.id, v, campos) : criarCheckpoint(aluno.id, v, campos)),
-      noAluno: checkpoint
-        ? (d) => ({ ...d, checkpoints: d.checkpoints.map((c) => (c.id === checkpoint.id ? { ...c, ...campos } : c)) })
-        : undefined,
-      afetaTotais: true,
-    });
-    setSalvando(false);
-    if (r.ok) onFechar();
-    else if (r.erro instanceof EducacionalError && r.erro.status === 400) setErro(r.erro.corpo.mensagem ?? r.erro.message);
-    else onFechar();
+    if (novo || pendenteNovo) {
+      const temp = pendenteNovo ?? tempNovo();
+      const chave = `checkpoint:${ID_NOVO}${temp}`;
+      f.registrar(checkpointNovo(temp, todos, f.entrada?.alteracoes[chave]));
+    } else {
+      // Só o que mudou em relação ao que aparece (servidor + pendências).
+      const atual = checkpoint as unknown as Record<string, unknown>;
+      const campos = Object.fromEntries(Object.entries(todos).filter(([k, v]) => (atual[k] ?? null) !== v)) as CamposCheckpoint;
+      if (Object.keys(campos).length) f.registrar(alteracaoDoCheckpoint(checkpoint, campos, f.entrada?.alteracoes[`checkpoint:${checkpoint.id}`]));
+    }
+    onFechar();
   }
 
-  async function confirmarArquivar() {
+  function confirmarArquivar() {
     if (!checkpoint) return;
     onFechar();
-    await gravar({
-      alunoId: aluno.id,
-      versao: aluno.versao,
-      executar: (v) => arquivarCheckpoint(checkpoint.id, v),
-      noAluno: (d) => ({ ...d, checkpoints: d.checkpoints.filter((c) => c.id !== checkpoint.id) }),
-      afetaTotais: true,
-    });
+    if (pendenteNovo) f.desfazer(`checkpoint:${checkpoint.id}`);
+    else f.registrar(checkpointArquivado(checkpoint));
   }
 
   return (
@@ -162,9 +175,9 @@ function FormCheckpoint({ aluno, checkpoint, onFechar }: { aluno: AlunoDetalhe; 
       <Dialogo
         aberto={!arquivar}
         titulo={novo ? "Checkpoint avulso" : `Editar checkpoint · ${checkpoint.nome}`}
-        subtitulo={aluno.nome}
+        subtitulo={`${aluno.nome} · vai no “Salvar ficha”`}
         onFechar={onFechar}
-        onEnviar={salvar}
+        onEnviar={aplicar}
         rodape={
           <>
             {!novo && (
@@ -176,9 +189,7 @@ function FormCheckpoint({ aluno, checkpoint, onFechar }: { aluno: AlunoDetalhe; 
             <Button type="button" variant="ghost" onClick={onFechar}>
               Cancelar
             </Button>
-            <Button type="submit" loading={salvando}>
-              {novo ? "Adicionar" : "Salvar"}
-            </Button>
+            <Button type="submit">{novo ? "Adicionar" : "Aplicar"}</Button>
           </>
         }
       >
@@ -214,9 +225,9 @@ function FormCheckpoint({ aluno, checkpoint, onFechar }: { aluno: AlunoDetalhe; 
       <ConfirmarAcao
         aberto={arquivar}
         titulo="Arquivar checkpoint?"
-        texto={`“${checkpoint?.nome}” sai da timeline de ${aluno.nome}. Ele continua no banco e no histórico.`}
+        texto={`“${checkpoint?.nome}” sai da timeline de ${aluno.nome} quando você salvar a ficha. Ele continua no banco e no histórico.`}
         confirmar="Arquivar"
-        onConfirmar={() => void confirmarArquivar()}
+        onConfirmar={confirmarArquivar}
         onFechar={() => setArquivar(false)}
       />
     </>

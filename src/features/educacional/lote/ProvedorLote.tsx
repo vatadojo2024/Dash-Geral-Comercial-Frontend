@@ -12,6 +12,7 @@ import { CHAVES } from "../dados";
 import { mensagemDoErro } from "../partes";
 import { trocarAlunoNoCache } from "../useGravacao";
 import { lerDoServidor } from "./alteracoes";
+import { ouvirGravacoes } from "./eventos";
 import { BarraDeAlteracoes } from "./BarraDeAlteracoes";
 import {
   aplicarFalha,
@@ -26,6 +27,7 @@ import {
   montarPedido,
   paraEnviar,
   reaplicar,
+  rebasear,
   registrar,
   serializar,
   SEM_PENDENCIAS,
@@ -67,7 +69,9 @@ export type AcoesDoLote = {
   registrar: (aluno: { id: string; nome: string; versao: number }, alt: Alteracao | null) => void;
   desfazer: (alunoId: string, chave: string) => void;
   descartar: () => void;
-  salvar: () => Promise<void>;
+  // Sem `apenas`, salva tudo (barra); com ele, só esses alunos ("Salvar ficha").
+  salvar: (apenas?: readonly string[]) => Promise<ResultadoDoEnvio | null>;
+  descartarAluno: (alunoId: string) => void;
   verVersaoAtual: (alunoId: string) => void;
   reaplicar: (alunoId: string) => void;
 };
@@ -136,10 +140,11 @@ export function ProvedorLote({ children }: { children: ReactNode }) {
       registrar: (aluno, alt) => alt && mudar((p) => registrar(p, aluno, alt)),
       desfazer: (alunoId, chave) => mudar((p) => desfazer(p, alunoId, chave)),
       descartar: () => armazem.set((e) => ({ ...e, pendencias: descartar(e.pendencias), resultado: null })),
-      async salvar() {
+      descartarAluno: (alunoId) => mudar((p) => descartarAluno(p, alunoId)),
+      async salvar(apenas) {
         const { pendencias, enviando } = armazem.get();
-        const enviar = paraEnviar(pendencias);
-        if (enviando || !enviar.length) return;
+        const enviar = paraEnviar(pendencias, apenas);
+        if (enviando || !enviar.length) return null;
         const ids = enviar.map((e) => e.aluno_id);
         armazem.set((e) => ({ pendencias: marcarSalvando(e.pendencias, ids), enviando: true, resultado: null }));
         try {
@@ -149,11 +154,13 @@ export function ProvedorLote({ children }: { children: ReactNode }) {
             trocarAlunoNoCache(queryClient, aluno);
             void queryClient.invalidateQueries({ queryKey: CHAVES.historico(aluno.id) });
           }
-          armazem.set(() => ({ pendencias: r.pendencias, enviando: false, resultado: r.comErro ? { salvas: r.salvas, comErro: r.comErro } : null }));
+          const resultado = { salvas: r.salvas, comErro: r.comErro };
+          armazem.set(() => ({ pendencias: r.pendencias, enviando: false, resultado: r.comErro ? resultado : null }));
           // Cockpit e totais: uma vez, no fim do lote.
           void queryClient.invalidateQueries({ queryKey: CHAVES.alunos });
           if (r.afetaTotais) void queryClient.invalidateQueries({ queryKey: CHAVES.resumo });
           if (!r.comErro) avisar({ tipo: "sucesso", texto: `${r.salvas} ${r.salvas === 1 ? "alteração salva" : "alterações salvas"}` });
+          return resultado;
         } catch (erro) {
           if (erro instanceof EducacionalError && erro.status === 403) router.replace("/");
           const falha =
@@ -161,6 +168,7 @@ export function ProvedorLote({ children }: { children: ReactNode }) {
               ? "Sem conexão com o servidor. Nada foi perdido."
               : `Não foi possível salvar. ${erro instanceof EducacionalError ? (erro.corpo.mensagem ?? erro.message) : mensagemDoErro(erro)}`;
           armazem.set((e) => ({ pendencias: aplicarFalha(e.pendencias, ids, falha), enviando: false, resultado: { falha } }));
+          return { falha };
         }
       },
       verVersaoAtual(alunoId) {
@@ -219,6 +227,12 @@ export function ProvedorLote({ children }: { children: ReactNode }) {
       definirGuardaDeSaida(null);
     };
   }, [temPendencias, pedirSaida, router]);
+
+  // Gravação imediata de um aluno com pendências: elas seguem na versão nova.
+  useEffect(
+    () => ouvirGravacoes((aluno) => armazem.set((e) => ({ ...e, pendencias: rebasear(e.pendencias, aluno, lerDoServidor) }))),
+    [armazem],
+  );
 
   const valor = useMemo(() => ({ armazem, acoes }), [armazem, acoes]);
   const n = contar(pendencias).alteracoes;
