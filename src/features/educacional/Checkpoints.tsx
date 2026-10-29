@@ -13,6 +13,7 @@ import { useFicha, useMarca } from "./Ficha";
 import { alteracaoDoCheckpoint, checkpointArquivado, checkpointNovo, ID_NOVO } from "./lote/alteracoes";
 import { MarcaPendente } from "./lote/MarcaPendente";
 import { BadgeCheckpoint } from "./partes";
+import { marcoVisivel } from "./programas";
 import { RoteiroDoContato } from "./Roteiro";
 
 // ---------------------------------------------------------------------------
@@ -84,7 +85,9 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
                         )}
                       </span>
                       <span className={cn("inline-flex flex-col items-center text-xs font-medium text-texto", c.big_win && "text-amarelo")}>
-                        {c.marco && <span className="text-[10px] font-normal uppercase tracking-wide text-texto-sec">{c.marco}</span>}
+                        {marcoVisivel(c.marco, c.nome) && (
+                          <span className="text-[10px] font-normal uppercase tracking-wide text-texto-sec">{c.marco}</span>
+                        )}
                         {c.nome}
                       </span>
                       <span className="text-[11px] tabular-nums text-texto-sec">{dataCurta(c.data_prevista)}</span>

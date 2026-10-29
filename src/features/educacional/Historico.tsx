@@ -28,7 +28,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
 import { formatarValor } from "./campos";
-import { CHAVES } from "./dados";
+import { CHAVES, useConfig } from "./dados";
 import { mensagemDoErro } from "./partes";
 
 // ---------------------------------------------------------------------------
@@ -75,6 +75,7 @@ const ROTULO_CAMPO: Record<string, string> = {
   concluida_em: "Concluída em",
   // programas
   programa: "Programa",
+  programa_id: "Programa",
   data_inicio_programa: "Início do programa",
   substituido: "Saiu da jornada (troca de programa)",
 };
@@ -91,7 +92,12 @@ function rotuloDoCampo(item: ItemHistorico): string {
   return prefixo ? `${prefixo} · ${nome}` : nome;
 }
 
-export function formatarDoHistorico(item: ItemHistorico, valor: unknown): string {
+// Nomes que o backend manda como id (hoje, o programa): resolvidos pela config.
+export type NomesDoHistorico = { programa?: (id: string) => string | undefined };
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const STATUS_SUBSTITUIDO = "Substituído (troca de programa)";
+
+export function formatarDoHistorico(item: ItemHistorico, valor: unknown, nomes: NomesDoHistorico = {}): string {
   if (valor == null || valor === "") return "—";
   const { campo } = partes(item);
   if (item.entidade === "ajuste" && campo in CAMPOS_AJUSTAVEIS) return formatarValor(campo as CampoAjustavel, valor);
@@ -101,10 +107,12 @@ export function formatarDoHistorico(item: ItemHistorico, valor: unknown): string
   if (typeof valor === "object" && !Array.isArray(valor)) {
     const textos = Object.entries(valor as Record<string, unknown>)
       .filter(([, v]) => v != null && v !== "")
-      .map(([k, v]) => formatarDoHistorico({ ...item, campo: k }, v));
+      .map(([k, v]) => formatarDoHistorico({ ...item, campo: k }, v, nomes));
     return textos.length ? textos.join(" · ") : "—";
   }
   if (typeof valor !== "string") return String(valor);
+  if (campo === "programa_id" || campo === "programa") return nomes.programa?.(valor) ?? (RE_UUID.test(valor) ? "Programa não encontrado" : valor);
+  if (valor === "substituido") return STATUS_SUBSTITUIDO;
   if (campo === "nivel_inicial") return ROTULO_NIVEL[valor as keyof typeof ROTULO_NIVEL] ?? valor;
   if (campo === "status_aluno") return ROTULO_STATUS_ALUNO[valor as keyof typeof ROTULO_STATUS_ALUNO] ?? valor;
   if (campo === "autorizacao_prova_social") return ROTULO_AUTORIZACAO[valor as keyof typeof ROTULO_AUTORIZACAO] ?? valor;
@@ -116,6 +124,8 @@ export function formatarDoHistorico(item: ItemHistorico, valor: unknown): string
   }
   if (/^\d{4}-\d{2}-\d{2}T/.test(valor)) return dataHoraBr(valor);
   if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return dataCurta(valor);
+  // Nunca um id cru na tela.
+  if (RE_UUID.test(valor)) return "Registro não encontrado";
   return valor;
 }
 
@@ -127,6 +137,8 @@ export function HistoricoDoAluno({ alunoId }: { alunoId: string }) {
     queryFn: () => buscarHistorico(alunoId, { pagina, entidade }),
     retry: false,
   });
+  const config = useConfig();
+  const nomes: NomesDoHistorico = { programa: (id) => config.data?.programas.find((p) => p.id === id)?.nome };
   const total = consulta.data?.total ?? 0;
   const paginas = Math.max(1, Math.ceil(total / TAMANHO_PAGINA_HISTORICO));
 
@@ -183,9 +195,9 @@ export function HistoricoDoAluno({ alunoId }: { alunoId: string }) {
                     <span className="font-medium text-texto">{rotuloDoCampo(h)}</span>
                   </p>
                   <p className="mt-1 flex flex-wrap items-center gap-1.5 break-words text-texto-sec">
-                    <span className="line-through decoration-white/30">{formatarDoHistorico(h, h.valor_antes)}</span>
+                    <span className="line-through decoration-white/30">{formatarDoHistorico(h, h.valor_antes, nomes)}</span>
                     <ArrowRight className="h-3 w-3 shrink-0" aria-label="para" />
-                    <span className="text-texto">{formatarDoHistorico(h, h.valor_depois)}</span>
+                    <span className="text-texto">{formatarDoHistorico(h, h.valor_depois, nomes)}</span>
                   </p>
                   {h.motivo && <p className="mt-1 text-xs italic text-texto-sec">“{h.motivo}”</p>}
                 </div>

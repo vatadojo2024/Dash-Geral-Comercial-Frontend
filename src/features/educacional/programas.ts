@@ -39,6 +39,20 @@ export function programaDoAluno(
 
 export const temProgramas = (config: Config | undefined) => (config?.programas.length ?? 0) > 0;
 
+// Marco a mostrar ao lado do nome: some quando o nome já começa por ele (os
+// checkpoints de produção se chamam "Dia 0 (Boas-vindas)", "Mês 1 (Revisão)").
+const semAcento = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+export function marcoVisivel(marco: string | null | undefined, nome: string): string | null {
+  if (!marco) return null;
+  return semAcento(nome.trim()).startsWith(semAcento(marco)) ? null : marco;
+}
+
+// Marco + nome numa linha só ("Dia 3 · Sprint"), sem repetir.
+export function marcoENome(marco: string | null | undefined, nome: string): string {
+  const m = marcoVisivel(marco, nome);
+  return m ? `${m} · ${nome}` : nome;
+}
+
 // Início + N meses de calendário; no fim do mês cai no último dia (31/01 + 1 = 28/02).
 export function sugerirTermino(inicio: string, meses: number): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(inicio)) return "";

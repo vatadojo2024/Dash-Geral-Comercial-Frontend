@@ -5,6 +5,7 @@ import { CAMPOS_ROTEIRO, type Checkpoint, type Roteiro } from "@/lib/educacional
 import { dataCurta } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { BadgeCheckpoint } from "./partes";
+import { marcoENome } from "./programas";
 
 // ---------------------------------------------------------------------------
 // Roteiro do contato de um checkpoint (programas, P3): objetivo, perguntas-
@@ -29,7 +30,7 @@ export function RoteiroDoContato({ checkpoint: c, proximo, onEditar }: { checkpo
             Roteiro do contato{proximo && " · próximo checkpoint"}
           </p>
           <h3 className="mt-1 flex flex-wrap items-center gap-2 text-base font-semibold text-texto">
-            {c.marco ? `${c.marco} · ${c.nome}` : c.nome}
+            {marcoENome(c.marco, c.nome)}
             <BadgeCheckpoint status={c.status} />
             <span className="text-xs font-normal tabular-nums text-texto-sec">
               {dataCurta(c.data_prevista)}

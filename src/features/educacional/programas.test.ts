@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Config } from "@/lib/educacional/contrato";
 import { normalizarMarco } from "./Configuracoes";
 import { resumoDosProgramas } from "./FiltroProgramas";
-import { programasPorMentoria, sugerirTermino, temProgramas } from "./programas";
+import { marcoENome, marcoVisivel, programasPorMentoria, sugerirTermino, temProgramas } from "./programas";
 
 const programa = (id: string, mentoria: string, meses: number, ativo = true) => ({
   id,
@@ -51,5 +51,16 @@ describe("apoio de programas na tela", () => {
     expect(resumoDosProgramas(grupos, ["b12"])).toBe("Blackbelt 12 meses");
     expect(resumoDosProgramas(grupos, ["b6", "b12"])).toBe("Blackbelt (todos)");
     expect(resumoDosProgramas(grupos, ["b6", "p6"])).toBe("2 programas");
+  });
+});
+
+describe("marco ao lado do nome", () => {
+  it("some quando o nome já começa por ele (nomes de produção)", () => {
+    expect(marcoVisivel("Dia 0", "Dia 0 (Boas-vindas)")).toBeNull();
+    expect(marcoVisivel("Mês 1", "mes 1 (Revisão)")).toBeNull();
+    expect(marcoVisivel("Dia 3", "Sprint")).toBe("Dia 3");
+    expect(marcoVisivel(null, "Avulso")).toBeNull();
+    expect(marcoENome("Mês 3", "Mês 3 (Big Win)")).toBe("Mês 3 (Big Win)");
+    expect(marcoENome("Mês 3", "Big Win")).toBe("Mês 3 · Big Win");
   });
 });

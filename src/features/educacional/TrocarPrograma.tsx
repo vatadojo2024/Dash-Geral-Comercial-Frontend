@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { useConfig } from "./dados";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
-import { programaDoAluno, programasPorMentoria } from "./programas";
+import { marcoENome, programaDoAluno, programasPorMentoria } from "./programas";
 import { useGravacao } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
@@ -218,7 +218,7 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
   );
 }
 
-const rotulo = (marco: string | null, nome: string) => (marco ? `${marco} · ${nome}` : nome);
+const rotulo = marcoENome;
 
 function ListaDaPrevia({
   titulo,

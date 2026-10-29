@@ -29,5 +29,13 @@ describe("formatarDoHistorico", () => {
     expect(formatarDoHistorico(item("aluno", "status_aluno"), "em_pausa")).toBe("Em pausa");
     // Troca de programa: o status de quem saiu da jornada aparece com rótulo.
     expect(formatarDoHistorico(item("checkpoint", "Fim · substituido"), "pendente")).toBe("Pendente");
+    // Como a produção manda (29/10): status virando "substituido" e o programa por id.
+    expect(formatarDoHistorico(item("checkpoint", "Mês 1 · status"), "substituido")).toBe("Substituído (troca de programa)");
+    const uuid = "96fad286-ece7-40d6-809c-f504683fdb12";
+    expect(formatarDoHistorico(item("aluno", "programa_id"), uuid, { programa: (id) => (id === uuid ? "Blackbelt 6 meses" : undefined) })).toBe(
+      "Blackbelt 6 meses",
+    );
+    expect(formatarDoHistorico(item("aluno", "programa_id"), uuid)).toBe("Programa não encontrado");
+    expect(formatarDoHistorico(item("aluno", "etapa_id"), uuid)).toBe("Registro não encontrado");
   });
 });
