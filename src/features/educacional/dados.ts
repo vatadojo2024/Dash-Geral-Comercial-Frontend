@@ -15,6 +15,7 @@ export const CHAVES = {
   alunos: ["edu", "alunos"] as const,
   aluno: (id: string) => ["edu", "aluno", id] as const,
   historico: (id: string) => ["edu", "historico", id] as const,
+  calendario: ["edu", "calendario"] as const,
   config: ["edu", "config"] as const,
 };
 

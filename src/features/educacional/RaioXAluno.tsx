@@ -165,7 +165,11 @@ export function RaioXAluno({ id }: { id: string }) {
     <>
       <Link href={hrefVoltar} className="mb-4 inline-flex items-center gap-1.5 text-sm text-texto-sec hover:text-texto">
         <ArrowLeft className="h-4 w-4" aria-hidden />
-        {hrefVoltar.startsWith(ROTA_ALUNOS) ? "Voltar para os alunos" : "Voltar para a Saúde da Jornada"}
+        {hrefVoltar.startsWith(ROTA_ALUNOS)
+          ? "Voltar para os alunos"
+          : hrefVoltar.startsWith("/educacional/calendario")
+            ? "Voltar para o calendário"
+            : "Voltar para a Saúde da Jornada"}
       </Link>
 
       {consulta.isLoading ? (

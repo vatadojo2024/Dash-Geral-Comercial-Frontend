@@ -1,6 +1,8 @@
 import {
   ENTIDADES_HISTORICO,
   FILTROS_MURAL,
+  TIPOS_EVENTO_CALENDARIO,
+  type EventoCalendario,
   linhaDoDetalhe,
   type ItemMural,
   type AlunoLinha,
@@ -10,7 +12,7 @@ import {
 } from "../contrato";
 import { detalheDaAnalise, itemDaLista, statusDe } from "./analises";
 import * as escrita from "./escrita";
-import { montarAluno, montarComentario, montarResumo } from "./motor";
+import { montarAluno, montarComentario, montarResumo, numeroDaAula } from "./motor";
 import { ErroDaApi, type Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -253,6 +255,62 @@ function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: str
   return { itens, proximo_cursor: todos.length > limite && ultimo ? `${ultimo.em}|${ultimo.id}` : null };
 }
 
+// Calendário (Entrega 2, M3): checkpoints (data prevista), intervenções e
+// próximas ações (prazo) e aulas (data e hora) dos alunos não arquivados, no
+// período [inicio, fim]. Responsável do item: o do aluno (checkpoint e próxima
+// ação), o da intervenção ou o mentor da aula. SLA: checkpoint pendente ou sem
+// resposta (o mesmo critério do resumo).
+const RE_DIA = /^\d{4}-\d{2}-\d{2}$/;
+const LIMITE_DIAS_CALENDARIO = 100;
+
+function calendario(banco: Banco, q: URLSearchParams) {
+  const inicio = q.get("inicio") ?? "";
+  const fim = q.get("fim") ?? "";
+  if (!RE_DIA.test(inicio) || !RE_DIA.test(fim) || fim < inicio) {
+    throw new ErroDaApi(400, { error: "validacao", campo: "inicio", mensagem: "Informe o início e o fim do período (AAAA-MM-DD)." });
+  }
+  if ((Date.parse(fim) - Date.parse(inicio)) / 86_400_000 > LIMITE_DIAS_CALENDARIO) {
+    throw new ErroDaApi(400, { error: "validacao", campo: "fim", mensagem: `O período pode ter no máximo ${LIMITE_DIAS_CALENDARIO} dias.` });
+  }
+  const tipo = q.get("tipo");
+  if (tipo && !(TIPOS_EVENTO_CALENDARIO as readonly string[]).includes(tipo)) {
+    throw new ErroDaApi(400, { error: "validacao", campo: "tipo", mensagem: "Tipo de item do calendário inválido." });
+  }
+  const responsavelId = q.get("responsavel_id");
+  const programaId = q.get("programa_id");
+  const resp = (id: string | null) => {
+    const r = id ? banco.config.responsaveis.find((x) => x.id === id) : null;
+    return r ? { id: r.id, nome: r.nome, tipo: r.tipo } : null;
+  };
+  const noPeriodo = (d: string | null | undefined): d is string => !!d && d.slice(0, 10) >= inicio && d.slice(0, 10) <= fim;
+  const itens: EventoCalendario[] = [];
+  for (const a of banco.alunos) {
+    if (a.arquivado_em || (programaId && a.programa_id !== programaId)) continue;
+    const aluno = { id: a.id, nome: a.nome };
+    const p = (banco.config.programas ?? []).find((x) => x.id === a.programa_id);
+    const programa = p ? { id: p.id, nome: p.nome } : null;
+    const base = { aluno, programa };
+    for (const c of banco.checkpoints) {
+      if (c.aluno_id !== a.id || c.arquivado_em || c.substituido_em || !noPeriodo(c.data_prevista)) continue;
+      itens.push({ ...base, id: `checkpoint:${c.id}`, tipo: "checkpoint", data: c.data_prevista, hora: null, titulo: c.nome, responsavel: resp(a.responsavel_id), status: c.status, sla: c.status === "pendente" || c.status === "nao_respondeu" });
+    }
+    for (const i of banco.intervencoes) {
+      if (i.aluno_id !== a.id || i.arquivado_em || !noPeriodo(i.prazo)) continue;
+      itens.push({ ...base, id: `intervencao:${i.id}`, tipo: "intervencao", data: i.prazo, hora: null, titulo: i.descricao, responsavel: resp(i.responsavel_id), status: i.status, sla: false });
+    }
+    if (a.proxima_acao && noPeriodo(a.proxima_acao_prazo)) {
+      itens.push({ ...base, id: `proxima_acao:${a.id}`, tipo: "proxima_acao", data: a.proxima_acao_prazo, hora: null, titulo: a.proxima_acao, responsavel: resp(a.responsavel_id), status: null, sla: false });
+    }
+    for (const x of banco.aulas ?? []) {
+      if (x.aluno_id !== a.id || x.arquivado_em || !noPeriodo(x.data)) continue;
+      itens.push({ ...base, id: `aula:${x.id}`, tipo: "aula", data: x.data, hora: x.hora, titulo: `Aula ${numeroDaAula(banco, x)}`, responsavel: resp(x.mentor_id), status: x.status, sla: false });
+    }
+  }
+  const filtrados = itens.filter((e) => (!tipo || e.tipo === tipo) && (!responsavelId || e.responsavel?.id === responsavelId));
+  filtrados.sort((x, y) => x.data.localeCompare(y.data) || (x.hora ?? "").localeCompare(y.hora ?? "") || x.aluno.nome.localeCompare(y.aluno.nome));
+  return { itens: filtrados };
+}
+
 // Atende uma requisição. Escritas MUDAM o banco recebido; quem chama decide se persiste.
 export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): unknown {
   const s = req.caminho.split("/").filter(Boolean);
@@ -269,6 +327,7 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
   if (metodo === "GET") {
     if (s.length === 1 && s[0] === "resumo") return montarResumo(banco, ctx.hoje, ctx.agora);
     if (s.length === 1 && s[0] === "config") return configComMentorias(banco);
+    if (s.length === 1 && s[0] === "calendario") return calendario(banco, q);
     if (s.length === 1 && s[0] === "alunos") return listarAlunos(banco, q, ctx.hoje);
     if (s.length === 2 && s[0] === "alunos" && s[1] === "opcoes") return opcoesDeAlunos(banco, q, ctx.hoje);
     if (s.length === 1 && s[0] === "analises") return listarAnalises(banco, q, ctx.agora);

@@ -517,6 +517,29 @@ export const FILTROS_MURAL = ["comentario", ...ENTIDADES_HISTORICO] as const;
 export type FiltroMural = (typeof FILTROS_MURAL)[number];
 export type NovoComentario = { texto: string; imagens: string[] };
 
+// ---------- calendário (Entrega 2, M3) ----------
+// GET /calendario?inicio=&fim=&responsavel_id=&programa_id=&tipo= → { itens }.
+// Rota do plano do backend (30/10); o formato de cada item é proposta nossa
+// (modo demonstração) até o backend fechar. `sla` (checkpoint em SLA) vem
+// marcado pela API: a tela só destaca.
+export const TIPOS_EVENTO_CALENDARIO = ["checkpoint", "intervencao", "proxima_acao", "aula"] as const;
+export type TipoEventoCalendario = (typeof TIPOS_EVENTO_CALENDARIO)[number];
+
+export const EventoCalendarioSchema = z.object({
+  id: z.string(),
+  tipo: z.enum(TIPOS_EVENTO_CALENDARIO),
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}/),
+  hora: z.string().nullable().default(null),
+  titulo: z.string(),
+  aluno: z.object({ id: z.string(), nome: z.string() }),
+  responsavel: ResponsavelDoAluno.nullable().default(null),
+  programa: z.object({ id: z.string(), nome: z.string() }).nullable().default(null),
+  status: z.string().nullable().default(null),
+  sla: z.boolean().default(false),
+});
+export type EventoCalendario = z.infer<typeof EventoCalendarioSchema>;
+export type FiltrosCalendario = { inicio: string; fim: string; responsavel_id?: string | null; programa_id?: string | null; tipo?: TipoEventoCalendario | null };
+
 // ---------- campos ajustáveis (PUT/DELETE /alunos/:id/ajustes/:campo) ----------
 // Nome do campo na API → schema do valor. É a lista da seção 3 do backend.
 export const CAMPOS_AJUSTAVEIS = {

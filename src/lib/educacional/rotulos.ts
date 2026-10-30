@@ -98,6 +98,20 @@ export const ROTULO_AUTORIZACAO: Record<AutorizacaoProvaSocial, string> = {
   pendente: "Pendente",
 };
 
+// Calendário (Entrega 2, M3): tipo do item.
+export const ROTULO_TIPO_EVENTO = {
+  checkpoint: "Checkpoint",
+  intervencao: "Intervenção",
+  proxima_acao: "Próxima ação",
+  aula: "Aula",
+} as const;
+export const ROTULO_TIPO_EVENTO_PLURAL = {
+  checkpoint: "Checkpoints",
+  intervencao: "Intervenções",
+  proxima_acao: "Próximas ações",
+  aula: "Aulas",
+} as const;
+
 // Avisos do aluno (`avisos` da API): rótulo e dica. Código fora daqui não aparece.
 export const AVISOS_CONHECIDOS: Record<string, { rotulo: string; dica: string }> = {
   contato_incompleto: { rotulo: "Contato incompleto", dica: "Falta e-mail, número ou Discord. Complete pela ficha do aluno." },

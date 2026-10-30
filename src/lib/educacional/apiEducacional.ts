@@ -4,6 +4,7 @@ import {
   AnaliseItemListaSchema,
   CheckpointModeloSchema,
   ComentarioSchema,
+  EventoCalendarioSchema,
   ImagemMuralSchema,
   ItemMuralSchema,
   LIMITE_IMAGEM_MURAL,
@@ -31,6 +32,8 @@ import {
   type CamposIntervencao,
   type Comentario,
   type Config,
+  type EventoCalendario,
+  type FiltrosCalendario,
   type EntidadeHistorico,
   type FaixaSaude,
   type FiltroMural,
@@ -828,4 +831,18 @@ export async function editarComentario(comentarioId: string, c: Partial<NovoCome
 
 export async function arquivarComentario(comentarioId: string): Promise<void> {
   await chamar({ metodo: "POST", caminho: `comentarios/${id(comentarioId)}/arquivar`, corpo: {} });
+}
+
+// ---------------------------------------------------------------------------
+// Calendário (Entrega 2, M3): uma rota só, com o período e os filtros. Item
+// fora do contrato sai sozinho (não derruba o calendário).
+// ---------------------------------------------------------------------------
+
+export async function buscarCalendario(f: FiltrosCalendario): Promise<EventoCalendario[]> {
+  const qs = new URLSearchParams({ inicio: f.inicio, fim: f.fim });
+  if (f.responsavel_id) qs.set("responsavel_id", f.responsavel_id);
+  if (f.programa_id) qs.set("programa_id", f.programa_id);
+  if (f.tipo) qs.set("tipo", f.tipo);
+  const corpo = (await chamar({ metodo: "GET", caminho: "calendario", query: qs.toString() })) as { itens?: unknown } | null;
+  return validarLista(corpo?.itens, EventoCalendarioSchema, "item do calendário").validos;
 }

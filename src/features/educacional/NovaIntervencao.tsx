@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  atualizarIntervencao,
-  buscarNomesDeAlunos,
-  criarIntervencao,
-  EducacionalError,
-} from "@/lib/educacional/apiEducacional";
+import { useEffect, useId, useState } from "react";
+import { atualizarIntervencao, criarIntervencao, EducacionalError } from "@/lib/educacional/apiEducacional";
 import type { AlunoDetalhe, CamposIntervencao, Intervencao } from "@/lib/educacional/contrato";
 import { ROTULO_TIPO_RESPONSAVEL } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
-import { ativos, CHAVES, useConfig } from "./dados";
+import { ativos, useConfig } from "./dados";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
+import { EscolherAluno, type AlunoEscolhido } from "./EscolherAluno";
 import type { IntervencaoNaTela } from "./lote/alteracoes";
 import { useGravacao } from "./useGravacao";
 
@@ -23,10 +18,10 @@ import { useGravacao } from "./useGravacao";
 // na edição, o atual aparece mesmo se inativo). Grava com a versão do aluno.
 // Com `aoAplicar` (ficha do Raio-X, Fase 3): não grava; devolve os campos e o
 // que a tela mostra, e a intervenção vira alteração pendente.
+// `prazoInicial` (Calendário, Entrega 2): o dia clicado já vem no prazo.
 // ---------------------------------------------------------------------------
 
 type Erros = Partial<Record<"aluno" | "tipo" | "responsavel" | "descricao" | "envio", string>>;
-type AlunoEscolhido = { id: string; nome: string; versao: number };
 
 export function NovaIntervencao({
   aberto,
@@ -35,6 +30,7 @@ export function NovaIntervencao({
   alunoInicial,
   intervencao,
   aoAplicar,
+  prazoInicial,
 }: {
   aberto: boolean;
   onFechar: () => void;
@@ -42,16 +38,11 @@ export function NovaIntervencao({
   alunoInicial?: AlunoEscolhido | null;
   intervencao?: Intervencao | null; // edição
   aoAplicar?: (campos: CamposIntervencao, tela: IntervencaoNaTela) => void;
+  prazoInicial?: string;
 }) {
   const id = useId();
   const gravar = useGravacao();
   const editando = Boolean(intervencao);
-  const alunos = useQuery({
-    queryKey: [...CHAVES.alunos, "nomes"],
-    queryFn: buscarNomesDeAlunos,
-    enabled: aberto && !alunoInicial,
-    retry: false,
-  });
   const config = useConfig();
   const tipos = ativos(config.data?.tipos_intervencao);
   const responsaveis = ativos(config.data?.responsaveis);
@@ -76,19 +67,11 @@ export function NovaIntervencao({
     setBusca(alunoInicial?.nome ?? "");
     setTipo(intervencao?.tipo.id ?? "");
     setResponsavel(intervencao?.responsavel?.id ?? "");
-    setPrazo(intervencao?.prazo ?? "");
+    setPrazo(intervencao?.prazo ?? prazoInicial ?? "");
     setDescricao(intervencao?.descricao ?? "");
     setErros({});
     // Só ao abrir (ou trocar de aluno/intervenção): recargas em segundo plano não apagam o que se digita.
-  }, [aberto, alunoInicial?.id, intervencao?.id]);
-
-  const sugestoes = useMemo(() => {
-    const termo = busca.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    if (!termo || aluno?.nome === busca) return [];
-    return (alunos.data ?? [])
-      .filter((a) => a.nome.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(termo))
-      .slice(0, 6);
-  }, [busca, aluno, alunos.data]);
+  }, [aberto, alunoInicial?.id, intervencao?.id, prazoInicial]);
 
   async function enviar() {
     const novos: Erros = {};
@@ -162,45 +145,7 @@ export function NovaIntervencao({
       }
     >
       {!alunoInicial && (
-        <Campo id={`${id}-aluno`} rotulo="Aluno" obrigatorio erro={erros.aluno}>
-          <div className="relative">
-            <input
-              id={`${id}-aluno`}
-              value={busca}
-              onChange={(e) => {
-                setBusca(e.target.value);
-                if (aluno && e.target.value !== aluno.nome) setAluno(null);
-              }}
-              placeholder={alunos.isLoading ? "Carregando alunos…" : "Buscar pelo nome"}
-              autoComplete="off"
-              aria-autocomplete="list"
-              aria-controls={`${id}-sugestoes`}
-              className={CAMPO}
-            />
-            {sugestoes.length > 0 && (
-              <ul
-                id={`${id}-sugestoes`}
-                role="listbox"
-                className="absolute left-0 right-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-white/15 bg-painel shadow-2xl"
-              >
-                {sugestoes.map((s) => (
-                  <li key={s.id} role="option" aria-selected={false}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAluno(s);
-                        setBusca(s.nome);
-                      }}
-                      className="block w-full px-3 py-2 text-left text-sm text-texto hover:bg-white/10"
-                    >
-                      {s.nome}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </Campo>
+        <EscolherAluno id={id} aberto={aberto} busca={busca} onBusca={setBusca} aluno={aluno} onAluno={setAluno} erro={erros.aluno} />
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
