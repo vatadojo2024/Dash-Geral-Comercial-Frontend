@@ -299,12 +299,12 @@ const Cartao = memo(function Cartao({
     >
       {alteracoes.length > 0 && <span className="absolute -left-0.5 -top-0.5 h-2 w-2 rounded-full bg-amarelo" aria-hidden />}
       {alteracoes.length > 0 && <span className="sr-only">Alteração não salva. {alteracoes.map((x) => `Antes: ${x.antes}.`).join(" ")}</span>}
-      <span className="flex items-start gap-1.5 pr-7">
+      <span className="flex flex-wrap items-start gap-x-1.5 gap-y-1 pr-7">
         <Link
           href={hrefDoAluno(a)}
           onClick={(e) => e.stopPropagation()}
           draggable={false} // o arrasto nativo do link roubaria o do card
-          className="min-w-0 truncate text-sm font-semibold text-texto hover:text-azul-claro hover:underline"
+          className="min-w-0 max-w-full truncate text-sm font-semibold text-texto hover:text-azul-claro hover:underline"
         >
           {a.nome}
         </Link>
