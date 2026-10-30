@@ -158,3 +158,14 @@ describe("total de aulas do programa", () => {
     expect(sem.programas.find((p) => p.nome === "TESTE — sem total")?.total_aulas).toBeNull();
   });
 });
+
+describe("lista de mentores da aula", () => {
+  it("todos os responsáveis ativos, quem é Mentor primeiro; o atual inativo continua na lista", async () => {
+    const { opcoesDeMentor } = await import("@/features/educacional/Aulas");
+    const c = await buscarConfig();
+    const r = (id: string, tipo: "mentor" | "suporte" | "comercial", ativo = true) => ({ id, nome: id, tipo, ativo });
+    const config = { ...c, responsaveis: [r("sup", "suporte"), r("m1", "mentor"), r("com", "comercial"), r("m2", "mentor"), r("velho", "mentor", false)] };
+    expect(opcoesDeMentor(config, null).map((x) => x.id)).toEqual(["m1", "m2", "sup", "com"]);
+    expect(opcoesDeMentor(config, { id: "velho", nome: "velho", tipo: "mentor" }).map((x) => x.id)).toEqual(["m1", "m2", "velho", "sup", "com"]);
+  });
+});

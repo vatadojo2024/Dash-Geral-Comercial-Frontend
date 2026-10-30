@@ -3,7 +3,7 @@
 import { useId, useState, type MouseEvent } from "react";
 import { Archive, PencilLine, Plus } from "lucide-react";
 import { STATUS_AULA, type AlunoDetalhe, type Aula, type CamposAula, type Config, type StatusAula } from "@/lib/educacional/contrato";
-import { dataCurta, hojeEmBrasilia, ROTULO_STATUS_AULA, TAG_STATUS_AULA } from "@/lib/educacional/rotulos";
+import { dataCurta, hojeEmBrasilia, ROTULO_STATUS_AULA, ROTULO_TIPO_RESPONSAVEL, TAG_STATUS_AULA } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
@@ -29,11 +29,12 @@ const nova = (x: Aula) => x.id.startsWith(ID_NOVO);
 
 type Mentor = NonNullable<Aula["mentor"]>;
 
-// Responsáveis ativos (o mentor atual entra mesmo inativo, para não sumir da lista).
-function opcoesDeMentor(config: Config | undefined, atual: Aula["mentor"] | null): Mentor[] {
+// Responsáveis ativos, quem é do tipo Mentor primeiro (o mentor atual entra
+// mesmo inativo, para não sumir da lista).
+export function opcoesDeMentor(config: Config | undefined, atual: Aula["mentor"] | null): Mentor[] {
   const lista: Mentor[] = ativos(config?.responsaveis).map(({ id, nome, tipo }) => ({ id, nome, tipo }));
   if (atual && !lista.some((r) => r.id === atual.id)) lista.push(atual);
-  return lista;
+  return [...lista.filter((r) => r.tipo === "mentor"), ...lista.filter((r) => r.tipo !== "mentor")];
 }
 
 export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
@@ -291,7 +292,7 @@ function FormAula({ aluno, config, aula, onFechar }: { aluno: AlunoDetalhe; conf
             <option value="">Sem mentor</option>
             {mentores.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.nome}
+                {r.nome} · {ROTULO_TIPO_RESPONSAVEL[r.tipo]}
               </option>
             ))}
           </select>
