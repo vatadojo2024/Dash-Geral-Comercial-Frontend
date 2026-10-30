@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ClipboardEvent, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Archive, ImagePlus, PencilLine, Send, X } from "lucide-react";
@@ -57,13 +57,21 @@ export function MuralDoAluno({ alunoId }: { alunoId: string }) {
   const consulta = useInfiniteQuery({
     // Sob a chave do histórico: o "Salvar ficha" e as ações imediatas já a invalidam.
     queryKey: [...CHAVES.historico(alunoId), "mural", filtro],
-    queryFn: ({ pageParam }) => buscarMural(alunoId, { antes: pageParam, tipo: filtro }),
+    queryFn: ({ pageParam }) => buscarMural(alunoId, { cursor: pageParam, tipo: filtro }),
     initialPageParam: null as string | null,
     getNextPageParam: (ultima) => ultima.proximo ?? undefined,
     retry: false,
   });
   const atualizar = () => queryClient.invalidateQueries({ queryKey: CHAVES.historico(alunoId) });
   const itens = consulta.data?.pages.flatMap((p) => p.itens) ?? [];
+  // O link da imagem vale 5 minutos: se uma não carregar, pede o mural de novo
+  // (links novos). No máximo uma vez a cada 30 s, para não repetir em laço.
+  const ultimoPedido = useRef(0);
+  const linkVencido = useCallback(() => {
+    if (Date.now() - ultimoPedido.current < 30_000) return;
+    ultimoPedido.current = Date.now();
+    void consulta.refetch();
+  }, [consulta]);
 
   return (
     <Card>
@@ -115,7 +123,7 @@ export function MuralDoAluno({ alunoId }: { alunoId: string }) {
           <ol className="space-y-1" aria-label="Itens do mural">
             {itens.map((x) =>
               x.tipo === "comentario" ? (
-                <ItemComentario key={`c-${x.id}`} c={x} onMudou={atualizar} />
+                <ItemComentario key={`c-${x.id}`} c={x} onMudou={atualizar} onLinkVencido={linkVencido} />
               ) : (
                 <ItemAlteracao key={`h-${x.id}`} h={x} nomes={nomes} />
               ),
@@ -150,11 +158,13 @@ function iniciais(nome: string): string {
   return `${p[0][0]}${p.length > 1 ? p[p.length - 1][0] : ""}`.toUpperCase();
 }
 
-function ItemComentario({ c, onMudou }: { c: Comentario; onMudou: () => Promise<unknown> }) {
+function ItemComentario({ c, onMudou, onLinkVencido }: { c: Comentario; onMudou: () => Promise<unknown>; onLinkVencido: () => void }) {
   const [editando, setEditando] = useState(false);
   const [arquivar, setArquivar] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [ampliada, setAmpliada] = useState<ImagemMural | null>(null);
+  // Pelo id: depois de pedir links novos, a imagem ampliada pega o link novo.
+  const [ampliadaId, setAmpliadaId] = useState<string | null>(null);
+  const ampliada = c.imagens.find((i) => i.id === ampliadaId) ?? null;
 
   async function confirmarArquivar() {
     setErro(null);
@@ -216,11 +226,11 @@ function ItemComentario({ c, onMudou }: { c: Comentario; onMudou: () => Promise<
                   <li key={i.id}>
                     <button
                       type="button"
-                      onClick={() => setAmpliada(i)}
+                      onClick={() => setAmpliadaId(i.id)}
                       className="block overflow-hidden rounded-lg border border-white/10 hover:border-white/30 focus-visible:border-azul/60 focus-visible:outline-none"
                       aria-label={`Ampliar ${i.nome}`}
                     >
-                      <img src={i.url} alt={i.nome} className="h-32 max-w-[16rem] object-cover" loading="lazy" />
+                      <img src={i.url} alt={i.nome} className="h-32 max-w-[16rem] object-cover" loading="lazy" onError={onLinkVencido} />
                     </button>
                   </li>
                 ))}
@@ -242,13 +252,13 @@ function ItemComentario({ c, onMudou }: { c: Comentario; onMudou: () => Promise<
         onConfirmar={() => void confirmarArquivar()}
         onFechar={() => setArquivar(false)}
       />
-      {ampliada && <ImagemAmpliada imagem={ampliada} onFechar={() => setAmpliada(null)} />}
+      {ampliada && <ImagemAmpliada imagem={ampliada} onFechar={() => setAmpliadaId(null)} onLinkVencido={onLinkVencido} />}
     </li>
   );
 }
 
 // Imagem em tela cheia (no <body>: o vidro do card prenderia o `fixed`).
-function ImagemAmpliada({ imagem, onFechar }: { imagem: ImagemMural; onFechar: () => void }) {
+function ImagemAmpliada({ imagem, onFechar, onLinkVencido }: { imagem: ImagemMural; onFechar: () => void; onLinkVencido: () => void }) {
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === "Escape" && onFechar();
     document.addEventListener("keydown", esc);
@@ -257,7 +267,12 @@ function ImagemAmpliada({ imagem, onFechar }: { imagem: ImagemMural; onFechar: (
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-6" role="dialog" aria-modal="true" aria-label={imagem.nome}>
       <div className="absolute inset-0 bg-black/80" onClick={onFechar} aria-hidden />
-      <img src={imagem.url} alt={imagem.nome} className="relative max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl" />
+      <img
+        src={imagem.url}
+        alt={imagem.nome}
+        onError={onLinkVencido}
+        className="relative max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+      />
       <button type="button" onClick={onFechar} aria-label="Fechar" className="icon-button absolute right-4 top-4">
         <X className="h-4 w-4" aria-hidden />
       </button>
@@ -268,8 +283,8 @@ function ImagemAmpliada({ imagem, onFechar }: { imagem: ImagemMural; onFechar: (
 
 // ---------------------------------------------------------------------------
 // Caixa de comentário (novo ou edição): texto e imagens (colar, anexar ou
-// arrastar). As imagens novas sobem uma a uma no envio; a que já subiu não
-// sobe de novo se o comentário falhar e a pessoa tentar outra vez.
+// arrastar), no máximo 5. As imagens novas sobem uma a uma no envio; a que já
+// subiu não sobe de novo se o comentário falhar e a pessoa tentar outra vez.
 // ---------------------------------------------------------------------------
 
 type Anexo = { chave: string; nome: string; url: string; arquivo?: File; enviada?: ImagemMural };

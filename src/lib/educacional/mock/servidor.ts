@@ -213,7 +213,7 @@ function historico(banco: Banco, alunoId: string, q: URLSearchParams) {
 }
 
 // Mural (Entrega 2, M2): comentários e histórico juntos, mais recente primeiro.
-// Cursor `antes` = "em|id" do último item da página anterior (opaco para a tela).
+// `cursor` = "em|id" do último item da página anterior (opaco para a tela).
 function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: string) {
   const tipo = q.get("tipo");
   if (tipo && !(FILTROS_MURAL as readonly string[]).includes(tipo)) {
@@ -241,16 +241,16 @@ function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: str
           }));
   const ordem = (x: ItemMural, y: ItemMural) => y.em.localeCompare(x.em) || y.id.localeCompare(x.id);
   let todos = [...comentarios, ...alteracoes].sort(ordem);
-  const antes = q.get("antes");
-  if (antes) {
-    const i = antes.indexOf("|");
-    const [em, id] = [antes.slice(0, i), antes.slice(i + 1)];
+  const cursor = q.get("cursor");
+  if (cursor) {
+    const i = cursor.indexOf("|");
+    const [em, id] = [cursor.slice(0, i), cursor.slice(i + 1)];
     todos = todos.filter((x) => x.em < em || (x.em === em && x.id < id));
   }
-  const limite = Math.min(50, Math.max(1, Number(q.get("limite")) || TAMANHO_PAGINA_MURAL));
+  const limite = Math.min(50, Math.max(1, Number(q.get("por_pagina")) || TAMANHO_PAGINA_MURAL));
   const itens = todos.slice(0, limite);
   const ultimo = itens.at(-1);
-  return { itens, proximo: todos.length > limite && ultimo ? `${ultimo.em}|${ultimo.id}` : null };
+  return { itens, proximo_cursor: todos.length > limite && ultimo ? `${ultimo.em}|${ultimo.id}` : null };
 }
 
 // Atende uma requisição. Escritas MUDAM o banco recebido; quem chama decide se persiste.
@@ -324,6 +324,10 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
     if (s.length === 3 && s[2] === "programa" && metodo === "POST") {
       if (corpo.simular === true) return escrita.previaTrocaPrograma(banco, id, corpo);
       return escrita.trocarPrograma(banco, id, semVersao(corpo), versaoDo(corpo), ctx);
+    }
+    // Entrega 2: aula na hora (Calendário). Na ficha, a aula vai pelo lote.
+    if (s.length === 3 && s[2] === "aulas" && metodo === "POST") {
+      return escrita.criarAula(banco, id, semVersao(corpo), versaoDo(corpo), ctx);
     }
     if (s.length === 3 && s[2] === "checkpoints" && metodo === "POST") {
       return escrita.criarCheckpoint(banco, id, semVersao(corpo), versaoDo(corpo), ctx);

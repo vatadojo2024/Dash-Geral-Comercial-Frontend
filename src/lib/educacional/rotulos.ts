@@ -112,6 +112,12 @@ export const ROTULO_STATUS_AULA: Record<StatusAula, string> = {
   remarcada: "Remarcada",
   cancelada: "Cancelada",
 };
+// "Aula 3" (número do backend); a nova, ainda sem número, é "Aula nova".
+export const rotuloDaAula = (x: { numero?: number | null }) => (x.numero != null ? `Aula ${x.numero}` : "Aula nova");
+// Data e hora da aula ("25/02/2026 · 19:00"); a hora pode vir com segundos.
+export const quandoDaAula = (x: { data?: string | null; hora?: string | null }) =>
+  x.data ? `${dataCurta(x.data)}${x.hora ? ` · ${x.hora.slice(0, 5)}` : ""}` : "—";
+
 export const TAG_STATUS_AULA: Record<StatusAula, string> = {
   agendada: "tag-info",
   feito: "tag-success",

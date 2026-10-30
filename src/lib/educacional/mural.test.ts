@@ -72,7 +72,7 @@ describe("mural — leitura", () => {
     const p1 = await buscarMural(a.id);
     expect(p1.itens).toHaveLength(TAMANHO_PAGINA_MURAL);
     expect(p1.proximo).toEqual(expect.any(String));
-    const p2 = await buscarMural(a.id, { antes: p1.proximo });
+    const p2 = await buscarMural(a.id, { cursor: p1.proximo });
     const ids1 = new Set(p1.itens.map((x) => x.id));
     expect(p2.itens.length).toBeGreaterThan(0);
     expect(p2.itens.some((x) => ids1.has(x.id))).toBe(false);
@@ -145,16 +145,17 @@ describe("mural — imagens", () => {
     expect([e.status, e.corpo.campo]).toEqual([400, "arquivo"]);
   });
 
-  it("imagem de outra pessoa ou inexistente não entra no comentário; no máximo 10", async () => {
+  it("imagem de outra pessoa ou inexistente não entra no comentário; no máximo 5", async () => {
     const a = await primeiroAluno();
     definirUsuarioDaSessao(OUTRA);
     const dela = await enviarImagemDoMural(png("dela.png"));
     definirUsuarioDaSessao(EU);
     const e = await erroDe(comentar(a.id, { texto: "Com a imagem dela", imagens: [dela.id] }));
     expect([e.corpo.campo, e.message]).toEqual(["imagens", "Uma das imagens não foi encontrada. Anexe de novo."]);
-    const minhas = await Promise.all(Array.from({ length: 11 }, (_, i) => enviarImagemDoMural(png(`p${i}.png`))));
+    const minhas = await Promise.all(Array.from({ length: 6 }, (_, i) => enviarImagemDoMural(png(`p${i}.png`))));
     const muitas = await erroDe(comentar(a.id, { texto: "Muitas", imagens: minhas.map((x) => x.id) }));
-    expect(muitas.message).toBe("No máximo 10 imagens por comentário.");
+    expect(muitas.message).toBe("No máximo 5 imagens por comentário.");
+    expect((await comentar(a.id, { texto: "Cinco", imagens: minhas.slice(0, 5).map((x) => x.id) })).imagens).toHaveLength(5);
   });
 
   it("editar troca as imagens (tirar uma, pôr outra)", async () => {

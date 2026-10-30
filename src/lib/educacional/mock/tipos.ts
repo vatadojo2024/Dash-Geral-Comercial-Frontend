@@ -85,10 +85,11 @@ export type IntervencaoBanco = {
 export type AulaBanco = {
   id: string;
   aluno_id: string;
-  nome: string;
-  data: string | null;
+  data: string;
+  hora: string | null;
   mentor_id: string | null;
   status: StatusAula;
+  observacao: string | null;
   criada_em: string;
   arquivado_em: string | null;
 };

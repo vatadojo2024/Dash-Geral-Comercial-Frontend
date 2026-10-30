@@ -25,6 +25,7 @@ import {
   type AnaliseDetalhe,
   type AnaliseItemLista,
   type CampoAjustavel,
+  type CamposAula,
   type CamposCheckpoint,
   type CamposDiretosAluno,
   type CamposIntervencao,
@@ -541,6 +542,11 @@ export function criarCheckpoint(alunoId: string, versao: number, campos: CamposC
   return escreverAluno({ metodo: "POST", caminho: `alunos/${id(alunoId)}/checkpoints`, corpo: { ...campos, versao } });
 }
 
+// Entrega 2: aula gravada na hora (Calendário). Na ficha, a aula vai pelo lote.
+export function criarAula(alunoId: string, versao: number, campos: CamposAula): Promise<AlunoDetalhe> {
+  return escreverAluno({ metodo: "POST", caminho: `alunos/${id(alunoId)}/aulas`, corpo: { ...campos, versao } });
+}
+
 export function atualizarCheckpoint(checkpointId: string, versao: number, campos: CamposCheckpoint): Promise<AlunoDetalhe> {
   return escreverAluno({ metodo: "PATCH", caminho: `checkpoints/${id(checkpointId)}`, corpo: { ...campos, versao } });
 }
@@ -771,16 +777,19 @@ export async function restaurarDemonstracao(): Promise<void> {
 export const TAMANHO_PAGINA_MURAL = 20;
 export type PaginaMural = { itens: ItemMural[]; proximo: string | null };
 
-export async function buscarMural(alunoId: string, opcoes: { antes?: string | null; tipo?: FiltroMural | null } = {}): Promise<PaginaMural> {
-  const qs = new URLSearchParams({ limite: String(TAMANHO_PAGINA_MURAL) });
-  if (opcoes.antes) qs.set("antes", opcoes.antes);
+export async function buscarMural(alunoId: string, opcoes: { cursor?: string | null; tipo?: FiltroMural | null } = {}): Promise<PaginaMural> {
+  const qs = new URLSearchParams({ por_pagina: String(TAMANHO_PAGINA_MURAL) });
+  if (opcoes.cursor) qs.set("cursor", opcoes.cursor);
   if (opcoes.tipo) qs.set("tipo", opcoes.tipo);
   const corpo = (await chamar({ metodo: "GET", caminho: `alunos/${id(alunoId)}/mural`, query: qs.toString() })) as {
     itens?: unknown;
+    proximo_cursor?: unknown;
     proximo?: unknown;
   } | null;
   const { validos } = validarLista(corpo?.itens, ItemMuralSchema, "item do mural");
-  return { itens: validos, proximo: typeof corpo?.proximo === "string" && corpo.proximo ? corpo.proximo : null };
+  // O nome do campo do próximo cursor ainda não foi fechado: aceita os dois.
+  const proximo = corpo?.proximo_cursor ?? corpo?.proximo;
+  return { itens: validos, proximo: typeof proximo === "string" && proximo ? proximo : null };
 }
 
 const tamanhoEmMb = (bytes: number) => (bytes / 1024 / 1024).toFixed(1).replace(".", ",");

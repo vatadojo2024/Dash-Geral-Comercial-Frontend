@@ -241,13 +241,15 @@ export function semearEntrega2(banco: Banco, hoje: string) {
       if (d > limite) break;
       const dia = d.toISOString().slice(0, 10);
       const mentor = responsavel ?? mentores[(i + n) % mentores.length] ?? null;
+      const status = statusDeExemplo(n + i, dia <= hoje);
       aulas.push({
         id: `aula-${a.id}-${n}`,
         aluno_id: a.id,
-        nome: `Aula ${n}`,
         data: dia,
+        hora: (n + i) % 3 === 0 ? null : ["09:00", "14:30", "19:00"][(n + i) % 3],
         mentor_id: mentor?.id ?? null,
-        status: statusDeExemplo(n + i, dia <= hoje),
+        status,
+        observacao: status === "no_show" ? "Não entrou na sala. Remarcar." : null,
         criada_em: `${dia}T12:00:00.000Z`,
         arquivado_em: null,
       });

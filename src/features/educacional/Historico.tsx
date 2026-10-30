@@ -66,6 +66,7 @@ const ROTULO_CAMPO: Record<string, string> = {
   // aulas (Entrega 2)
   total_aulas: "Total de aulas",
   data: "Data",
+  hora: "Hora",
   mentor: "Mentor",
   mentor_id: "Mentor",
 };

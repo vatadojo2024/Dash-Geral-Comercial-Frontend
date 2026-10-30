@@ -18,6 +18,8 @@ import {
   dataCurta,
   ROTULO_AUTORIZACAO,
   ROTULO_NIVEL,
+  quandoDaAula,
+  rotuloDaAula,
   ROTULO_STATUS_ALUNO,
   ROTULO_STATUS_AULA,
   ROTULO_STATUS_CHECKPOINT,
@@ -323,15 +325,24 @@ export function intervencaoNova(
 // O que a tela mostra de uma aula editada (o mentor com nome).
 export type AulaNaTela = Partial<Pick<Aula, "mentor">>;
 
-const textoAula = (x: { nome?: unknown; data?: unknown; status?: unknown }) =>
-  `${x.nome ?? "Aula"}${x.data ? ` · ${dataCurta(String(x.data))}` : ""} · ${ROTULO_STATUS_AULA[x.status as keyof typeof ROTULO_STATUS_AULA] ?? "—"}`;
+const textoAula = (x: { numero?: unknown; data?: unknown; hora?: unknown; status?: unknown }) =>
+  `${rotuloDaAula({ numero: typeof x.numero === "number" ? x.numero : null })} · ${quandoDaAula({
+    data: typeof x.data === "string" ? x.data : null,
+    hora: typeof x.hora === "string" ? x.hora : null,
+  })} · ${ROTULO_STATUS_AULA[x.status as keyof typeof ROTULO_STATUS_AULA] ?? "—"}`;
 
 function aulaNaTela(campos: CamposAula, tela: AulaNaTela): Record<string, unknown> {
   const { mentor_id: _, ...resto } = campos;
   return { ...resto, ...tela };
 }
 
-const doServidorAula = (x: Aula): Record<string, unknown> => ({ nome: x.nome, data: x.data, mentor_id: x.mentor?.id ?? null, status: x.status });
+const doServidorAula = (x: Aula): Record<string, unknown> => ({
+  data: x.data,
+  hora: x.hora,
+  mentor_id: x.mentor?.id ?? null,
+  status: x.status,
+  observacao: x.observacao,
+});
 
 export function alteracaoDaAula(x: Aula, campos: CamposAula, tela: AulaNaTela = {}, base?: Alteracao): Alteracao {
   const valor = { ...(base && ehObjeto(base.valor) ? base.valor : {}), ...campos };
@@ -363,10 +374,12 @@ export function aulaNova(temp: string, campos: CamposAula, tela: AulaNaTela, bas
   const valor = { ...(base && ehObjeto(base.valor) ? base.valor : {}), ...campos };
   const item = {
     id: `${ID_NOVO}${temp}`,
-    nome: "Aula",
+    numero: null,
     data: null,
+    hora: null,
     mentor: null,
     status: "agendada",
+    observacao: null,
     ...sobreposicaoAnterior(base),
     ...aulaNaTela(campos, tela),
   };

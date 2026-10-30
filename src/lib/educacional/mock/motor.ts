@@ -15,7 +15,7 @@ import type {
 } from "../contrato";
 import { AVISO_CONTATO_INCOMPLETO, AVISO_SEM_PROGRAMA, marcoDe, RE_MARCO, type Contagem } from "../contrato";
 import { confirmadasDoAluno } from "./analises";
-import type { AlunoBanco, Banco, ComentarioBanco } from "./tipos";
+import type { AlunoBanco, AulaBanco, Banco, ComentarioBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // MOTOR DO MODO DEMONSTRAÇÃO — o ÚNICO lugar do front com regra de negócio, e
@@ -152,12 +152,28 @@ function intervencoesDoAluno(banco: Banco, alunoId: string): Intervencao[] {
     });
 }
 
-// Aulas por data (sem data no fim); empate pela criação.
-function aulasDoAluno(banco: Banco, alunoId: string): Aula[] {
+// Aulas por data e hora (sem hora antes, no mesmo dia); empate pela criação.
+// O número é a posição nessa ordem (regra do backend, imitada aqui).
+export function aulasOrdenadas(banco: Banco, alunoId: string): AulaBanco[] {
   return (banco.aulas ?? [])
     .filter((x) => x.aluno_id === alunoId && !x.arquivado_em)
-    .sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999") || a.criada_em.localeCompare(b.criada_em))
-    .map((x) => ({ id: x.id, nome: x.nome, data: x.data, mentor: responsavelDe(banco, x.mentor_id), status: x.status }));
+    .sort((a, b) => a.data.localeCompare(b.data) || (a.hora ?? "").localeCompare(b.hora ?? "") || a.criada_em.localeCompare(b.criada_em));
+}
+
+export function numeroDaAula(banco: Banco, x: AulaBanco): number {
+  return aulasOrdenadas(banco, x.aluno_id).findIndex((y) => y.id === x.id) + 1;
+}
+
+function aulasDoAluno(banco: Banco, alunoId: string): Aula[] {
+  return aulasOrdenadas(banco, alunoId).map((x, i) => ({
+    id: x.id,
+    numero: i + 1,
+    data: x.data,
+    hora: x.hora,
+    mentor: responsavelDe(banco, x.mentor_id),
+    status: x.status,
+    observacao: x.observacao,
+  }));
 }
 
 // Comentário do mural como a API devolve: imagens resolvidas e `pode_editar`

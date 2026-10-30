@@ -3,7 +3,14 @@
 import { useId, useState, type MouseEvent } from "react";
 import { Archive, PencilLine, Plus } from "lucide-react";
 import { STATUS_AULA, type AlunoDetalhe, type Aula, type CamposAula, type Config, type StatusAula } from "@/lib/educacional/contrato";
-import { dataCurta, hojeEmBrasilia, ROTULO_STATUS_AULA, ROTULO_TIPO_RESPONSAVEL, TAG_STATUS_AULA } from "@/lib/educacional/rotulos";
+import {
+  hojeEmBrasilia,
+  quandoDaAula,
+  rotuloDaAula,
+  ROTULO_STATUS_AULA,
+  ROTULO_TIPO_RESPONSAVEL,
+  TAG_STATUS_AULA,
+} from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
@@ -18,9 +25,9 @@ import { MenuDesfazer } from "./lote/MarcaPendente";
 // Aulas do aluno (Entrega 2, M1), no layout da planilha do Vata: tabela com
 // Aula, Data, Mentor e Status e, ao lado, o painel "Campos" com Total de Aulas
 // (editável na ficha), Aulas Aplicadas e Saldo de Aulas. Criar, editar e
-// arquivar fazem parte da ficha (vão no "Salvar ficha"). Aplicadas e saldo vêm
-// da API: com aula ou total pendente, mostram o valor salvo e avisam que mudam
-// ao salvar (o front não conta as aulas).
+// arquivar fazem parte da ficha (vão no "Salvar ficha"). O número da aula,
+// aplicadas e saldo vêm da API: com aula ou total pendente, a tela mostra o
+// valor salvo e avisa que muda ao salvar (o front não conta as aulas).
 // ---------------------------------------------------------------------------
 
 const tempNovo = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -55,7 +62,7 @@ export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
     <Card>
       <CardHeader
         title="Aulas"
-        subtitle="Mudanças aqui vão no “Salvar ficha”."
+        subtitle="Mudanças aqui vão no “Salvar ficha”. O número da aula vem pela data."
         action={
           <Button variant="secondary" size="sm" disabled={f.bloqueada} onClick={() => setEditando("nova")}>
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -98,18 +105,11 @@ export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
           <PainelCampos a={a} pendentes={pendentes} />
         </div>
       </CardContent>
-      {editando && (
-        <FormAula
-          aluno={a}
-          config={config}
-          aula={editando === "nova" ? null : editando}
-          onFechar={() => setEditando(null)}
-        />
-      )}
+      {editando && <FormAula aluno={a} config={config} aula={editando === "nova" ? null : editando} onFechar={() => setEditando(null)} />}
       <ConfirmarAcao
         aberto={arquivar !== null}
         titulo="Arquivar aula?"
-        texto={`“${arquivar?.nome}” sai da lista de ${a.nome} quando você salvar a ficha. Continua no banco e no histórico.`}
+        texto={`${arquivar ? rotuloDaAula(arquivar) : "A aula"} sai da lista de ${a.nome} quando você salvar a ficha. Continua no banco e no histórico.`}
         confirmar="Arquivar"
         onConfirmar={() => arquivar && confirmarArquivar(arquivar)}
         onFechar={() => setArquivar(null)}
@@ -134,6 +134,7 @@ function LinhaDaAula({
   const f = useFicha();
   const m = useMarca(chave(x));
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const rotulo = rotuloDaAula(x);
   const aoMenu = (e: MouseEvent) => {
     if (!m.onDesfazer) return;
     e.preventDefault();
@@ -147,19 +148,24 @@ function LinhaDaAula({
         onContextMenu={aoMenu}
         data-pendente={m.alteracao ? "" : undefined}
       >
-        <td className="px-3 py-2 font-medium text-texto">
-          <span className="inline-flex items-center gap-1.5">
+        <td className="px-3 py-2 text-texto">
+          <span className="inline-flex items-center gap-1.5 font-medium">
             {m.alteracao && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amarelo" aria-hidden />}
-            {x.nome}
+            {rotulo}
             {m.alteracao && <span className="sr-only">Alteração não salva. Antes: {m.alteracao.antes}.</span>}
           </span>
+          {x.observacao && (
+            <span className="block max-w-[18rem] truncate text-xs text-texto-sec" title={x.observacao}>
+              {x.observacao}
+            </span>
+          )}
         </td>
-        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-texto">{x.data ? dataCurta(x.data) : <span className="text-texto-sec">—</span>}</td>
+        <td className="whitespace-nowrap px-3 py-2 tabular-nums text-texto">{quandoDaAula(x)}</td>
         <td className="px-3 py-2 text-texto">{x.mentor?.nome ?? <span className="text-texto-sec">Sem mentor</span>}</td>
         <td className="px-3 py-2">
           {f.editando ? (
             <select
-              aria-label={`Status da ${x.nome}`}
+              aria-label={`Status da ${rotulo}`}
               value={x.status}
               disabled={f.bloqueada}
               onChange={(e) => onStatus(e.target.value as StatusAula)}
@@ -177,10 +183,10 @@ function LinhaDaAula({
         </td>
         <td className="px-2 py-1 text-right">
           <span className="inline-flex gap-0.5">
-            <Button variant="ghost" size="sm" disabled={f.bloqueada} onClick={onEditar} aria-label={`Editar ${x.nome}`} title="Editar">
+            <Button variant="ghost" size="sm" disabled={f.bloqueada} onClick={onEditar} aria-label={`Editar ${rotulo}`} title="Editar">
               <PencilLine className="h-3.5 w-3.5" aria-hidden />
             </Button>
-            <Button variant="ghost" size="sm" disabled={f.bloqueada} onClick={onArquivar} aria-label={`Arquivar ${x.nome}`} title="Arquivar">
+            <Button variant="ghost" size="sm" disabled={f.bloqueada} onClick={onArquivar} aria-label={`Arquivar ${rotulo}`} title="Arquivar">
               <Archive className="h-3.5 w-3.5" aria-hidden />
             </Button>
           </span>
@@ -220,7 +226,7 @@ function PainelCampos({ a, pendentes }: { a: AlunoDetalhe; pendentes: boolean })
       <Numero rotulo="Saldo de Aulas" destaque={a.saldo_aulas != null && a.saldo_aulas < 0}>
         {numero(a.saldo_aulas)}
       </Numero>
-      {pendentes && <p className="text-xs text-texto-sec">Aplicadas e saldo são recalculados ao salvar a ficha.</p>}
+      {pendentes && <p className="text-xs text-texto-sec">Número, aplicadas e saldo são recalculados ao salvar a ficha.</p>}
     </aside>
   );
 }
@@ -234,30 +240,113 @@ function Numero({ rotulo, destaque = false, children }: { rotulo: string; destaq
   );
 }
 
-// Formulário da aula: na ficha, "Aplicar" registra só o que mudou; "Adicionar"
-// cria a aula nova (pendente). Nome sugerido: "Aula N" (N = próxima da lista).
-function FormAula({ aluno, config, aula, onFechar }: { aluno: AlunoDetalhe; config?: Config; aula: Aula | null; onFechar: () => void }) {
+// ---------------------------------------------------------------------------
+// Campos do formulário da aula: os mesmos na ficha (FormAula) e no "Nova aula"
+// do Calendário (grava na hora).
+// ---------------------------------------------------------------------------
+
+export type ValoresAula = { data: string; hora: string; mentorId: string; status: StatusAula; observacao: string };
+
+export function valoresIniciaisDaAula(aula: Aula | null, padrao: { data?: string; mentorId?: string } = {}): ValoresAula {
+  return {
+    data: aula ? (aula.data ?? "") : (padrao.data ?? hojeEmBrasilia()),
+    hora: aula?.hora?.slice(0, 5) ?? "",
+    mentorId: aula ? (aula.mentor?.id ?? "") : (padrao.mentorId ?? ""),
+    status: aula?.status ?? "agendada",
+    observacao: aula?.observacao ?? "",
+  };
+}
+
+// Data é obrigatória (o número da aula sai dela); o resto, opcional.
+export function camposDosValores(v: ValoresAula): { campos: CamposAula } | { erro: string } {
+  if (!v.data) return { erro: "Informe a data da aula." };
+  return { campos: { data: v.data, hora: v.hora || null, mentor_id: v.mentorId || null, status: v.status, observacao: v.observacao.trim() || null } };
+}
+
+export function CamposDaAula({
+  valores: v,
+  onMudar,
+  mentores,
+}: {
+  valores: ValoresAula;
+  onMudar: (v: ValoresAula) => void;
+  mentores: Mentor[];
+}) {
   const id = useId();
+  const mudar = (parte: Partial<ValoresAula>) => onMudar({ ...v, ...parte });
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Campo id={`${id}-data`} rotulo="Data" obrigatorio>
+          <input id={`${id}-data`} type="date" value={v.data} onChange={(e) => mudar({ data: e.target.value })} className={CAMPO} />
+        </Campo>
+        <Campo id={`${id}-hora`} rotulo="Hora" dica="Opcional. Com hora, a aula aparece no horário do Calendário.">
+          <input id={`${id}-hora`} type="time" value={v.hora} onChange={(e) => mudar({ hora: e.target.value })} className={CAMPO} />
+        </Campo>
+        <Campo id={`${id}-mentor`} rotulo="Mentor">
+          <select id={`${id}-mentor`} value={v.mentorId} onChange={(e) => mudar({ mentorId: e.target.value })} className={CAMPO}>
+            <option value="">Sem mentor</option>
+            {mentores.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.nome} · {ROTULO_TIPO_RESPONSAVEL[r.tipo]}
+              </option>
+            ))}
+          </select>
+        </Campo>
+        <Campo id={`${id}-status`} rotulo="Status">
+          <select id={`${id}-status`} value={v.status} onChange={(e) => mudar({ status: e.target.value as StatusAula })} className={CAMPO}>
+            {STATUS_AULA.map((s) => (
+              <option key={s} value={s}>
+                {ROTULO_STATUS_AULA[s]}
+              </option>
+            ))}
+          </select>
+        </Campo>
+      </div>
+      <Campo id={`${id}-obs`} rotulo="Observação">
+        <textarea
+          id={`${id}-obs`}
+          rows={2}
+          value={v.observacao}
+          onChange={(e) => mudar({ observacao: e.target.value })}
+          className={cn(CAMPO, "h-auto py-2")}
+        />
+      </Campo>
+    </>
+  );
+}
+
+// Mentor sugerido numa aula nova: o responsável do aluno, se estiver ativo.
+export function mentorPadrao(aluno: Pick<AlunoDetalhe, "responsavel">, config: Config | undefined): string {
+  const r = aluno.responsavel;
+  return r && ativos(config?.responsaveis).some((x) => x.id === r.id) ? r.id : "";
+}
+
+// Formulário da aula na ficha: "Aplicar" registra só o que mudou; "Adicionar"
+// cria a aula nova (pendente; o número vem ao salvar).
+function FormAula({ aluno, config, aula, onFechar }: { aluno: AlunoDetalhe; config?: Config; aula: Aula | null; onFechar: () => void }) {
   const f = useFicha();
   const criando = aula === null;
-  const responsavelPadrao = aluno.responsavel && ativos(config?.responsaveis).some((r) => r.id === aluno.responsavel?.id) ? aluno.responsavel : null;
-  const [nome, setNome] = useState(aula?.nome ?? `Aula ${aluno.aulas.length + 1}`);
-  const [dia, setDia] = useState(aula ? (aula.data ?? "") : hojeEmBrasilia());
-  const [mentorId, setMentorId] = useState(aula ? (aula.mentor?.id ?? "") : (responsavelPadrao?.id ?? ""));
-  const [status, setStatus] = useState<StatusAula>(aula?.status ?? "agendada");
+  const [valores, setValores] = useState(() => valoresIniciaisDaAula(aula, { mentorId: mentorPadrao(aluno, config) }));
   const [erro, setErro] = useState<string | null>(null);
   const mentores = opcoesDeMentor(config, aula?.mentor ?? null);
 
   function aplicar() {
-    if (!nome.trim()) return setErro("Informe o nome da aula (ex.: Aula 1).");
-    const todos: CamposAula = { nome: nome.trim(), data: dia || null, mentor_id: mentorId || null, status };
-    const mentor = mentores.find((r) => r.id === mentorId) ?? null;
-    const tela: AulaNaTela = { mentor };
+    const r = camposDosValores(valores);
+    if ("erro" in r) return setErro(r.erro);
+    const todos = r.campos;
+    const tela: AulaNaTela = { mentor: mentores.find((m) => m.id === valores.mentorId) ?? null };
     if (criando || nova(aula)) {
       const temp = criando ? tempNovo() : aula.id.slice(ID_NOVO.length);
       f.registrar(aulaNova(temp, todos, tela, f.entrada?.alteracoes[`aula:${ID_NOVO}${temp}`]));
     } else {
-      const atual: Record<string, unknown> = { nome: aula.nome, data: aula.data, mentor_id: aula.mentor?.id ?? null, status: aula.status };
+      const atual: Record<string, unknown> = {
+        data: aula.data,
+        hora: aula.hora?.slice(0, 5) ?? null,
+        mentor_id: aula.mentor?.id ?? null,
+        status: aula.status,
+        observacao: aula.observacao,
+      };
       const campos = Object.fromEntries(Object.entries(todos).filter(([k, v]) => (atual[k] ?? null) !== v)) as CamposAula;
       if (Object.keys(campos).length) f.registrar(alteracaoDaAula(aula, campos, "mentor_id" in campos ? tela : {}, f.entrada?.alteracoes[chave(aula)]));
     }
@@ -267,7 +356,7 @@ function FormAula({ aluno, config, aula, onFechar }: { aluno: AlunoDetalhe; conf
   return (
     <Dialogo
       aberto
-      titulo={criando ? "Nova aula" : `Editar aula · ${aula.nome}`}
+      titulo={criando ? "Nova aula" : `Editar aula · ${rotuloDaAula(aula)}`}
       subtitulo={`${aluno.nome} · vai no “Salvar ficha”`}
       onFechar={onFechar}
       onEnviar={aplicar}
@@ -280,33 +369,7 @@ function FormAula({ aluno, config, aula, onFechar }: { aluno: AlunoDetalhe; conf
         </>
       }
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Campo id={`${id}-nome`} rotulo="Aula" obrigatorio>
-          <input id={`${id}-nome`} value={nome} onChange={(e) => setNome(e.target.value)} className={CAMPO} />
-        </Campo>
-        <Campo id={`${id}-data`} rotulo="Data">
-          <input id={`${id}-data`} type="date" value={dia} onChange={(e) => setDia(e.target.value)} className={CAMPO} />
-        </Campo>
-        <Campo id={`${id}-mentor`} rotulo="Mentor">
-          <select id={`${id}-mentor`} value={mentorId} onChange={(e) => setMentorId(e.target.value)} className={CAMPO}>
-            <option value="">Sem mentor</option>
-            {mentores.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.nome} · {ROTULO_TIPO_RESPONSAVEL[r.tipo]}
-              </option>
-            ))}
-          </select>
-        </Campo>
-        <Campo id={`${id}-status`} rotulo="Status">
-          <select id={`${id}-status`} value={status} onChange={(e) => setStatus(e.target.value as StatusAula)} className={CAMPO}>
-            {STATUS_AULA.map((s) => (
-              <option key={s} value={s}>
-                {ROTULO_STATUS_AULA[s]}
-              </option>
-            ))}
-          </select>
-        </Campo>
-      </div>
+      <CamposDaAula valores={valores} onMudar={setValores} mentores={mentores} />
       <ErroDoEnvio texto={erro} />
     </Dialogo>
   );

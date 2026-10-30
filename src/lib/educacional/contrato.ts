@@ -281,14 +281,17 @@ export const IntervencaoSchema = z.object({
 });
 export type Intervencao = z.infer<typeof IntervencaoSchema>;
 
-// Entrega 2 (M1): aula do aluno. Nomes provisórios (modo demonstração) até o
-// plano do backend. `mentor` vem resolvido, como o responsável.
+// Entrega 2 (M1): aula do aluno, no contrato do plano do backend (30/10).
+// `numero` é calculado pelo backend, pela data (a aula nova, ainda não salva,
+// não tem). `hora` é opcional ("HH:MM"). `mentor` vem resolvido.
 export const AulaSchema = z.object({
   id: z.string(),
-  nome: z.string(),
+  numero: z.number().int().nullable().default(null),
   data: z.string().nullable(),
+  hora: z.string().nullable().default(null),
   mentor: ResponsavelDoAluno.nullable(),
   status: StatusAulaSchema,
+  observacao: z.string().nullable().default(null),
 });
 export type Aula = z.infer<typeof AulaSchema>;
 
@@ -474,16 +477,18 @@ export type ItemHistorico = z.infer<typeof ItemHistoricoSchema>;
 
 // ---------- mural do aluno (Entrega 2, M2) ----------
 // Uma rota só com comentários e histórico juntos, mais recente primeiro, por
-// cursor (`antes`). Nomes provisórios (modo demonstração) até o plano do backend.
-//   GET  /alunos/:id/mural?antes=&limite=&tipo=   → { itens, proximo }
+// cursor. Rotas do plano do backend (30/10); o formato do histórico agrupado
+// por "Salvar" ainda será confirmado.
+//   GET  /alunos/:id/mural?cursor=&por_pagina=&tipo= → { itens, proximo_cursor }
 //   POST /mural/imagens (multipart, uma imagem)   → ImagemMural
 //   POST /alunos/:id/comentarios { texto, imagens: [id] } → comentário
 //   PATCH /comentarios/:id { texto?, imagens? }   → comentário (só o autor)
 //   POST /comentarios/:id/arquivar                → comentário arquivado (só o autor)
-// `pode_editar` vem da API (o autor é ela quem confere).
+// `pode_editar` vem da API (o autor é ela quem confere). O link da imagem vale
+// 5 minutos: vencido, a tela pede o mural de novo.
 export const TIPOS_IMAGEM_MURAL = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
 export const LIMITE_IMAGEM_MURAL = 4 * 1024 * 1024;
-export const MAX_IMAGENS_COMENTARIO = 10;
+export const MAX_IMAGENS_COMENTARIO = 5;
 export const LIMITE_TEXTO_COMENTARIO = 5000;
 
 export const ImagemMuralSchema = z.object({ id: z.string(), url: z.string(), nome: z.string().default("imagem") });
@@ -586,10 +591,11 @@ export type CamposCheckpoint = Partial<{
 }>;
 
 export type CamposAula = Partial<{
-  nome: string;
-  data: string | null;
+  data: string;
+  hora: string | null;
   mentor_id: string | null;
   status: StatusAula;
+  observacao: string | null;
 }>;
 
 export type CamposIntervencao = Partial<{

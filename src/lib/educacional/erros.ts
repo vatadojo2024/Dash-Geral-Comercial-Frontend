@@ -69,6 +69,7 @@ const ROTULOS: Record<string, Rotulo> = {
   total_aulas: m("Total de aulas"),
   aulas: { nome: "Aulas", g: "fp" },
   data: f("Data"),
+  hora: f("Hora"),
   mentor: m("Mentor"),
   mentor_id: m("Mentor"),
   // Entrega 2 (M2): mural.

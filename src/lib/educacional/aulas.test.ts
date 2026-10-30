@@ -7,6 +7,7 @@ import {
   buscarAlunos,
   buscarConfig,
   criarAluno,
+  criarAula,
   criarItemConfig,
   definirUsuarioDaSessao,
   salvarLote,
@@ -14,9 +15,10 @@ import {
 } from "./apiEducacional";
 import { AlunoDetalheSchema, validarAlunoDetalhe, type AlunoDetalhe } from "./contrato";
 import { _zerarMemoria } from "./mock/banco";
+import { ROTULO_STATUS_AULA } from "./rotulos";
 import { hojeBR } from "./mock/motor";
 
-// Entrega 2, M1: aulas do aluno no modo demonstração (nomes provisórios até o
+// Entrega 2, M1: aulas do aluno no modo demonstração, no contrato do plano do
 // plano do backend). Gravam pelo lote, como checkpoints e intervenções.
 
 const HOJE = hojeBR();
@@ -51,7 +53,10 @@ describe("aulas — leitura", () => {
     const feitas = a.aulas.filter((x) => x.status === "feito").length;
     expect(a.aulas_aplicadas).toBe(feitas);
     expect(a.saldo_aulas).toBe((a.total_aulas ?? 0) - feitas);
-    expect(a.aulas.every((x) => x.nome.startsWith("Aula ") && x.mentor?.nome)).toBe(true);
+    // Número pela ordem de data e hora (o backend calcula; o mock imita).
+    expect(a.aulas.map((x) => x.numero)).toEqual(a.aulas.map((_, i) => i + 1));
+    expect(a.aulas.every((x) => x.mentor?.nome)).toBe(true);
+    expect(a.aulas.some((x) => x.hora) && a.aulas.some((x) => !x.hora)).toBe(true);
     const datas = a.aulas.map((x) => x.data ?? "");
     expect(datas).toEqual([...datas].sort());
   });
@@ -61,7 +66,7 @@ describe("aulas — leitura", () => {
     const { aulas: _a, total_aulas: _t, aulas_aplicadas: _p, saldo_aulas: _s, ...antigo } = a;
     const lido = AlunoDetalheSchema.parse(antigo);
     expect([lido.aulas, lido.total_aulas, lido.aulas_aplicadas, lido.saldo_aulas]).toEqual([[], null, null, null]);
-    const comRuim = validarAlunoDetalhe({ ...a, aulas: [...a.aulas, { id: "x", nome: "Aula X", data: null, mentor: null, status: "talvez" }] });
+    const comRuim = validarAlunoDetalhe({ ...a, aulas: [...a.aulas, { id: "x", numero: 99, data: null, mentor: null, status: "talvez" }] });
     expect(comRuim?.aulas).toHaveLength(a.aulas.length);
   });
 });
@@ -75,12 +80,12 @@ describe("aulas — gravação pela ficha (lote)", () => {
     const outra = a.aulas.find((x) => x.id !== agendada.id && x.status === "feito")!;
     const { pedido, resposta } = await salvar(
       a,
-      aulaNova("t1", { nome: "Aula extra", data: HOJE, mentor_id: mentor.id, status: "feito" }, { mentor }),
+      aulaNova("t1", { data: HOJE, hora: "23:59", mentor_id: mentor.id, status: "feito", observacao: "Aula extra" }, { mentor }),
       alteracaoDaAula(agendada, { status: "feito" }),
       aulaArquivada(outra),
     );
     expect(pedido.alunos[0].aulas).toEqual([
-      { novo: true, nome: "Aula extra", data: HOJE, mentor_id: mentor.id, status: "feito" },
+      { novo: true, data: HOJE, hora: "23:59", mentor_id: mentor.id, status: "feito", observacao: "Aula extra" },
       { id: agendada.id, status: "feito" },
       { id: outra.id, arquivar: true },
     ]);
@@ -89,7 +94,9 @@ describe("aulas — gravação pela ficha (lote)", () => {
     if (!r.ok) return;
     const depois = r.aluno;
     expect(depois.aulas.some((x) => x.id === outra.id)).toBe(false);
-    expect(depois.aulas.find((x) => x.nome === "Aula extra")?.mentor?.nome).toBe(mentor.nome);
+    const extra = depois.aulas.find((x) => x.observacao === "Aula extra");
+    expect([extra?.mentor?.nome, extra?.hora]).toEqual([mentor.nome, "23:59"]);
+    expect(depois.aulas.map((x) => x.numero)).toEqual(depois.aulas.map((_, i) => i + 1));
     // +1 nova feita, +1 que virou feita, −1 feita arquivada.
     expect(depois.aulas_aplicadas).toBe((a.aulas_aplicadas ?? 0) + 1);
     expect(depois.saldo_aulas).toBe((a.saldo_aulas ?? 0) - 1);
@@ -122,11 +129,11 @@ describe("aulas — gravação pela ficha (lote)", () => {
     const [x, y] = a.aulas;
     let p = registrar(SEM_PENDENCIAS, a, alteracaoDaAula(x, { status: "no_show" }));
     p = registrar(p, a, aulaArquivada(y));
-    p = registrar(p, a, aulaNova("t2", { nome: "Aula nova", status: "agendada" }, {}));
+    p = registrar(p, a, aulaNova("t2", { data: HOJE, status: "agendada" }, {}));
     const tela = comPendencias(a, p[a.id]);
     expect(tela.aulas.find((z) => z.id === x.id)?.status).toBe("no_show");
     expect(tela.aulas.some((z) => z.id === y.id)).toBe(false);
-    expect(tela.aulas.at(-1)).toMatchObject({ id: "novo:t2", nome: "Aula nova", status: "agendada" });
+    expect(tela.aulas.at(-1)).toMatchObject({ id: "novo:t2", numero: null, data: HOJE, status: "agendada" });
     // Voltar ao valor do servidor desfaz a alteração.
     expect(registrar(p, a, alteracaoDaAula(x, { status: x.status }))[a.id].alteracoes[`aula:${x.id}`]).toBeUndefined();
   });
@@ -167,5 +174,32 @@ describe("lista de mentores da aula", () => {
     const config = { ...c, responsaveis: [r("sup", "suporte"), r("m1", "mentor"), r("com", "comercial"), r("m2", "mentor"), r("velho", "mentor", false)] };
     expect(opcoesDeMentor(config, null).map((x) => x.id)).toEqual(["m1", "m2", "sup", "com"]);
     expect(opcoesDeMentor(config, { id: "velho", nome: "velho", tipo: "mentor" }).map((x) => x.id)).toEqual(["m1", "m2", "velho", "sup", "com"]);
+  });
+});
+
+describe("aula — contrato do backend (30/10)", () => {
+  it("data obrigatória e hora no formato HH:MM, com mensagem em português", async () => {
+    const a = await comAulas();
+    const semData = (await salvar(a, aulaNova("t3", { status: "agendada" }, {}))).apuracao.pendencias[a.id];
+    expect(semData.erro).toMatchObject({ campo: "data", mensagem: "Data é obrigatória. Informe a data." });
+    const horaRuim = (await salvar(a, aulaNova("t4", { data: HOJE, hora: "25:00" }, {}))).apuracao.pendencias[a.id];
+    expect(horaRuim.erro).toMatchObject({ campo: "hora", mensagem: "Use a hora no formato HH:MM (ex.: 19:30) ou deixe em branco." });
+  });
+
+  it("rota imediata (Calendário): cria a aula na hora, com a versão do aluno", async () => {
+    const a = await comAulas();
+    const depois = await criarAula(a.id, a.versao, { data: HOJE, hora: "08:00", status: "agendada" });
+    expect(depois.versao).toBe(a.versao + 1);
+    expect(depois.aulas.some((x) => x.data === HOJE && x.hora === "08:00")).toBe(true);
+    const e = await criarAula(a.id, a.versao, { data: HOJE }).catch((x: unknown) => x);
+    expect((e as { status?: number }).status).toBe(409);
+  });
+
+  it("texto da alteração pendente: número, data e hora, status", async () => {
+    const a = await comAulas();
+    const x = a.aulas.find((y) => y.hora)!;
+    const alt = alteracaoDaAula(x, { status: "cancelada" });
+    expect(alt.antes).toBe(`Aula ${x.numero} · ${x.data!.split("-").reverse().join("/")} · ${x.hora} · ${ROTULO_STATUS_AULA[x.status]}`);
+    expect(alt.depois.endsWith("Cancelada")).toBe(true);
   });
 });

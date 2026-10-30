@@ -35,7 +35,7 @@ import {
 } from "../contrato";
 import { marcoDe } from "../contrato";
 import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
-import { dataPrevistaDoModelo, montarAluno, montarComentario, naJornada, somarMeses } from "./motor";
+import { dataPrevistaDoModelo, montarAluno, montarComentario, naJornada, numeroDaAula, somarMeses } from "./motor";
 import {
   ErroDaApi,
   type AlunoBanco,
@@ -567,21 +567,33 @@ function mentorAtivo(banco: Banco, id: unknown): string | null {
   return r.id;
 }
 
+const RE_HORA = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+function hora(v: unknown): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v !== "string" || !RE_HORA.test(v)) erro400("hora", "Use a hora no formato HH:MM (ex.: 19:30) ou deixe em branco.");
+  return v.slice(0, 5);
+}
+
+// Criar: pela ficha (lote) ou na hora (POST /alunos/:id/aulas, do Calendário).
 export function criarAula(banco: Banco, alunoId: string, campos: CamposAula, versao: number, ctx: Contexto) {
   const a = alunoOu404(banco, alunoId);
   conferirVersao(banco, a, versao, ctx);
+  for (const chave of Object.keys(campos)) {
+    if (!["data", "hora", "mentor_id", "status", "observacao"].includes(chave)) erro400(chave, "Campo desconhecido.");
+  }
   const x: AulaBanco = {
     id: novoId("aula"),
     aluno_id: a.id,
-    nome: texto("nome", campos.nome, true) as string,
-    data: data("data", campos.data, false),
+    data: data("data", campos.data, true) as string,
+    hora: hora(campos.hora),
     mentor_id: mentorAtivo(banco, campos.mentor_id),
     status: campos.status ? umDe("status", STATUS_AULA, campos.status) : "agendada",
+    observacao: texto("observacao", campos.observacao, false),
     criada_em: ctx.agora,
     arquivado_em: null,
   };
   (banco.aulas ??= []).push(x);
-  registrar(banco, ctx, a, "aula", x.id, `${x.nome} · criada`, null, x.nome);
+  registrar(banco, ctx, a, "aula", x.id, "criada", null, { data: x.data, hora: x.hora });
   return fim(banco, a, ctx);
 }
 
@@ -591,13 +603,14 @@ export function patchAula(banco: Banco, id: string, campos: CamposAula, versao: 
   conferirVersao(banco, a, versao, ctx);
   const novos: Partial<AulaBanco> = {};
   for (const chave of Object.keys(campos)) {
-    if (chave === "nome") novos.nome = texto("nome", campos.nome, true) as string;
-    else if (chave === "data") novos.data = data("data", campos.data, false);
+    if (chave === "data") novos.data = data("data", campos.data, true) as string;
+    else if (chave === "hora") novos.hora = hora(campos.hora);
     else if (chave === "mentor_id") novos.mentor_id = mentorAtivo(banco, campos.mentor_id);
     else if (chave === "status") novos.status = umDe("status", STATUS_AULA, campos.status);
+    else if (chave === "observacao") novos.observacao = texto("observacao", campos.observacao, false);
     else erro400(chave, "Campo desconhecido.");
   }
-  const rotulo = novos.nome ?? x.nome;
+  const rotulo = `Aula ${numeroDaAula(banco, x)}`;
   const nomeMentor = (rid: unknown) => banco.config.responsaveis.find((r) => r.id === rid)?.nome ?? null;
   for (const [chave, depois] of Object.entries(novos)) {
     const antes = (x as Record<string, unknown>)[chave];
@@ -613,8 +626,8 @@ export function arquivarAula(banco: Banco, id: string, versao: number, ctx: Cont
   const x = aulaOu404(banco, id);
   const a = alunoOu404(banco, x.aluno_id);
   conferirVersao(banco, a, versao, ctx);
+  registrar(banco, ctx, a, "aula", x.id, `Aula ${numeroDaAula(banco, x)} · arquivada`, false, true);
   x.arquivado_em = ctx.agora;
-  registrar(banco, ctx, a, "aula", x.id, `${x.nome} · arquivada`, false, true);
   return fim(banco, a, ctx);
 }
 
