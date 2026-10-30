@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
-import { programasPorMentoria, sugerirTermino } from "./programas";
+import { CAMPOS_CONTATO, erroDoContato, ROTULO_CONTATO, type CampoContato } from "./contato";
+import { programasPorMentoria, semAcompanhamentoIndividual, sugerirTermino } from "./programas";
 import { useAcaoComAviso } from "./useGravacao";
 
 // ---------------------------------------------------------------------------
@@ -35,7 +36,14 @@ import { useAcaoComAviso } from "./useGravacao";
 // duração), que continua editável. Só programas ativos (inativo dá 400).
 // ---------------------------------------------------------------------------
 
-type Erros = Partial<Record<"nome" | "programa_id" | "data_entrada" | "nivel_inicial" | "etapa_id" | "envio", string>>;
+type Erros = Partial<Record<"nome" | "programa_id" | "data_entrada" | "nivel_inicial" | "etapa_id" | CampoContato | "envio", string>>;
+type Contato = Record<CampoContato, string>;
+const CONTATO_VAZIO: Contato = { email: "", telefone: "", discord: "" };
+const TIPO_DO_CONTATO: Record<CampoContato, { type: string; autoComplete: string; placeholder: string }> = {
+  email: { type: "email", autoComplete: "off", placeholder: "nome@dominio.com" },
+  telefone: { type: "tel", autoComplete: "off", placeholder: "(11) 91234-5678" },
+  discord: { type: "text", autoComplete: "off", placeholder: "usuário no Discord" },
+};
 
 export function NovoAluno({
   aberto,
@@ -66,7 +74,8 @@ export function NovoAluno({
   const [objetivo, setObjetivo] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [status, setStatus] = useState<StatusAluno>("ativo");
-  const [autorizacao, setAutorizacao] = useState<AutorizacaoProvaSocial>("pendente");
+  const [autorizacao, setAutorizacao] = useState<AutorizacaoProvaSocial>("nao_solicitado");
+  const [contato, setContato] = useState<Contato>(CONTATO_VAZIO);
   const [observacoes, setObservacoes] = useState("");
   const [erros, setErros] = useState<Erros>({});
   const [enviando, setEnviando] = useState(false);
@@ -83,7 +92,8 @@ export function NovoAluno({
     setObjetivo("");
     setResponsavel("");
     setStatus("ativo");
-    setAutorizacao("pendente");
+    setAutorizacao("nao_solicitado");
+    setContato(CONTATO_VAZIO);
     setObservacoes("");
     setErros({});
   }, [aberto]);
@@ -105,6 +115,10 @@ export function NovoAluno({
     if (!entrada) novos.data_entrada = "Informe a data de entrada.";
     if (!nivel) novos.nivel_inicial = "Escolha o nível inicial.";
     if (!etapaEscolhida) novos.etapa_id = "Escolha a etapa.";
+    for (const c of CAMPOS_CONTATO) {
+      const e = erroDoContato(c, contato[c]);
+      if (e) novos[c] = e;
+    }
     setErros(novos);
     if (Object.keys(novos).length > 0 || !nivel) return;
     setEnviando(true);
@@ -116,6 +130,9 @@ export function NovoAluno({
           data_entrada: entrada,
           nivel_inicial: nivel,
           etapa_id: etapaEscolhida,
+          email: contato.email.trim(),
+          telefone: contato.telefone.trim(),
+          discord: contato.discord.trim(),
           data_termino: termino || null,
           objetivo: objetivo.trim() || null,
           responsavel_id: responsavel || null,
@@ -169,7 +186,9 @@ export function NovoAluno({
           erro={erros.programa_id}
           dica={
             programa
-              ? `Mentoria ${programa.mentoria} · ${programa.duracao_meses} meses`
+              ? `Mentoria ${programa.mentoria} · ${programa.duracao_meses} meses${
+                  semAcompanhamentoIndividual(programa) ? " · sem acompanhamento individual (sem checkpoints)" : ""
+                }`
               : semProgramas
                 ? "Nenhum programa ativo. Cadastre um em Configurações → Programas."
                 : undefined
@@ -263,6 +282,20 @@ export function NovoAluno({
             ))}
           </select>
         </Campo>
+        {CAMPOS_CONTATO.map((c) => (
+          <Campo key={c} id={`${id}-${c}`} rotulo={ROTULO_CONTATO[c]} obrigatorio erro={erros[c]}>
+            <input
+              id={`${id}-${c}`}
+              {...TIPO_DO_CONTATO[c]}
+              value={contato[c]}
+              onChange={(e) => {
+                const v = e.target.value;
+                setContato((atual) => ({ ...atual, [c]: v }));
+              }}
+              className={CAMPO}
+            />
+          </Campo>
+        ))}
         <Campo id={`${id}-autorizacao`} rotulo="Autorização de prova social">
           <select
             id={`${id}-autorizacao`}
@@ -289,4 +322,13 @@ export function NovoAluno({
   );
 }
 
-const rotulosDosCampos = { nome: 1, programa_id: 1, data_entrada: 1, nivel_inicial: 1, etapa_id: 1 } as const;
+const rotulosDosCampos = {
+  nome: 1,
+  programa_id: 1,
+  data_entrada: 1,
+  nivel_inicial: 1,
+  etapa_id: 1,
+  email: 1,
+  telefone: 1,
+  discord: 1,
+} as const;

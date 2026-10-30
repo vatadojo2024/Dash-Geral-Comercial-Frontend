@@ -112,7 +112,16 @@ function checkpointsDoAluno(banco: Banco, alunoId: string): Checkpoint[] {
 // Como o backend: o programa vem aninhado na linha e no detalhe.
 function programaAninhado(banco: Banco, id: string | null | undefined) {
   const p = id ? (banco.config.programas ?? []).find((x) => x.id === id) : null;
-  return p ? { id: p.id, nome: p.nome, mentoria: p.mentoria, duracao_meses: p.duracao_meses, observacoes: p.observacoes ?? null } : null;
+  return p
+    ? {
+        id: p.id,
+        nome: p.nome,
+        mentoria: p.mentoria,
+        duracao_meses: p.duracao_meses,
+        observacoes: p.observacoes ?? null,
+        acompanhamento_individual: p.acompanhamento_individual ?? true,
+      }
+    : null;
 }
 
 function responsavelDe(banco: Banco, id: string | null) {
@@ -229,6 +238,11 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
     arquivado: Boolean(a.arquivado_em),
     programa_id: a.programa_id ?? null,
     programa: programaAninhado(banco, a.programa_id),
+    // Contato (regra do backend, imitada aqui): incompleto se faltar qualquer um.
+    email: a.email ?? null,
+    telefone: a.telefone ?? null,
+    discord: a.discord ?? null,
+    contato_incompleto: !a.email || !a.telefone || !a.discord,
     data_inicio_programa: a.data_inicio_programa ?? null,
     data_entrada: a.data_entrada,
     data_termino: a.data_termino,

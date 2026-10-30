@@ -32,7 +32,8 @@ export const STATUS_FINANCEIRO = ["adimplente", "inadimplente"] as const;
 export const StatusFinanceiroSchema = z.enum(STATUS_FINANCEIRO);
 export type StatusFinanceiro = z.infer<typeof StatusFinanceiroSchema>;
 
-export const AUTORIZACOES_PROVA_SOCIAL = ["sim", "nao", "pendente"] as const;
+// Entrega 1: "nao_solicitado" é o padrão do cadastro novo.
+export const AUTORIZACOES_PROVA_SOCIAL = ["nao_solicitado", "pendente", "sim", "nao"] as const;
 export const AutorizacaoProvaSocialSchema = z.enum(AUTORIZACOES_PROVA_SOCIAL);
 export type AutorizacaoProvaSocial = z.infer<typeof AutorizacaoProvaSocialSchema>;
 
@@ -72,7 +73,9 @@ export type Etapa = z.infer<typeof EtapaSchema>;
 // ---------- programas e roteiros (specs/educacional/programas) ----------
 // Contrato alinhado com o backend em 28/10. Programa = mentoria + duração, com a
 // sua lista de checkpoints padrão. Rotas em /config/programas, como as outras.
-export const MENTORIAS = ["Blackbelt", "Prime", "Private"] as const;
+// Ninja (Entrega 1): sempre por último nas listas e no filtro.
+export const MENTORIAS = ["Blackbelt", "Prime", "Private", "Ninja"] as const;
+export const MENTORIA_POR_ULTIMO = "Ninja";
 export const ProgramaSchema = z.object({
   id: z.string(),
   nome: z.string(), // "Blackbelt 6 meses"
@@ -81,6 +84,8 @@ export const ProgramaSchema = z.object({
   observacoes: z.string().nullable().default(null),
   ordem: z.number().int().default(0),
   ativo: z.boolean(),
+  // false (Ninja): o aluno não tem checkpoints.
+  acompanhamento_individual: z.boolean().default(true),
 });
 export type Programa = z.infer<typeof ProgramaSchema>;
 
@@ -92,6 +97,7 @@ export const ProgramaDoAlunoSchema = z.object({
   mentoria: z.string().optional(),
   duracao_meses: z.number().int().nullable().optional(),
   observacoes: z.string().nullable().optional(),
+  acompanhamento_individual: z.boolean().optional(),
 });
 export type ProgramaDoAluno = z.infer<typeof ProgramaDoAlunoSchema>;
 
@@ -218,6 +224,12 @@ export const AlunoLinhaSchema = z.object({
   // `programaDoAluno`, que completa pela config o que faltar).
   programa_id: z.string().nullable().default(null),
   programa: ProgramaDoAlunoSchema.nullable().default(null),
+  // Contato (Entrega 1): obrigatório no cadastro; `contato_incompleto` vem do
+  // backend e mostra o aviso, sem bloquear as outras edições.
+  email: z.string().nullable().default(null),
+  telefone: z.string().nullable().default(null),
+  discord: z.string().nullable().default(null),
+  contato_incompleto: z.boolean().default(false),
 });
 export type AlunoLinha = z.infer<typeof AlunoLinhaSchema>;
 
@@ -466,6 +478,9 @@ export type CamposDiretosAluno = Partial<{
   motivo_risco: string | null;
   autorizacao_prova_social: AutorizacaoProvaSocial;
   observacoes: string | null;
+  email: string | null;
+  telefone: string | null;
+  discord: string | null;
 }>;
 
 export type NovoAluno = {
@@ -475,6 +490,10 @@ export type NovoAluno = {
   data_entrada: string;
   nivel_inicial: NivelInicial;
   etapa_id: string;
+  // Contato: obrigatório no cadastro (Entrega 1).
+  email: string;
+  telefone: string;
+  discord: string;
   data_termino?: string | null;
   objetivo?: string | null;
   responsavel_id?: string | null;

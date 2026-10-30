@@ -35,6 +35,8 @@ import { hojeBR } from "./mock/motor";
 // banco do navegador. Cada teste começa da semente.
 
 const HOJE = hojeBR();
+// Contato: obrigatório no cadastro (Entrega 1).
+const CONTATO = { email: "teste@exemplo.com", telefone: "(11) 91234-5678", discord: "teste" };
 
 async function primeiro(filtro = {}) {
   const { itens } = await buscarAlunos(filtro);
@@ -235,7 +237,7 @@ describe("escrita em aluno — seção 5 do backend", () => {
   it("aluno novo recebe os checkpoints do programa: Dia N = +N dias, Mês N no calendário (fim do mês)", async () => {
     const c = await buscarConfig();
     const prime6 = c.programas.find((p) => p.nome === "Prime 6 meses")!;
-    const novo = await criarAluno({
+    const novo = await criarAluno({ ...CONTATO,
       nome: "Paula Teste",
       programa_id: prime6.id,
       data_entrada: "2026-01-31",
@@ -244,7 +246,7 @@ describe("escrita em aluno — seção 5 do backend", () => {
     });
     expect(novo.versao).toBe(1);
     expect(novo.status_aluno).toBe("ativo");
-    expect(novo.autorizacao_prova_social).toBe("pendente");
+    expect(novo.autorizacao_prova_social).toBe("nao_solicitado"); // padrão do cadastro (Entrega 1)
     expect(novo.mentoria).toBe("Prime");
     expect(novo.programa_id).toBe(prime6.id);
     expect(novo.data_inicio_programa).toBe("2026-01-31");
@@ -267,9 +269,9 @@ describe("escrita em aluno — seção 5 do backend", () => {
     const linha = (await buscarAlunos({ por_pagina: "todos" })).itens.find((x) => x.id === novo.id)!;
     expect(linha.programa?.nome).toBe("Prime 6 meses");
     const base = { data_entrada: "2026-11-02", nivel_inicial: "iniciante" as const, etapa_id: c.etapas[0].id };
-    const sem = await erroDe(criarAluno({ nome: "Sem Programa", ...base } as never));
+    const sem = await erroDe(criarAluno({ ...CONTATO,  nome: "Sem Programa", ...base } as never));
     expect(sem.corpo.campo).toBe("programa_id");
-    const e = await erroDe(criarAluno({ nome: "", programa_id: prime6.id, ...base }));
+    const e = await erroDe(criarAluno({ ...CONTATO,  nome: "", programa_id: prime6.id, ...base }));
     expect(e.corpo.campo).toBe("nome");
   });
 
@@ -277,13 +279,13 @@ describe("escrita em aluno — seção 5 do backend", () => {
     const c = await buscarConfig();
     const prime6 = c.programas.find((p) => p.nome === "Prime 6 meses")!;
     const base = { nome: "Rui", data_entrada: "2026-11-02", nivel_inicial: "iniciante" as const, etapa_id: c.etapas[0].id };
-    expect((await erroDe(criarAluno({ ...base, programa_id: prime6.id, mentoria: "Prime" } as never))).corpo.campo).toBe("mentoria");
+    expect((await erroDe(criarAluno({ ...CONTATO,  ...base, programa_id: prime6.id, mentoria: "Prime" } as never))).corpo.campo).toBe("mentoria");
     const a = await primeiro();
     expect((await erroDe(atualizarAluno(a.id, a.versao, { mentoria: "Prime" } as never))).status).toBe(400);
     let cfg = await criarItemConfig("programas", { nome: "Prime 1 mês", mentoria: "Prime", duracao_meses: 1 });
     const curto = cfg.programas.find((p) => p.nome === "Prime 1 mês")!;
     cfg = await atualizarItemConfig("programas", curto.id, { ativo: false });
-    const inativo = await erroDe(criarAluno({ ...base, programa_id: curto.id }));
+    const inativo = await erroDe(criarAluno({ ...CONTATO,  ...base, programa_id: curto.id }));
     expect([inativo.status, inativo.corpo.campo, inativo.corpo.mensagem]).toEqual([
       400,
       "programa_id",
@@ -401,10 +403,10 @@ describe("configuração", () => {
     await criarItemConfig("checkpoints-modelo", { programa_id: prog.id, nome: "Extra", dias_apos_entrada: null, meses_apos_inicio: 7 });
     expect((await buscarAluno(antigo.id)).checkpoints.some((x) => x.nome === "Extra")).toBe(false);
     const c = await buscarConfig();
-    const novo = await criarAluno({ nome: "Rita Nova", programa_id: prog.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
+    const novo = await criarAluno({ ...CONTATO,  nome: "Rita Nova", programa_id: prog.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
     expect(novo.checkpoints.at(-1)).toMatchObject({ nome: "Extra", marco: "Mês 7" });
     const outro = c.programas.find((p) => p.id !== prog.id)!;
-    const deOutro = await criarAluno({ nome: "Outro Programa", programa_id: outro.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
+    const deOutro = await criarAluno({ ...CONTATO,  nome: "Outro Programa", programa_id: outro.id, data_entrada: HOJE, nivel_inicial: "avancado", etapa_id: c.etapas[0].id });
     expect(deOutro.checkpoints.some((x) => x.nome === "Extra")).toBe(false);
     // As duas ou nenhuma → 400 (como o backend).
     const duas = { programa_id: prog.id, nome: "X", dias_apos_entrada: 3, meses_apos_inicio: 1 };

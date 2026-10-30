@@ -91,6 +91,7 @@ export const ROTULO_STATUS_ALUNO: Record<StatusAluno, string> = {
 };
 
 export const ROTULO_AUTORIZACAO: Record<AutorizacaoProvaSocial, string> = {
+  nao_solicitado: "Não solicitado",
   sim: "Autorizada",
   nao: "Não autorizada",
   pendente: "Pendente",

@@ -61,6 +61,10 @@ const ROTULOS: Record<string, Rotulo> = {
   arquivo: m("Arquivo"),
   transcricao: f("Transcrição"),
   cor: f("Cor"),
+  email: m("E-mail"),
+  telefone: m("Número"),
+  discord: m("Discord"),
+  acompanhamento_individual: m("Acompanhamento individual"),
 };
 
 // Caminho da API ("alunos.0.checkpoints.<id>.data_prevista") → o campo mais

@@ -41,6 +41,10 @@ export type AlunoBanco = {
   // Programas: null = aluno antigo, sem programa.
   programa_id: string | null;
   data_inicio_programa: string | null;
+  // Contato (Entrega 1): null nos alunos antigos.
+  email: string | null;
+  telefone: string | null;
+  discord: string | null;
 };
 
 export type CheckpointBanco = {

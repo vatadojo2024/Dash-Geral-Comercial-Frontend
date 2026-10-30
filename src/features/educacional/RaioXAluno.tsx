@@ -48,6 +48,7 @@ import { Bloco, CampoCalculadoView, ConfirmarAcao } from "./Blocos";
 import { Timeline } from "./Checkpoints";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { hrefDeVolta, lerSimular, ROTA_ALUNOS } from "./estado";
+import { CAMPOS_CONTATO, ROTULO_CONTATO, type CampoContato } from "./contato";
 import { CampoLista, CampoTexto, Marcado, ProvedorFicha, useFicha, type Ficha } from "./Ficha";
 import { HistoricoDoAluno } from "./Historico";
 import {
@@ -67,7 +68,7 @@ import { comPendencias, contar } from "./lote/pendencias";
 import { useAcoesDoLote, usePendencias } from "./lote/ProvedorLote";
 import { NovaIntervencao } from "./NovaIntervencao";
 import { EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
-import { programaDoAluno, temProgramas } from "./programas";
+import { programaDoAluno, semAcompanhamentoIndividual, temProgramas } from "./programas";
 import { TrocarPrograma } from "./TrocarPrograma";
 import { useGravacao } from "./useGravacao";
 
@@ -259,7 +260,7 @@ export function RaioXAluno({ id }: { id: string }) {
                   <Contrato a={a} />
                   <Sinais a={a} />
                 </div>
-                <Timeline a={a} />
+                <Timeline a={a} individual={!semAcompanhamentoIndividual(programaDoAluno(a, config.data))} />
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Progresso a={a} />
                   <Diagnostico a={a} config={config.data} />
@@ -373,6 +374,8 @@ function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 // Blocos (leitura; em edição, os campos da ficha)
 // ---------------------------------------------------------------------------
 
+const TIPO_DO_CONTATO: Record<CampoContato, "email" | "tel" | "text"> = { email: "email", telefone: "tel", discord: "text" };
+
 function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; acoes: ReactNode }) {
   const f = useFicha();
   const programa = programaDoAluno(a, config);
@@ -386,6 +389,11 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">{a.nome}</h1>
             <span className="tag">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>
+            {a.contato_incompleto && (
+              <span className="tag tag-warning" title="Falta e-mail, número ou Discord. Complete pela ficha.">
+                Contato incompleto
+              </span>
+            )}
             <EtiquetaDemonstracao />
           </div>
           {f.editando ? (
@@ -442,6 +450,18 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
                 <span className="text-texto">{a.mentoria}</span>
                 <span className="block">Programa e mentoria mudam por “Trocar programa”.</span>
               </div>
+              {CAMPOS_CONTATO.map((c) => (
+                <CampoTexto
+                  key={c}
+                  chave={`campo:${c}`}
+                  rotulo={`${ROTULO_CONTATO[c]} *`}
+                  tipo={TIPO_DO_CONTATO[c]}
+                  obrigatorio
+                  valor={a[c]}
+                  className={c === "email" ? "sm:col-span-2" : undefined}
+                  onConfirmar={(v) => v && f.registrar(alteracaoDeCampo(a, c, v))}
+                />
+              ))}
               <CampoTexto
                 chave="campo:objetivo"
                 rotulo="Objetivo"
@@ -459,6 +479,13 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
                 <Dado rotulo="Término">{dataCurta(a.data_termino)}</Dado>
                 <Dado rotulo="Nível inicial">{ROTULO_NIVEL[a.nivel_inicial]}</Dado>
                 <Dado rotulo="Etapa">{a.etapa.nome}</Dado>
+              </dl>
+              <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+                {CAMPOS_CONTATO.map((c) => (
+                  <Dado key={c} rotulo={ROTULO_CONTATO[c]}>
+                    {a[c] ? <span className="break-all">{a[c]}</span> : <span className="text-aviso">Não informado</span>}
+                  </Dado>
+                ))}
               </dl>
               <p className="mt-3 text-sm">
                 <span className="text-texto-sec">Objetivo: </span>

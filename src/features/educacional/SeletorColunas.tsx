@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/Button";
 // ---------------------------------------------------------------------------
 // Colunas visíveis da Tabela tática (spec Fase 2, seção 4), lembradas no
 // navegador. As 8 colunas da spec vêm ligadas; Health Score, Dias sem
-// atividade, Status do aluno e Mentoria ficam disponíveis.
+// atividade, Status do aluno e Mentoria ficam disponíveis. Contato (Entrega 1):
+// E-mail, Número e Discord, opcionais e sem ordenação na API.
 // ---------------------------------------------------------------------------
 
 export const COLUNAS_DA_TABELA = [
@@ -23,8 +24,14 @@ export const COLUNAS_DA_TABELA = [
   { id: "dias_sem_atividade", rotulo: "Dias sem atividade", padrao: false },
   { id: "status_aluno", rotulo: "Status do aluno", padrao: false },
   { id: "mentoria", rotulo: "Mentoria", padrao: false },
+  { id: "email", rotulo: "E-mail", padrao: false, semOrdem: true },
+  { id: "telefone", rotulo: "Número", padrao: false, semOrdem: true },
+  { id: "discord", rotulo: "Discord", padrao: false, semOrdem: true },
 ] as const;
 export type IdColuna = (typeof COLUNAS_DA_TABELA)[number]["id"];
+// Colunas que a API ordena (as de contato não).
+export type IdColunaOrdenavel = Exclude<IdColuna, "email" | "telefone" | "discord">;
+export const ordenavel = (id: IdColuna): id is IdColunaOrdenavel => !COLUNAS_DA_TABELA.some((c) => c.id === id && "semOrdem" in c);
 
 const CHAVE = "mdc_edu_colunas";
 const PADRAO = COLUNAS_DA_TABELA.filter((c) => c.padrao).map((c) => c.id) as IdColuna[];

@@ -72,6 +72,8 @@ type Coluna = {
   opcoes?: { valor: string; rotulo: string }[];
   largura?: string;
   exibir?: (v: unknown) => ReactNode;
+  // Valor do item novo (sem ele: vazio, "Não" ou a primeira opção).
+  padrao?: unknown;
 };
 
 type Item = { id: string; nome: string; ativo: boolean; ordem?: number } & Record<string, unknown>;
@@ -137,6 +139,15 @@ const ABAS: Record<
         opcoes: MENTORIAS.map((m) => ({ valor: m, rotulo: m })),
       },
       { chave: "duracao_meses", rotulo: "Duração (meses)", tipo: "numero", largura: "w-32", exibir: (v) => `${v} meses` },
+      {
+        // Entrega 1: "Não" (Ninja) = aluno sem checkpoints.
+        chave: "acompanhamento_individual",
+        rotulo: "Acompanhamento individual",
+        tipo: "booleano",
+        largura: "w-44",
+        padrao: true,
+        exibir: (v) => (v === false ? <span className="text-texto-sec">Não (sem checkpoints)</span> : "Sim"),
+      },
       {
         chave: "observacoes",
         rotulo: "Observações",
@@ -592,7 +603,7 @@ function FormItem({
     ...def.colunas
       .filter((c) => c.tipo !== "roteiro")
       .map((c) => {
-        const v = item?.[c.chave];
+        const v = item ? item[c.chave] : c.padrao;
         if (c.tipo === "booleano") return [c.chave, v ? "true" : "false"];
         if (c.tipo === "lista") return [c.chave, String(v ?? c.opcoes?.[0]?.valor ?? "")];
         return [c.chave, v == null ? "" : String(v)];

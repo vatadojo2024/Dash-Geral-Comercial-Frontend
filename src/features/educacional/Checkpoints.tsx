@@ -26,7 +26,8 @@ import { RoteiroDoContato } from "./Roteiro";
 // vem aberto. "Editar checkpoint" fica no painel.
 // ---------------------------------------------------------------------------
 
-export function Timeline({ a }: { a: AlunoDetalhe }) {
+// `individual` false (programa Ninja): sem checkpoints, a timeline diz por quê.
+export function Timeline({ a, individual = true }: { a: AlunoDetalhe; individual?: boolean }) {
   const [editando, setEditando] = useState<Checkpoint | "novo" | null>(null);
   const [escolhido, setEscolhido] = useState<string | null>(null);
   const ordenados = [...a.checkpoints].sort((x, y) => x.ordem - y.ordem);
@@ -48,7 +49,9 @@ export function Timeline({ a }: { a: AlunoDetalhe }) {
       />
       <CardContent>
         {ordenados.length === 0 ? (
-          <p className="text-sm text-texto-sec">Nenhum checkpoint registrado.</p>
+          <p className="text-sm text-texto-sec">
+            {individual ? "Nenhum checkpoint registrado." : "Programa sem acompanhamento individual."}
+          </p>
         ) : (
           <div className="overflow-x-auto pb-2">
             <ol className="relative flex justify-between gap-1" style={{ minWidth: Math.max(320, ordenados.length * 96) }}>

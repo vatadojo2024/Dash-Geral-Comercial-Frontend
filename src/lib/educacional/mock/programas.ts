@@ -7,7 +7,7 @@ import type { Banco, CheckpointBanco } from "./tipos";
 // Vata (28/10). Os roteiros são textos curtos de exemplo; os reais vêm do backend.
 // ---------------------------------------------------------------------------
 
-type Definicao = { mentoria: string; meses: number; marcos: [string, string][]; observacao?: string };
+type Definicao = { mentoria: string; meses: number; marcos: [string, string][]; observacao?: string; individual?: false };
 
 const INDICACAO = "Em que momento solicitar indicação? Idealmente após o primeiro UAU.";
 
@@ -44,6 +44,9 @@ const DEFINICOES: Definicao[] = [
     meses: 12,
     marcos: [["Dia 0", "Welcome"], ["Dia 3", "Check-in"], ["Mês 1", "Avaliação"], ["Mês 6", "Metade"], ["Mês 9", "Big Win"], ["Mês 12", "Decisão"]],
   },
+  // Entrega 1: Ninja, sem acompanhamento individual (sem checkpoints).
+  { mentoria: "Ninja", meses: 6, marcos: [], individual: false },
+  { mentoria: "Ninja", meses: 12, marcos: [], individual: false },
 ];
 
 const slug = (t: string) =>
@@ -79,6 +82,7 @@ export function catalogoDeProgramas(): { programas: Programa[]; modelos: Checkpo
       observacoes: d.observacao ?? null,
       ordem: i + 1,
       ativo: true,
+      acompanhamento_individual: d.individual ?? true,
     });
     d.marcos.forEach(([marco, nome], k) => {
       const bigWin = nome === "Big Win";
@@ -160,4 +164,30 @@ export function semearProgramas(banco: Banco, hoje: string) {
       });
   }
   banco.checkpoints = novos;
+}
+
+// Semente v4 (Entrega 1), só demonstração: contato de exemplo para quase todos
+// (um sem Discord e um sem nenhum contato, para o aviso "Contato incompleto"),
+// "Não solicitado" em metade das autorizações pendentes e dois alunos na Ninja
+// (sem checkpoints).
+const SEM_DISCORD = 3;
+const SEM_CONTATO = 11;
+const NINJA: Record<number, number> = { 12: 6, 13: 12 };
+
+export function semearEntrega1(banco: Banco) {
+  banco.alunos.forEach((a, i) => {
+    const usuario = slug(a.nome).replace(/-/g, ".");
+    const temContato = i !== SEM_CONTATO;
+    a.email = temContato ? `${usuario}@exemplo.com.br` : null;
+    a.telefone = temContato ? `(11) 9${String(8000 + i * 37).padStart(4, "0")}-${String(1000 + i * 113).slice(-4)}` : null;
+    a.discord = temContato && i !== SEM_DISCORD ? usuario.replace(/\./g, "_") : null;
+    if (a.autorizacao_prova_social === "pendente" && i % 2 === 1) a.autorizacao_prova_social = "nao_solicitado";
+    const meses = NINJA[i];
+    const ninja = meses ? banco.config.programas.find((p) => p.mentoria === "Ninja" && p.duracao_meses === meses) : null;
+    if (ninja) {
+      a.programa_id = ninja.id;
+      a.mentoria = ninja.mentoria;
+      banco.checkpoints = banco.checkpoints.filter((c) => c.aluno_id !== a.id);
+    }
+  });
 }

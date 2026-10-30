@@ -1,4 +1,4 @@
-import type { Config, Programa, ProgramaDoAluno } from "@/lib/educacional/contrato";
+import { MENTORIA_POR_ULTIMO, type Config, type Programa, type ProgramaDoAluno } from "@/lib/educacional/contrato";
 
 // ---------------------------------------------------------------------------
 // Apoio da tela para os programas (specs/educacional/programas). Nada aqui é
@@ -8,7 +8,8 @@ import type { Config, Programa, ProgramaDoAluno } from "@/lib/educacional/contra
 
 export type GrupoDeProgramas = { mentoria: string; programas: Programa[] };
 
-// Programas ativos, agrupados por mentoria na ordem da configuração.
+// Programas ativos, agrupados por mentoria na ordem da configuração; a Ninja
+// fica sempre por último (Entrega 1).
 export function programasPorMentoria(config: Config | undefined, incluirInativos = false): GrupoDeProgramas[] {
   const grupos: GrupoDeProgramas[] = [];
   for (const p of config?.programas ?? []) {
@@ -17,8 +18,13 @@ export function programasPorMentoria(config: Config | undefined, incluirInativos
     if (g) g.programas.push(p);
     else grupos.push({ mentoria: p.mentoria, programas: [p] });
   }
-  return grupos;
+  const porUltimo = (g: GrupoDeProgramas) => (g.mentoria === MENTORIA_POR_ULTIMO ? 1 : 0);
+  return grupos.sort((x, y) => porUltimo(x) - porUltimo(y));
 }
+
+// Programa sem acompanhamento individual (Ninja): o aluno não tem checkpoints.
+export const semAcompanhamentoIndividual = (p: { acompanhamento_individual?: boolean } | null | undefined) =>
+  p?.acompanhamento_individual === false;
 
 // O aluno traz o programa aninhado; o que não vier nele sai da config (e, sem
 // o aninhado, tudo sai da config pelo `programa_id`).
@@ -34,6 +40,7 @@ export function programaDoAluno(
     mentoria: a.programa.mentoria ?? daConfig?.mentoria,
     duracao_meses: a.programa.duracao_meses ?? daConfig?.duracao_meses ?? null,
     observacoes: a.programa.observacoes ?? daConfig?.observacoes ?? null,
+    acompanhamento_individual: a.programa.acompanhamento_individual ?? daConfig?.acompanhamento_individual,
   };
 }
 

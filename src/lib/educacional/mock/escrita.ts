@@ -74,6 +74,19 @@ function data(campo: string, v: unknown, obrigatorio: boolean): string | null {
   return v;
 }
 
+// Contato (Entrega 1). Formato mínimo: e-mail com @ e domínio; número com 10 a
+// 15 dígitos (DDD + número, ou com o código do país).
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function contato(campo: "email" | "telefone" | "discord", v: unknown): string {
+  const t = texto(campo, v, true) as string;
+  if (campo === "email" && !RE_EMAIL.test(t)) erro400(campo, "E-mail inválido. Use o formato nome@dominio.com.");
+  if (campo === "telefone") {
+    const digitos = t.replace(/\D/g, "").length;
+    if (digitos < 10 || digitos > 15) erro400(campo, "Número inválido. Use DDD e número, de 10 a 15 dígitos.");
+  }
+  return t;
+}
+
 function umDe<T extends string>(campo: string, valores: readonly T[], v: unknown): T {
   if (typeof v !== "string" || !(valores as readonly string[]).includes(v)) erro400(campo, "Valor fora da lista permitida.");
   return v as T;
@@ -166,6 +179,11 @@ export function patchAluno(banco: Banco, id: string, campos: CamposDiretosAluno,
       case "data_entrada":
         novos.data_entrada = data(chave, valor, true) as string;
         break;
+      case "email":
+      case "telefone":
+      case "discord":
+        novos[chave] = contato(chave, valor);
+        break;
       case "data_termino":
       case "proxima_acao_prazo":
         novos[chave] = data(chave, valor, false);
@@ -243,6 +261,9 @@ export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
     programa_id: programa.id,
     data_inicio_programa: entrada,
     objetivo: texto("objetivo", dados.objetivo, false),
+    email: contato("email", dados.email),
+    telefone: contato("telefone", dados.telefone),
+    discord: contato("discord", dados.discord),
     nivel_inicial: umDe("nivel_inicial", NIVEIS_INICIAIS, dados.nivel_inicial),
     status_aluno: dados.status_aluno ? umDe("status_aluno", STATUS_ALUNO, dados.status_aluno) : "ativo",
     etapa_id: etapaAtiva(banco, etapaId).id,
@@ -254,7 +275,7 @@ export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
     motivo_risco: null,
     autorizacao_prova_social: dados.autorizacao_prova_social
       ? umDe("autorizacao_prova_social", AUTORIZACOES_PROVA_SOCIAL, dados.autorizacao_prova_social)
-      : "pendente",
+      : "nao_solicitado",
     observacoes: texto("observacoes", dados.observacoes, false),
     highlights: [],
     arquivado_em: null,
@@ -527,6 +548,10 @@ function validarItem(banco: Banco, colecao: ColecaoConfig, campos: Record<string
       v.duracao_meses = d;
     }
     if ("observacoes" in campos) v.observacoes = texto("observacoes", campos.observacoes, false);
+    if ("acompanhamento_individual" in campos) {
+      if (typeof campos.acompanhamento_individual !== "boolean") erro400("acompanhamento_individual", "Use sim ou não.");
+      v.acompanhamento_individual = campos.acompanhamento_individual;
+    } else if (!parcial) v.acompanhamento_individual = true;
   }
   if (colecao === "checkpoints_modelo") {
     if ("programa_id" in campos) {
@@ -822,7 +847,9 @@ function programaAtivo(banco: Banco, id: unknown): Programa {
   return p;
 }
 
+// Programa sem acompanhamento individual (Ninja): o aluno não tem checkpoints.
 function modelosDoPrograma(banco: Banco, programaId: string) {
+  if ((banco.config.programas ?? []).find((p) => p.id === programaId)?.acompanhamento_individual === false) return [];
   return banco.config.checkpoints_modelo
     .filter((m) => m.ativo && m.programa_id === programaId)
     .sort((x, y) => x.ordem - y.ordem);

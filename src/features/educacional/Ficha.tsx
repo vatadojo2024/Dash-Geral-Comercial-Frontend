@@ -84,7 +84,7 @@ export function CampoTexto({
   rotulo: string;
   valor: string | null;
   onConfirmar: (v: string | null) => void;
-  tipo?: "text" | "date";
+  tipo?: "text" | "date" | "email" | "tel";
   area?: boolean;
   obrigatorio?: boolean;
   className?: string;

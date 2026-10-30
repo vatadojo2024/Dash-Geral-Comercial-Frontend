@@ -62,11 +62,13 @@ import { FormAjuste } from "./FormAjuste";
 import { Kanban } from "./Kanban";
 import { NovoAluno } from "./NovoAluno";
 import { BadgeCheckpoint, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
-import { COLUNAS_DA_TABELA, SeletorColunas, useColunasVisiveis, type IdColuna } from "./SeletorColunas";
+import { ROTULO_CONTATO, type CampoContato } from "./contato";
+import { COLUNAS_DA_TABELA, ordenavel, SeletorColunas, useColunasVisiveis, type IdColuna } from "./SeletorColunas";
 import { useGravacao } from "./useGravacao";
 import { useSession } from "@/features/session/SessionProvider";
 import {
   alteracaoDaAcao,
+  alteracaoDeCampo,
   alteracaoDaEtapa,
   alteracaoDoAjuste,
   alteracaoDoNivel,
@@ -379,7 +381,15 @@ function Lista({
         <thead>
           <tr className="border-b border-borda text-left text-xs text-texto-sec">
             {colunas.map((c) => {
-              const ativa = estado.ordem === c.id || estado.ordem === `-${c.id}`;
+              if (!ordenavel(c.id)) {
+                return (
+                  <th key={c.id} className="px-2 py-2 font-medium">
+                    {c.rotulo}
+                  </th>
+                );
+              }
+              const id = c.id;
+              const ativa = estado.ordem === id || estado.ordem === `-${id}`;
               const Seta = !ativa ? ArrowUpDown : estado.ordem.startsWith("-") ? ArrowDown : ArrowUp;
               return (
                 <th
@@ -389,7 +399,7 @@ function Lista({
                 >
                   <button
                     type="button"
-                    onClick={() => ordenar(c.id)}
+                    onClick={() => ordenar(id)}
                     className={cn("inline-flex items-center gap-1 text-left hover:text-texto", ativa && "text-texto")}
                   >
                     {c.rotulo}
@@ -468,6 +478,10 @@ function chaveDaColuna(a: AlunoLinha, coluna: IdColuna): string | null {
       return "campo:responsavel_id";
     case "status_aluno":
       return "campo:status_aluno";
+    case "email":
+    case "telefone":
+    case "discord":
+      return `campo:${coluna}`;
     default:
       return null;
   }
@@ -711,7 +725,35 @@ const LinhaAluno = memo(function LinhaAluno({ a, entrada, acoes, colunas, etapas
       case "mentoria":
         // Vem do programa: só leitura (troca por "Trocar programa", no Raio-X).
         return <span className="whitespace-nowrap text-texto-sec">{a.mentoria}</span>;
+      case "email":
+      case "telefone":
+      case "discord":
+        return celulaDeContato(coluna);
     }
+  }
+
+  function celulaDeContato(campo: CampoContato): ReactNode {
+    const valor = a[campo];
+    return (
+      <CelulaEditavel
+        rotulo={`Editar ${ROTULO_CONTATO[campo].toLowerCase()} de ${a.nome}`}
+        bloqueada={a.arquivado || salvando}
+        className="max-w-[220px]"
+        exibir={valor ? <span className="break-all text-texto-sec">{valor}</span> : <span className="text-aviso">Não informado</span>}
+        editor={({ concluir, cancelar }) => (
+          <EditorTexto
+            rotulo={ROTULO_CONTATO[campo]}
+            valor={valor ?? ""}
+            obrigatorio
+            onCancelar={cancelar}
+            onSalvar={(v) => {
+              concluir();
+              if (v) pendente(alteracaoDeCampo(a, campo, v));
+            }}
+          />
+        )}
+      />
+    );
   }
 
   const erro = entrada?.erro;

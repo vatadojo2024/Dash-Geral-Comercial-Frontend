@@ -1,6 +1,6 @@
 import semente from "@/lib/mock/data_educacional.json";
 import { diasEntre } from "./motor";
-import { semearProgramas } from "./programas";
+import { semearEntrega1, semearProgramas } from "./programas";
 import type { AnaliseBanco, Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,8 @@ import type { AnaliseBanco, Banco } from "./tipos";
 export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // Sobe quando o formato da semente muda: banco salvo com outra versão é trocado.
 // 2 = Fase 3 (análises de aula; semente D4). 3 = programas e roteiros.
-export const VERSAO_DADOS = 3;
+// 4 = Entrega 1 (contato, "Não solicitado" e Ninja).
+export const VERSAO_DADOS = 4;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };
@@ -56,6 +57,7 @@ export function bancoDaSemente(hoje: string): Banco {
   const { data_referencia: _ref, config, ...tabelas } = structuredClone(s);
   const banco: Banco = { versao_dados: VERSAO_DADOS, config, ...deslocar(tabelas, n), analises: [] };
   semearProgramas(banco, hoje);
+  semearEntrega1(banco);
   importarDaFase1(banco);
   return banco;
 }

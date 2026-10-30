@@ -38,7 +38,12 @@ describe("semente — contrato da Fase 2", () => {
       "Prime 12 meses",
       "Private 6 meses",
       "Private 12 meses",
+      "Ninja 6 meses",
+      "Ninja 12 meses",
     ]);
+    // Ninja (Entrega 1): sem acompanhamento individual e sem checkpoints padrão.
+    expect(banco.config.programas.filter((p) => !p.acompanhamento_individual).map((p) => p.nome)).toEqual(["Ninja 6 meses", "Ninja 12 meses"]);
+    expect(lista("Ninja 6 meses")).toBe("");
     expect(lista("Blackbelt 6 meses")).toBe("Dia 0 (Boas-vindas), Dia 3 (Sprint), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Reta Final), Mês 6 (Fim)");
     expect(lista("Blackbelt 12 meses")).toBe("Dia 0 (Boas-vindas), Dia 3 (Onboarding), Mês 1 (Revisão), Mês 4 (Big Win), Mês 6 (Metade), Mês 12 (Fim)");
     expect(lista("Prime 6 meses")).toBe("Dia 0 (Welcome), Dia 3 (Check-in), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Pré-fim), Mês 6 (Fim)");

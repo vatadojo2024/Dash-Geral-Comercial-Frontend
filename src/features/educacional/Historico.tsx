@@ -76,6 +76,10 @@ const ROTULO_CAMPO: Record<string, string> = {
   // programas
   programa: "Programa",
   programa_id: "Programa",
+  email: "E-mail",
+  telefone: "Número",
+  discord: "Discord",
+  acompanhamento_individual: "Acompanhamento individual",
   data_inicio_programa: "Início do programa",
   substituido: "Saiu da jornada (troca de programa)",
 };
