@@ -3,6 +3,11 @@ import {
   AnaliseDetalheSchema,
   AnaliseItemListaSchema,
   CheckpointModeloSchema,
+  ComentarioSchema,
+  ImagemMuralSchema,
+  ItemMuralSchema,
+  LIMITE_IMAGEM_MURAL,
+  TIPOS_IMAGEM_MURAL,
   LIMITE_LOTE,
   OpcaoAlunoSchema,
   PreviaTrocaSchema,
@@ -23,10 +28,15 @@ import {
   type CamposCheckpoint,
   type CamposDiretosAluno,
   type CamposIntervencao,
+  type Comentario,
   type Config,
   type EntidadeHistorico,
   type FaixaSaude,
+  type FiltroMural,
+  type ImagemMural,
   type ItemHistorico,
+  type ItemMural,
+  type NovoComentario,
   type NovoAluno,
   type OpcaoAluno,
   type PedidoLote,
@@ -291,7 +301,14 @@ async function corpoDoMock(corpo: unknown): Promise<unknown> {
   }
   for (const [k, v] of corpo.entries()) {
     if (typeof v === "string") o[k] = v;
-    else {
+    else if (v.type.startsWith("image/")) {
+      // Mural: a imagem vira data URL reduzido (cabe no banco do navegador).
+      const { imagemParaDemonstracao } = await import("./mock/imagens");
+      o.arquivo_nome = v.name;
+      o.arquivo_tipo = v.type;
+      o.arquivo_tamanho = v.size;
+      o.arquivo_url = await imagemParaDemonstracao(v);
+    } else {
       o.arquivo_nome = v.name;
       o.arquivo_texto = /\.docx$/i.test(v.name) ? null : await v.text();
     }
@@ -744,4 +761,62 @@ export async function restaurarDemonstracao(): Promise<void> {
   if (FONTE_EDUCACIONAL !== "mock") return;
   const [{ restaurarBanco }, { hojeBR }] = await Promise.all([import("./mock/banco"), import("./mock/motor")]);
   restaurarBanco(hojeBR());
+}
+
+// ---------------------------------------------------------------------------
+// Mural do aluno (Entrega 2, M2). Rotas provisórias (ver contrato.ts) até o
+// plano do backend. Comentário grava na hora, sem a versão do aluno.
+// ---------------------------------------------------------------------------
+
+export const TAMANHO_PAGINA_MURAL = 20;
+export type PaginaMural = { itens: ItemMural[]; proximo: string | null };
+
+export async function buscarMural(alunoId: string, opcoes: { antes?: string | null; tipo?: FiltroMural | null } = {}): Promise<PaginaMural> {
+  const qs = new URLSearchParams({ limite: String(TAMANHO_PAGINA_MURAL) });
+  if (opcoes.antes) qs.set("antes", opcoes.antes);
+  if (opcoes.tipo) qs.set("tipo", opcoes.tipo);
+  const corpo = (await chamar({ metodo: "GET", caminho: `alunos/${id(alunoId)}/mural`, query: qs.toString() })) as {
+    itens?: unknown;
+    proximo?: unknown;
+  } | null;
+  const { validos } = validarLista(corpo?.itens, ItemMuralSchema, "item do mural");
+  return { itens: validos, proximo: typeof corpo?.proximo === "string" && corpo.proximo ? corpo.proximo : null };
+}
+
+const tamanhoEmMb = (bytes: number) => (bytes / 1024 / 1024).toFixed(1).replace(".", ",");
+
+// Conferência antes de enviar (o backend confere de novo).
+export function erroDaImagemDoMural(f: { name: string; type: string; size: number }): string | null {
+  if (!(TIPOS_IMAGEM_MURAL as readonly string[]).includes(f.type)) return `“${f.name}”: formato não aceito. Envie PNG, JPG, WEBP ou GIF.`;
+  if (f.size > LIMITE_IMAGEM_MURAL) return `“${f.name}” tem ${tamanhoEmMb(f.size)} MB e o limite é 4 MB por imagem.`;
+  return null;
+}
+
+// Uma imagem por pedido (o corpo de uma função da Vercel para em 4,5 MB).
+export async function enviarImagemDoMural(arquivo: File): Promise<ImagemMural> {
+  const erro = erroDaImagemDoMural(arquivo);
+  if (erro) throw erroDeValidacao("arquivo", erro);
+  const fd = new FormData();
+  fd.set("arquivo", arquivo);
+  const r = ImagemMuralSchema.safeParse(await chamar({ metodo: "POST", caminho: "mural/imagens", corpo: fd }));
+  if (!r.success) throw new EducacionalError("Imagem enviada, mas a resposta veio fora do contrato. Atualize a página.", 502);
+  return r.data;
+}
+
+function comentarioDaResposta(bruto: unknown): Comentario {
+  const r = ComentarioSchema.safeParse(bruto);
+  if (!r.success) throw new EducacionalError("Comentário gravado, mas a resposta veio fora do contrato. Atualize o mural.", 502);
+  return r.data;
+}
+
+export async function comentar(alunoId: string, c: NovoComentario): Promise<Comentario> {
+  return comentarioDaResposta(await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/comentarios`, corpo: c }));
+}
+
+export async function editarComentario(comentarioId: string, c: Partial<NovoComentario>): Promise<Comentario> {
+  return comentarioDaResposta(await chamar({ metodo: "PATCH", caminho: `comentarios/${id(comentarioId)}`, corpo: c }));
+}
+
+export async function arquivarComentario(comentarioId: string): Promise<void> {
+  await chamar({ metodo: "POST", caminho: `comentarios/${id(comentarioId)}/arquivar`, corpo: {} });
 }

@@ -1,6 +1,6 @@
 import { contagemDoMarco, type CheckpointModelo, type Programa, type Roteiro, type StatusAula, type StatusCheckpoint } from "../contrato";
 import { dataPrevistaDoModelo, diasEntre } from "./motor";
-import type { AulaBanco, Banco, CheckpointBanco } from "./tipos";
+import type { AulaBanco, Banco, CheckpointBanco, ComentarioBanco, ImagemBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // Programas do modo demonstração (specs/educacional/programas): as 6 listas do
@@ -254,4 +254,52 @@ export function semearEntrega2(banco: Banco, hoje: string) {
     }
   });
   banco.aulas = aulas;
+}
+
+// Semente v6 (Entrega 2, M2), só demonstração: alguns comentários no mural, de
+// outras pessoas da equipe (não editáveis por quem está usando a demonstração),
+// um deles com imagem. Datas relativas a hoje.
+const QUADRO_DE_EXEMPLO =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">' +
+      '<rect width="640" height="360" fill="#1d1a24"/>' +
+      '<text x="32" y="56" fill="#f5f3f7" font-family="sans-serif" font-size="26" font-weight="700">Funil da semana (exemplo)</text>' +
+      '<rect x="32" y="96" width="520" height="44" rx="8" fill="#3b82f6"/>' +
+      '<rect x="32" y="156" width="380" height="44" rx="8" fill="#22c55e"/>' +
+      '<rect x="32" y="216" width="220" height="44" rx="8" fill="#eab308"/>' +
+      '<rect x="32" y="276" width="96" height="44" rx="8" fill="#ef4444"/>' +
+      "</svg>",
+  );
+
+const COMENTARIOS_DE_EXEMPLO: { aluno: number; dias: number; hora: string; autor: number; texto: string; imagem?: true }[] = [
+  { aluno: 0, dias: 1, hora: "14:20", autor: 0, texto: "Call ótima hoje. Ele fechou o primeiro cliente do novo nicho e quer acelerar a prospecção.", imagem: true },
+  { aluno: 0, dias: 6, hora: "10:05", autor: 1, texto: "Mandou o print do funil no grupo. Combinamos revisar a oferta na próxima aula." },
+  { aluno: 1, dias: 3, hora: "16:40", autor: 0, texto: "Faltou na aula de ontem. Já mandei mensagem no Discord; aguardando retorno." },
+  { aluno: 2, dias: 2, hora: "09:15", autor: 1, texto: "Pediu para trocar o horário das aulas para terça à noite.\nAvisei o mentor." },
+];
+const AUTORES = [
+  { id: "u-carla", nome: "Carla Mendes" },
+  { id: "u-rafael", nome: "Rafael Souza" },
+];
+
+export function semearMural(banco: Banco, hoje: string) {
+  const comentarios: ComentarioBanco[] = [];
+  const imagens: ImagemBanco[] = [];
+  COMENTARIOS_DE_EXEMPLO.forEach((c, i) => {
+    const a = banco.alunos[c.aluno];
+    if (!a) return;
+    const d = new Date(`${hoje}T${c.hora}:00-03:00`);
+    d.setUTCDate(d.getUTCDate() - c.dias);
+    const em = d.toISOString();
+    const autor = AUTORES[c.autor];
+    const ids: string[] = [];
+    if (c.imagem) {
+      imagens.push({ id: `img-exemplo-${i}`, url: QUADRO_DE_EXEMPLO, nome: "funil-da-semana.svg", tipo: "image/svg+xml", tamanho: 0, autor_id: autor.id, em });
+      ids.push(`img-exemplo-${i}`);
+    }
+    comentarios.push({ id: `com-exemplo-${i}`, aluno_id: a.id, autor, texto: c.texto, imagens: ids, em, editado_em: null, arquivado_em: null });
+  });
+  banco.comentarios = comentarios;
+  banco.imagens = imagens;
 }

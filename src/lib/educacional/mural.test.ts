@@ -1,0 +1,168 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  _simularGravacaoEmTeste,
+  arquivarComentario,
+  buscarAlunos,
+  buscarMural,
+  comentar,
+  definirUsuarioDaSessao,
+  EducacionalError,
+  editarComentario,
+  enviarImagemDoMural,
+  erroDaImagemDoMural,
+  salvarLote,
+  TAMANHO_PAGINA_MURAL,
+} from "./apiEducacional";
+import { ItemMuralSchema } from "./contrato";
+import { _zerarMemoria } from "./mock/banco";
+
+// Entrega 2, M2: mural do aluno no modo demonstração (rotas provisórias até o
+// plano do backend). Comentários e histórico juntos, mais recente primeiro.
+
+const EU = { id: "u-edu", nome: "Equipe Teste" };
+const OUTRA = { id: "u-outra", nome: "Outra Pessoa" };
+
+beforeEach(() => {
+  _zerarMemoria();
+  _simularGravacaoEmTeste(null);
+  definirUsuarioDaSessao(EU);
+});
+
+async function erroDe(p: Promise<unknown>): Promise<EducacionalError> {
+  try {
+    await p;
+  } catch (e) {
+    if (e instanceof EducacionalError) return e;
+    throw e;
+  }
+  throw new Error("esperava erro");
+}
+
+async function primeiroAluno() {
+  return (await buscarAlunos({ por_pagina: "todos" })).itens[0];
+}
+
+// Aluno com comentários da semente (com imagem).
+async function alunoComComentarios() {
+  for (const a of (await buscarAlunos({ por_pagina: "todos" })).itens) {
+    const { itens } = await buscarMural(a.id, { tipo: "comentario" });
+    if (itens.some((x) => x.tipo === "comentario" && x.imagens.length)) return a;
+  }
+  throw new Error("semente sem comentários");
+}
+
+const png = (nome = "print.png", bytes = 64, tipo = "image/png") => new File([new Uint8Array(bytes)], nome, { type: tipo });
+
+describe("mural — leitura", () => {
+  it("comentários e alterações juntos, do mais recente ao mais antigo; os da semente não são editáveis", async () => {
+    const a = await alunoComComentarios();
+    const { itens } = await buscarMural(a.id);
+    expect(itens.some((x) => x.tipo === "comentario")).toBe(true);
+    expect(itens.some((x) => x.tipo === "historico")).toBe(true);
+    const datas = itens.map((x) => x.em);
+    expect(datas).toEqual([...datas].sort().reverse());
+    const comImagem = itens.find((x) => x.tipo === "comentario" && x.imagens.length);
+    expect(comImagem && comImagem.tipo === "comentario" && [comImagem.pode_editar, comImagem.imagens[0].nome]).toEqual([false, "funil-da-semana.svg"]);
+  });
+
+  it("“Mostrar mais”: o cursor continua de onde parou, sem repetir", async () => {
+    const a = await primeiroAluno();
+    // Histórico suficiente para duas páginas.
+    for (let i = 0; i < TAMANHO_PAGINA_MURAL; i += 1) await comentar(a.id, { texto: `Nota ${i}`, imagens: [] });
+    const p1 = await buscarMural(a.id);
+    expect(p1.itens).toHaveLength(TAMANHO_PAGINA_MURAL);
+    expect(p1.proximo).toEqual(expect.any(String));
+    const p2 = await buscarMural(a.id, { antes: p1.proximo });
+    const ids1 = new Set(p1.itens.map((x) => x.id));
+    expect(p2.itens.length).toBeGreaterThan(0);
+    expect(p2.itens.some((x) => ids1.has(x.id))).toBe(false);
+    expect(p2.itens[0].em <= p1.itens.at(-1)!.em).toBe(true);
+  });
+
+  it("filtro: só comentários, ou só um tipo de alteração", async () => {
+    const a = await alunoComComentarios();
+    const so = await buscarMural(a.id, { tipo: "comentario" });
+    expect(so.itens.length).toBeGreaterThan(0);
+    expect(so.itens.every((x) => x.tipo === "comentario")).toBe(true);
+    const alunoSo = await buscarMural(a.id, { tipo: "aluno" });
+    expect(alunoSo.itens.every((x) => x.tipo === "historico" && x.entidade === "aluno")).toBe(true);
+  });
+
+  it("item fora do contrato sai sozinho, sem derrubar o mural", () => {
+    expect(ItemMuralSchema.safeParse({ tipo: "comentario", id: "c", em: "2026-10-30T10:00:00Z", texto: "oi" }).success).toBe(false);
+    expect(ItemMuralSchema.safeParse({ tipo: "reacao", id: "r", em: "2026-10-30T10:00:00Z" }).success).toBe(false);
+    const ok = ItemMuralSchema.parse({ tipo: "comentario", id: "c", em: "2026-10-30T10:00:00Z", texto: "oi", autor: EU });
+    expect(ok.tipo === "comentario" && [ok.imagens, ok.editado_em, ok.pode_editar]).toEqual([[], null, false]);
+  });
+});
+
+describe("mural — comentários", () => {
+  it("comentar grava na hora e não muda a versão do aluno; o autor edita e arquiva", async () => {
+    const a = await primeiroAluno();
+    const c = await comentar(a.id, { texto: "  Primeira conversa ótima.  ", imagens: [] });
+    expect([c.texto, c.pode_editar, c.editado_em, c.autor]).toEqual(["Primeira conversa ótima.", true, null, EU]);
+    expect((await buscarMural(a.id)).itens[0].id).toBe(c.id);
+    expect((await buscarAlunos({ por_pagina: "todos" })).itens[0].versao).toBe(a.versao);
+    // A ficha continua salvando com a mesma versão.
+    const r = await salvarLote({ alunos: [{ aluno_id: a.id, versao: a.versao, campos: { objetivo: "Depois do comentário" } }] });
+    expect(r.resultados[0].ok).toBe(true);
+    const editado = await editarComentario(c.id, { texto: "Primeira conversa excelente." });
+    expect([editado.texto, editado.editado_em]).toEqual(["Primeira conversa excelente.", expect.any(String)]);
+    await arquivarComentario(c.id);
+    expect((await buscarMural(a.id)).itens.some((x) => x.id === c.id)).toBe(false);
+  });
+
+  it("de outra pessoa: aparece sem editar; editar ou arquivar é recusado em português", async () => {
+    const a = await primeiroAluno();
+    definirUsuarioDaSessao(OUTRA);
+    const dela = await comentar(a.id, { texto: "Comentário dela", imagens: [] });
+    definirUsuarioDaSessao(EU);
+    const visto = (await buscarMural(a.id)).itens.find((x) => x.id === dela.id);
+    expect(visto?.tipo === "comentario" && visto.pode_editar).toBe(false);
+    const e = await erroDe(editarComentario(dela.id, { texto: "Mudei" }));
+    expect([e.status, e.message]).toEqual([403, "Só quem escreveu o comentário pode editar ou arquivar."]);
+    expect((await erroDe(arquivarComentario(dela.id))).status).toBe(403);
+  });
+
+  it("vazio é recusado; só imagem vale", async () => {
+    const a = await primeiroAluno();
+    const e = await erroDe(comentar(a.id, { texto: "   ", imagens: [] }));
+    expect([e.status, e.corpo.campo, e.message]).toEqual([400, "texto", "Escreva um comentário ou anexe uma imagem."]);
+    const img = await enviarImagemDoMural(png());
+    const soImagem = await comentar(a.id, { texto: "", imagens: [img.id] });
+    expect(soImagem.imagens).toEqual([{ id: img.id, url: expect.stringMatching(/^data:image\/png;base64,/), nome: "print.png" }]);
+  });
+});
+
+describe("mural — imagens", () => {
+  it("formato e tamanho conferidos antes de enviar, com o nome do arquivo", async () => {
+    expect(erroDaImagemDoMural(png("foto.bmp", 10, "image/bmp"))).toBe("“foto.bmp”: formato não aceito. Envie PNG, JPG, WEBP ou GIF.");
+    expect(erroDaImagemDoMural({ name: "grande.jpg", type: "image/jpeg", size: 5.2 * 1024 * 1024 })).toBe(
+      "“grande.jpg” tem 5,2 MB e o limite é 4 MB por imagem.",
+    );
+    expect(erroDaImagemDoMural(png())).toBeNull();
+    const e = await erroDe(enviarImagemDoMural(png("doc.pdf", 10, "application/pdf")));
+    expect([e.status, e.corpo.campo]).toEqual([400, "arquivo"]);
+  });
+
+  it("imagem de outra pessoa ou inexistente não entra no comentário; no máximo 10", async () => {
+    const a = await primeiroAluno();
+    definirUsuarioDaSessao(OUTRA);
+    const dela = await enviarImagemDoMural(png("dela.png"));
+    definirUsuarioDaSessao(EU);
+    const e = await erroDe(comentar(a.id, { texto: "Com a imagem dela", imagens: [dela.id] }));
+    expect([e.corpo.campo, e.message]).toEqual(["imagens", "Uma das imagens não foi encontrada. Anexe de novo."]);
+    const minhas = await Promise.all(Array.from({ length: 11 }, (_, i) => enviarImagemDoMural(png(`p${i}.png`))));
+    const muitas = await erroDe(comentar(a.id, { texto: "Muitas", imagens: minhas.map((x) => x.id) }));
+    expect(muitas.message).toBe("No máximo 10 imagens por comentário.");
+  });
+
+  it("editar troca as imagens (tirar uma, pôr outra)", async () => {
+    const a = await primeiroAluno();
+    const [i1, i2] = [await enviarImagemDoMural(png("um.png")), await enviarImagemDoMural(png("dois.png"))];
+    const c = await comentar(a.id, { texto: "Prints", imagens: [i1.id] });
+    const depois = await editarComentario(c.id, { imagens: [i2.id] });
+    expect(depois.imagens.map((x) => x.nome)).toEqual(["dois.png"]);
+    expect(depois.texto).toBe("Prints");
+  });
+});

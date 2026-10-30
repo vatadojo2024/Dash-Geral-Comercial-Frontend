@@ -93,6 +93,28 @@ export type AulaBanco = {
   arquivado_em: string | null;
 };
 
+// Entrega 2 (M2): mural. A imagem guarda um data URL reduzido (só demonstração).
+export type ImagemBanco = {
+  id: string;
+  url: string;
+  nome: string;
+  tipo: string;
+  tamanho: number;
+  autor_id: string;
+  em: string;
+};
+
+export type ComentarioBanco = {
+  id: string;
+  aluno_id: string;
+  autor: Usuario;
+  texto: string;
+  imagens: string[]; // ids de ImagemBanco
+  em: string;
+  editado_em: string | null;
+  arquivado_em: string | null;
+};
+
 export type AjusteBanco = {
   id: string;
   aluno_id: string;
@@ -147,6 +169,8 @@ export type Banco = {
   checkpoints: CheckpointBanco[];
   intervencoes: IntervencaoBanco[];
   aulas: AulaBanco[];
+  comentarios: ComentarioBanco[];
+  imagens: ImagemBanco[];
   ajustes: AjusteBanco[];
   historico: HistoricoBanco[];
   analises: AnaliseBanco[];

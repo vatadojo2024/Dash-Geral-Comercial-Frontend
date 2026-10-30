@@ -472,6 +472,46 @@ export const ItemHistoricoSchema = z.object({
 });
 export type ItemHistorico = z.infer<typeof ItemHistoricoSchema>;
 
+// ---------- mural do aluno (Entrega 2, M2) ----------
+// Uma rota só com comentários e histórico juntos, mais recente primeiro, por
+// cursor (`antes`). Nomes provisórios (modo demonstração) até o plano do backend.
+//   GET  /alunos/:id/mural?antes=&limite=&tipo=   → { itens, proximo }
+//   POST /mural/imagens (multipart, uma imagem)   → ImagemMural
+//   POST /alunos/:id/comentarios { texto, imagens: [id] } → comentário
+//   PATCH /comentarios/:id { texto?, imagens? }   → comentário (só o autor)
+//   POST /comentarios/:id/arquivar                → comentário arquivado (só o autor)
+// `pode_editar` vem da API (o autor é ela quem confere).
+export const TIPOS_IMAGEM_MURAL = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
+export const LIMITE_IMAGEM_MURAL = 4 * 1024 * 1024;
+export const MAX_IMAGENS_COMENTARIO = 10;
+export const LIMITE_TEXTO_COMENTARIO = 5000;
+
+export const ImagemMuralSchema = z.object({ id: z.string(), url: z.string(), nome: z.string().default("imagem") });
+export type ImagemMural = z.infer<typeof ImagemMuralSchema>;
+
+export const ComentarioSchema = z.object({
+  tipo: z.literal("comentario"),
+  id: z.string(),
+  em: z.string(),
+  autor: Usuario,
+  texto: z.string(),
+  imagens: z.array(ImagemMuralSchema).default([]),
+  editado_em: z.string().nullable().default(null),
+  pode_editar: z.boolean().default(false),
+});
+export type Comentario = z.infer<typeof ComentarioSchema>;
+
+export const ItemMuralSchema = z.discriminatedUnion("tipo", [
+  ComentarioSchema,
+  ItemHistoricoSchema.extend({ tipo: z.literal("historico") }),
+]);
+export type ItemMural = z.infer<typeof ItemMuralSchema>;
+
+// Filtro do mural: comentários ou um tipo de alteração do histórico.
+export const FILTROS_MURAL = ["comentario", ...ENTIDADES_HISTORICO] as const;
+export type FiltroMural = (typeof FILTROS_MURAL)[number];
+export type NovoComentario = { texto: string; imagens: string[] };
+
 // ---------- campos ajustáveis (PUT/DELETE /alunos/:id/ajustes/:campo) ----------
 // Nome do campo na API → schema do valor. É a lista da seção 3 do backend.
 export const CAMPOS_AJUSTAVEIS = {

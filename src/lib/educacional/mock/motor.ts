@@ -7,6 +7,7 @@ import type {
   FaixaSaude,
   Intervencao,
   AnaliseResumo,
+  Comentario,
   OrigemProgresso,
   ResumoEducacional,
   StatusCheckpoint,
@@ -14,7 +15,7 @@ import type {
 } from "../contrato";
 import { AVISO_CONTATO_INCOMPLETO, AVISO_SEM_PROGRAMA, marcoDe, RE_MARCO, type Contagem } from "../contrato";
 import { confirmadasDoAluno } from "./analises";
-import type { AlunoBanco, Banco } from "./tipos";
+import type { AlunoBanco, Banco, ComentarioBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // MOTOR DO MODO DEMONSTRAÇÃO — o ÚNICO lugar do front com regra de negócio, e
@@ -157,6 +158,25 @@ function aulasDoAluno(banco: Banco, alunoId: string): Aula[] {
     .filter((x) => x.aluno_id === alunoId && !x.arquivado_em)
     .sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999") || a.criada_em.localeCompare(b.criada_em))
     .map((x) => ({ id: x.id, nome: x.nome, data: x.data, mentor: responsavelDe(banco, x.mentor_id), status: x.status }));
+}
+
+// Comentário do mural como a API devolve: imagens resolvidas e `pode_editar`
+// (só o autor), decidido aqui como o backend decide.
+export function montarComentario(banco: Banco, c: ComentarioBanco, usuarioId: string): Comentario {
+  const imagens = c.imagens.flatMap((id) => {
+    const i = (banco.imagens ?? []).find((x) => x.id === id);
+    return i ? [{ id: i.id, url: i.url, nome: i.nome }] : [];
+  });
+  return {
+    tipo: "comentario",
+    id: c.id,
+    em: c.em,
+    autor: c.autor,
+    texto: c.texto,
+    imagens,
+    editado_em: c.editado_em,
+    pode_editar: c.autor.id === usuarioId,
+  };
 }
 
 // Próximo checkpoint: o primeiro (pela ordem) ainda não realizado.

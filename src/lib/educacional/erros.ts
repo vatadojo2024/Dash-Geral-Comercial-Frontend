@@ -71,6 +71,8 @@ const ROTULOS: Record<string, Rotulo> = {
   data: f("Data"),
   mentor: m("Mentor"),
   mentor_id: m("Mentor"),
+  // Entrega 2 (M2): mural.
+  imagens: { nome: "Imagens", g: "fp" },
 };
 
 // Caminho da API ("alunos.0.checkpoints.<id>.data_prevista") → o campo mais

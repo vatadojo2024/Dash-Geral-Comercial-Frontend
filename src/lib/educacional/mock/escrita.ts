@@ -1,7 +1,11 @@
 import {
   AUTORIZACOES_PROVA_SOCIAL,
   CAMPOS_AJUSTAVEIS,
+  LIMITE_IMAGEM_MURAL,
   LIMITE_LOTE,
+  LIMITE_TEXTO_COMENTARIO,
+  MAX_IMAGENS_COMENTARIO,
+  TIPOS_IMAGEM_MURAL,
   MOTIVO_MINIMO,
   NIVEIS_INICIAIS,
   CAMPOS_ROTEIRO,
@@ -31,8 +35,16 @@ import {
 } from "../contrato";
 import { marcoDe } from "../contrato";
 import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
-import { dataPrevistaDoModelo, montarAluno, naJornada, somarMeses } from "./motor";
-import { ErroDaApi, type AlunoBanco, type AnaliseBanco, type AulaBanco, type Banco, type CheckpointBanco } from "./tipos";
+import { dataPrevistaDoModelo, montarAluno, montarComentario, naJornada, somarMeses } from "./motor";
+import {
+  ErroDaApi,
+  type AlunoBanco,
+  type AnaliseBanco,
+  type AulaBanco,
+  type Banco,
+  type CheckpointBanco,
+  type ComentarioBanco,
+} from "./tipos";
 
 // ---------------------------------------------------------------------------
 // Escritas do modo demonstração, no MESMO caminho da seção 5 do backend:
@@ -604,6 +616,97 @@ export function arquivarAula(banco: Banco, id: string, versao: number, ctx: Cont
   x.arquivado_em = ctx.agora;
   registrar(banco, ctx, a, "aula", x.id, `${x.nome} · arquivada`, false, true);
   return fim(banco, a, ctx);
+}
+
+// ---------------------------------------------------------------------------
+// Mural (Entrega 2, M2): imagem enviada antes (uma por pedido, até 4 MB) e o
+// comentário com os ids. Grava na hora, sem versão do aluno (não muda a ficha).
+// Editar e arquivar: só o autor (403 para os outros).
+// ---------------------------------------------------------------------------
+
+export function enviarImagem(banco: Banco, corpo: Record<string, unknown>, ctx: Contexto) {
+  const tipo = String(corpo.arquivo_tipo ?? "");
+  const tamanho = Number(corpo.arquivo_tamanho ?? 0);
+  if (!corpo.arquivo_nome) erro400("arquivo", "Envie uma imagem.");
+  if (!(TIPOS_IMAGEM_MURAL as readonly string[]).includes(tipo)) erro400("arquivo", "Formato não aceito. Envie PNG, JPG, WEBP ou GIF.");
+  if (tamanho > LIMITE_IMAGEM_MURAL) {
+    throw new ErroDaApi(413, { error: "arquivo_grande", campo: "arquivo", mensagem: "A imagem passa de 4 MB. Envie uma imagem menor." });
+  }
+  const i = {
+    id: novoId("img"),
+    url: String(corpo.arquivo_url ?? ""),
+    nome: String(corpo.arquivo_nome),
+    tipo,
+    tamanho,
+    autor_id: ctx.usuario.id,
+    em: ctx.agora,
+  };
+  (banco.imagens ??= []).push(i);
+  return { id: i.id, url: i.url, nome: i.nome };
+}
+
+function imagensDoComentario(banco: Banco, v: unknown, ctx: Contexto): string[] {
+  if (v == null) return [];
+  if (!Array.isArray(v) || v.some((x) => typeof x !== "string")) erro400("imagens", "Envie a lista de imagens.");
+  const ids = [...new Set(v as string[])];
+  if (ids.length > MAX_IMAGENS_COMENTARIO) erro400("imagens", `No máximo ${MAX_IMAGENS_COMENTARIO} imagens por comentário.`);
+  for (const id of ids) {
+    const i = (banco.imagens ?? []).find((x) => x.id === id);
+    if (!i || i.autor_id !== ctx.usuario.id) erro400("imagens", "Uma das imagens não foi encontrada. Anexe de novo.");
+  }
+  return ids;
+}
+
+function textoDoComentario(v: unknown, comImagem: boolean): string {
+  const t = typeof v === "string" ? v.trim() : "";
+  if (v != null && typeof v !== "string") erro400("texto", "Texto inválido.");
+  if (!t && !comImagem) erro400("texto", "Escreva um comentário ou anexe uma imagem.");
+  if (t.length > LIMITE_TEXTO_COMENTARIO) erro400("texto", `O comentário pode ter no máximo ${LIMITE_TEXTO_COMENTARIO} caracteres.`);
+  return t;
+}
+
+export function comentar(banco: Banco, alunoId: string, corpo: Record<string, unknown>, ctx: Contexto) {
+  const a = alunoOu404(banco, alunoId);
+  const imagens = imagensDoComentario(banco, corpo.imagens, ctx);
+  const c: ComentarioBanco = {
+    id: novoId("com"),
+    aluno_id: a.id,
+    autor: ctx.usuario,
+    texto: textoDoComentario(corpo.texto, imagens.length > 0),
+    imagens,
+    em: ctx.agora,
+    editado_em: null,
+    arquivado_em: null,
+  };
+  (banco.comentarios ??= []).push(c);
+  return montarComentario(banco, c, ctx.usuario.id);
+}
+
+function comentarioDoAutor(banco: Banco, id: string, ctx: Contexto): ComentarioBanco {
+  const c = (banco.comentarios ?? []).find((x) => x.id === id && !x.arquivado_em);
+  if (!c) throw new ErroDaApi(404, { error: "nao_encontrado", mensagem: "Comentário não encontrado. Ele pode ter sido arquivado; atualize o mural." });
+  if (c.autor.id !== ctx.usuario.id) {
+    throw new ErroDaApi(403, { error: "sem_permissao", mensagem: "Só quem escreveu o comentário pode editar ou arquivar." });
+  }
+  return c;
+}
+
+export function editarComentario(banco: Banco, id: string, corpo: Record<string, unknown>, ctx: Contexto) {
+  const c = comentarioDoAutor(banco, id, ctx);
+  const imagens = "imagens" in corpo ? imagensDoComentario(banco, corpo.imagens, ctx) : c.imagens;
+  const texto = textoDoComentario("texto" in corpo ? corpo.texto : c.texto, imagens.length > 0);
+  if (texto !== c.texto || imagens.join() !== c.imagens.join()) {
+    c.texto = texto;
+    c.imagens = imagens;
+    c.editado_em = ctx.agora;
+  }
+  return montarComentario(banco, c, ctx.usuario.id);
+}
+
+export function arquivarComentario(banco: Banco, id: string, ctx: Contexto) {
+  const c = comentarioDoAutor(banco, id, ctx);
+  c.arquivado_em = ctx.agora;
+  return montarComentario(banco, c, ctx.usuario.id);
 }
 
 // ---------------------------------------------------------------------------

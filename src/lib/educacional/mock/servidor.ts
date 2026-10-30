@@ -1,6 +1,8 @@
 import {
   ENTIDADES_HISTORICO,
+  FILTROS_MURAL,
   linhaDoDetalhe,
+  type ItemMural,
   type AlunoLinha,
   type Config,
   type FaixaSaude,
@@ -8,7 +10,7 @@ import {
 } from "../contrato";
 import { detalheDaAnalise, itemDaLista, statusDe } from "./analises";
 import * as escrita from "./escrita";
-import { montarAluno, montarResumo } from "./motor";
+import { montarAluno, montarComentario, montarResumo } from "./motor";
 import { ErroDaApi, type Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -21,6 +23,7 @@ import { ErroDaApi, type Banco } from "./tipos";
 export const TAMANHO_PAGINA = 50;
 export const TAMANHO_PAGINA_HISTORICO = 50;
 export const TAMANHO_PAGINA_ANALISES = 20;
+export const TAMANHO_PAGINA_MURAL = 20;
 export const LIMITE_OPCOES = 20;
 
 export type Requisicao = {
@@ -209,6 +212,47 @@ function historico(banco: Banco, alunoId: string, q: URLSearchParams) {
   };
 }
 
+// Mural (Entrega 2, M2): comentários e histórico juntos, mais recente primeiro.
+// Cursor `antes` = "em|id" do último item da página anterior (opaco para a tela).
+function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: string) {
+  const tipo = q.get("tipo");
+  if (tipo && !(FILTROS_MURAL as readonly string[]).includes(tipo)) {
+    throw new ErroDaApi(400, { error: "validacao", campo: "tipo", mensagem: "Filtro do mural inválido." });
+  }
+  const comentarios: ItemMural[] =
+    tipo && tipo !== "comentario"
+      ? []
+      : (banco.comentarios ?? []).filter((c) => c.aluno_id === alunoId && !c.arquivado_em).map((c) => montarComentario(banco, c, usuarioId));
+  const alteracoes: ItemMural[] =
+    tipo === "comentario"
+      ? []
+      : banco.historico
+          .filter((h) => h.aluno_id === alunoId && (!tipo || h.entidade === tipo))
+          .map(({ id, em, usuario, entidade, campo, valor_antes, valor_depois, motivo }) => ({
+            tipo: "historico" as const,
+            id,
+            em,
+            usuario,
+            entidade,
+            campo,
+            valor_antes,
+            valor_depois,
+            motivo,
+          }));
+  const ordem = (x: ItemMural, y: ItemMural) => y.em.localeCompare(x.em) || y.id.localeCompare(x.id);
+  let todos = [...comentarios, ...alteracoes].sort(ordem);
+  const antes = q.get("antes");
+  if (antes) {
+    const i = antes.indexOf("|");
+    const [em, id] = [antes.slice(0, i), antes.slice(i + 1)];
+    todos = todos.filter((x) => x.em < em || (x.em === em && x.id < id));
+  }
+  const limite = Math.min(50, Math.max(1, Number(q.get("limite")) || TAMANHO_PAGINA_MURAL));
+  const itens = todos.slice(0, limite);
+  const ultimo = itens.at(-1);
+  return { itens, proximo: todos.length > limite && ultimo ? `${ultimo.em}|${ultimo.id}` : null };
+}
+
 // Atende uma requisição. Escritas MUDAM o banco recebido; quem chama decide se persiste.
 export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): unknown {
   const s = req.caminho.split("/").filter(Boolean);
@@ -238,6 +282,10 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
       aluno(s[1]);
       return historico(banco, s[1], q);
     }
+    if (s.length === 3 && s[0] === "alunos" && s[2] === "mural") {
+      aluno(s[1]);
+      return mural(banco, s[1], q, ctx.usuario.id);
+    }
     naoEncontrado();
   }
 
@@ -248,6 +296,14 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
     if (s.length === 3 && s[2] === "confirmar") return escrita.confirmarAnalise(banco, s[1], corpo.resultado, versaoDo(corpo), ctx);
     if (s.length === 3 && s[2] === "descartar") return detalheDaAnalise(banco, escrita.descartarAnalise(banco, s[1], ctx), ctx.agora);
     if (s.length === 3 && s[2] === "reprocessar") return detalheDaAnalise(banco, escrita.reprocessarAnalise(banco, s[1], ctx), ctx.agora);
+  }
+
+  // ---- Entrega 2 (M2): mural ----
+  if (s.length === 2 && s[0] === "mural" && s[1] === "imagens" && metodo === "POST") return escrita.enviarImagem(banco, corpo, ctx);
+  if (s.length === 3 && s[0] === "alunos" && s[2] === "comentarios" && metodo === "POST") return escrita.comentar(banco, s[1], corpo, ctx);
+  if (s[0] === "comentarios" && s.length >= 2) {
+    if (s.length === 2 && metodo === "PATCH") return escrita.editarComentario(banco, s[1], corpo, ctx);
+    if (s.length === 3 && s[2] === "arquivar" && metodo === "POST") return escrita.arquivarComentario(banco, s[1], ctx);
   }
 
   // ---- escrita em alunos ----

@@ -52,7 +52,7 @@ import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
 import { hrefDeVolta, lerSimular, ROTA_ALUNOS } from "./estado";
 import { CAMPOS_CONTATO, ROTULO_CONTATO, type CampoContato } from "./contato";
 import { CampoLista, CampoTexto, Marcado, ProvedorFicha, useFicha, type Ficha } from "./Ficha";
-import { HistoricoDoAluno } from "./Historico";
+import { MuralDoAluno } from "./Mural";
 import {
   alteracaoDaAcao,
   alteracaoDaEtapa,
@@ -81,11 +81,11 @@ import { useGravacao } from "./useGravacao";
 // o que foi editado na tabela aparece aqui) e "Salvar ficha" manda um POST
 // /lote com este aluno. Com alteração pendente, a ficha já abre em edição.
 // Imediatos: "Ajustar"/"Voltar ao automático" fora da edição, arquivar,
-// reativar e trocar programa. Aba Histórico. "Voltar" devolve a tela de
+// reativar e trocar programa. Aba Mural (comentários + histórico). "Voltar" devolve a tela de
 // origem (aba Alunos com os filtros, ou o Cockpit) como estava (`?voltar=`).
 // ---------------------------------------------------------------------------
 
-type Aba = "raiox" | "historico";
+type Aba = "raiox" | "mural";
 
 const tempNovo = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
@@ -252,11 +252,11 @@ export function RaioXAluno({ id }: { id: string }) {
               onChange={setAba}
               opcoes={[
                 { valor: "raiox", label: "Raio-X" },
-                { valor: "historico", label: "Histórico" },
+                { valor: "mural", label: "Mural" },
               ]}
             />
-            {aba === "historico" ? (
-              <HistoricoDoAluno alunoId={a.id} />
+            {aba === "mural" ? (
+              <MuralDoAluno alunoId={a.id} />
             ) : (
               <>
                 <div className="grid gap-4 lg:grid-cols-3">
