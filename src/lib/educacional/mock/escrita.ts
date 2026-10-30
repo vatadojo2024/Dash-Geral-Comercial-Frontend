@@ -7,11 +7,13 @@ import {
   CAMPOS_ROTEIRO,
   MENTORIAS,
   STATUS_ALUNO,
+  STATUS_AULA,
   STATUS_CHECKPOINT,
   ResultadoAnaliseSchema,
   TIPOS_RESPONSAVEL,
   type AlunoDetalhe,
   type CampoAjustavel,
+  type CamposAula,
   type CamposCheckpoint,
   type CamposDiretosAluno,
   type CamposIntervencao,
@@ -30,7 +32,7 @@ import {
 import { marcoDe } from "../contrato";
 import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
 import { dataPrevistaDoModelo, montarAluno, naJornada, somarMeses } from "./motor";
-import { ErroDaApi, type AlunoBanco, type AnaliseBanco, type Banco, type CheckpointBanco } from "./tipos";
+import { ErroDaApi, type AlunoBanco, type AnaliseBanco, type AulaBanco, type Banco, type CheckpointBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // Escritas do modo demonstração, no MESMO caminho da seção 5 do backend:
@@ -86,6 +88,14 @@ function contato(campo: "email" | "telefone" | "discord", v: unknown): string {
   }
   return t;
 }
+
+// Inteiro >= 0, ou null quando vazio.
+function inteiro(campo: string, v: unknown, mensagem: string): number | null {
+  if (v == null || v === "") return null;
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0) erro400(campo, mensagem);
+  return v;
+}
+const MSG_TOTAL_AULAS = "Use um número inteiro de aulas, 0 ou mais, ou deixe em branco.";
 
 function umDe<T extends string>(campo: string, valores: readonly T[], v: unknown): T {
   if (typeof v !== "string" || !(valores as readonly string[]).includes(v)) erro400(campo, "Valor fora da lista permitida.");
@@ -188,6 +198,9 @@ export function patchAluno(banco: Banco, id: string, campos: CamposDiretosAluno,
       case "proxima_acao_prazo":
         novos[chave] = data(chave, valor, false);
         break;
+      case "total_aulas":
+        novos.total_aulas = inteiro(chave, valor, MSG_TOTAL_AULAS);
+        break;
       case "nivel_inicial":
         novos.nivel_inicial = umDe(chave, NIVEIS_INICIAIS, valor);
         break;
@@ -264,6 +277,7 @@ export function criarAluno(banco: Banco, dados: NovoAluno, ctx: Contexto) {
     email: contato("email", dados.email),
     telefone: contato("telefone", dados.telefone),
     discord: contato("discord", dados.discord),
+    total_aulas: programa.total_aulas ?? null,
     nivel_inicial: umDe("nivel_inicial", NIVEIS_INICIAIS, dados.nivel_inicial),
     status_aluno: dados.status_aluno ? umDe("status_aluno", STATUS_ALUNO, dados.status_aluno) : "ativo",
     etapa_id: etapaAtiva(banco, etapaId).id,
@@ -525,6 +539,74 @@ export function arquivarIntervencao(banco: Banco, id: string, versao: number, ct
 }
 
 // ---------------------------------------------------------------------------
+// Aulas (Entrega 2, M1). Nomes provisórios até o plano do backend.
+// ---------------------------------------------------------------------------
+
+function aulaOu404(banco: Banco, id: string) {
+  const x = (banco.aulas ?? []).find((y) => y.id === id && !y.arquivado_em);
+  if (!x) throw new ErroDaApi(404, { error: "nao_encontrado", mensagem: "Aula não encontrada." });
+  return x;
+}
+
+function mentorAtivo(banco: Banco, id: unknown): string | null {
+  if (id == null || id === "") return null;
+  const r = banco.config.responsaveis.find((x) => x.id === id);
+  if (!r || !r.ativo) erro400("mentor_id", "Mentor inexistente ou inativo.");
+  return r.id;
+}
+
+export function criarAula(banco: Banco, alunoId: string, campos: CamposAula, versao: number, ctx: Contexto) {
+  const a = alunoOu404(banco, alunoId);
+  conferirVersao(banco, a, versao, ctx);
+  const x: AulaBanco = {
+    id: novoId("aula"),
+    aluno_id: a.id,
+    nome: texto("nome", campos.nome, true) as string,
+    data: data("data", campos.data, false),
+    mentor_id: mentorAtivo(banco, campos.mentor_id),
+    status: campos.status ? umDe("status", STATUS_AULA, campos.status) : "agendada",
+    criada_em: ctx.agora,
+    arquivado_em: null,
+  };
+  (banco.aulas ??= []).push(x);
+  registrar(banco, ctx, a, "aula", x.id, `${x.nome} · criada`, null, x.nome);
+  return fim(banco, a, ctx);
+}
+
+export function patchAula(banco: Banco, id: string, campos: CamposAula, versao: number, ctx: Contexto) {
+  const x = aulaOu404(banco, id);
+  const a = alunoOu404(banco, x.aluno_id);
+  conferirVersao(banco, a, versao, ctx);
+  const novos: Partial<AulaBanco> = {};
+  for (const chave of Object.keys(campos)) {
+    if (chave === "nome") novos.nome = texto("nome", campos.nome, true) as string;
+    else if (chave === "data") novos.data = data("data", campos.data, false);
+    else if (chave === "mentor_id") novos.mentor_id = mentorAtivo(banco, campos.mentor_id);
+    else if (chave === "status") novos.status = umDe("status", STATUS_AULA, campos.status);
+    else erro400(chave, "Campo desconhecido.");
+  }
+  const rotulo = novos.nome ?? x.nome;
+  const nomeMentor = (rid: unknown) => banco.config.responsaveis.find((r) => r.id === rid)?.nome ?? null;
+  for (const [chave, depois] of Object.entries(novos)) {
+    const antes = (x as Record<string, unknown>)[chave];
+    if (antes === depois) continue;
+    if (chave === "mentor_id") registrar(banco, ctx, a, "aula", x.id, `${rotulo} · mentor`, nomeMentor(antes), nomeMentor(depois));
+    else registrar(banco, ctx, a, "aula", x.id, `${rotulo} · ${chave}`, antes, depois);
+    (x as Record<string, unknown>)[chave] = depois;
+  }
+  return fim(banco, a, ctx);
+}
+
+export function arquivarAula(banco: Banco, id: string, versao: number, ctx: Contexto) {
+  const x = aulaOu404(banco, id);
+  const a = alunoOu404(banco, x.aluno_id);
+  conferirVersao(banco, a, versao, ctx);
+  x.arquivado_em = ctx.agora;
+  registrar(banco, ctx, a, "aula", x.id, `${x.nome} · arquivada`, false, true);
+  return fim(banco, a, ctx);
+}
+
+// ---------------------------------------------------------------------------
 // Configuração (seção 4.3 do backend). Mudança no modelo vale só para alunos novos.
 // ---------------------------------------------------------------------------
 
@@ -552,6 +634,8 @@ function validarItem(banco: Banco, colecao: ColecaoConfig, campos: Record<string
       if (typeof campos.acompanhamento_individual !== "boolean") erro400("acompanhamento_individual", "Use sim ou não.");
       v.acompanhamento_individual = campos.acompanhamento_individual;
     } else if (!parcial) v.acompanhamento_individual = true;
+    if ("total_aulas" in campos) v.total_aulas = inteiro("total_aulas", campos.total_aulas, MSG_TOTAL_AULAS);
+    else if (!parcial) v.total_aulas = null;
   }
   if (colecao === "checkpoints_modelo") {
     if ("programa_id" in campos) {
@@ -675,7 +759,8 @@ function gravarAlunoDoLote(banco: Banco, item: Record<string, unknown>, motivoPa
   const ajustes = listaDe("ajustes", item.ajustes);
   const checkpoints = listaDe("checkpoints", item.checkpoints);
   const intervencoes = listaDe("intervencoes", item.intervencoes);
-  if (!Object.keys(campos).length && !ajustes.length && !checkpoints.length && !intervencoes.length) {
+  const aulas = listaDe("aulas", item.aulas);
+  if (!Object.keys(campos).length && !ajustes.length && !checkpoints.length && !intervencoes.length && !aulas.length) {
     erro400("aluno", "Nenhuma alteração para este aluno.");
   }
   // Cada passo usa a versão do momento; no fim, a versão sobe UMA vez.
@@ -709,6 +794,14 @@ function gravarAlunoDoLote(banco: Banco, item: Record<string, unknown>, motivoPa
       const id = doAluno(banco.intervencoes, i.id, "intervencoes");
       if (i.arquivar === true) arquivarIntervencao(banco, id, v(), ctx);
       else patchIntervencao(banco, id, semChaves(i, "id") as CamposIntervencao, v(), ctx);
+    }
+  }
+  for (const x of aulas) {
+    if (x.novo === true) criarAula(banco, a.id, semChaves(x, "novo", "id") as CamposAula, v(), ctx);
+    else {
+      const id = doAluno(banco.aulas ?? [], x.id, "aulas");
+      if (x.arquivar === true) arquivarAula(banco, id, v(), ctx);
+      else patchAula(banco, id, semChaves(x, "id") as CamposAula, v(), ctx);
     }
   }
   a.versao = versao + 1;
@@ -901,7 +994,7 @@ export function previaTrocaPrograma(banco: Banco, id: string, corpo: Record<stri
   const t = planoDaTroca(banco, a, corpo);
   const p = t.programa;
   return {
-    programa: { id: p.id, nome: p.nome, mentoria: p.mentoria, duracao_meses: p.duracao_meses },
+    programa: { id: p.id, nome: p.nome, mentoria: p.mentoria, duracao_meses: p.duracao_meses, total_aulas: p.total_aulas ?? null },
     data_inicio: t.inicio,
     data_termino_sugerida: t.termino,
     ficam: t.ficam.map(checkpointDaPrevia(banco)),
@@ -958,6 +1051,10 @@ export function trocarPrograma(banco: Banco, id: string, corpo: Record<string, u
   if (a.data_inicio_programa !== t.inicio) registrar(banco, ctx, a, "aluno", a.id, "data_inicio_programa", a.data_inicio_programa, t.inicio);
   if (a.mentoria !== t.programa.mentoria) registrar(banco, ctx, a, "aluno", a.id, "mentoria", a.mentoria, t.programa.mentoria);
   if (a.data_termino !== t.termino) registrar(banco, ctx, a, "aluno", a.id, "data_termino", a.data_termino, t.termino);
+  // Entrega 2 (M1): o total de aulas volta ao do programa novo.
+  const totalAulas = t.programa.total_aulas ?? null;
+  if ((a.total_aulas ?? null) !== totalAulas) registrar(banco, ctx, a, "aluno", a.id, "total_aulas", a.total_aulas ?? null, totalAulas);
+  a.total_aulas = totalAulas;
   a.programa_id = t.programa.id;
   a.data_inicio_programa = t.inicio;
   a.mentoria = t.programa.mentoria;

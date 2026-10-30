@@ -42,6 +42,11 @@ export const TipoResponsavelSchema = z.enum(TIPOS_RESPONSAVEL);
 export type TipoResponsavel = z.infer<typeof TipoResponsavelSchema>;
 
 export const STATUS_INTERVENCAO = ["aberta", "concluida"] as const;
+
+// Entrega 2 (M1): status da aula. Só "feito" conta como aula aplicada (o backend conta).
+export const STATUS_AULA = ["agendada", "feito", "no_show", "remarcada", "cancelada"] as const;
+export const StatusAulaSchema = z.enum(STATUS_AULA);
+export type StatusAula = z.infer<typeof StatusAulaSchema>;
 export const SINAIS = ["upgrade", "renovacao", "prova_social"] as const;
 export type Sinal = (typeof SINAIS)[number];
 
@@ -86,6 +91,8 @@ export const ProgramaSchema = z.object({
   ativo: z.boolean(),
   // false (Ninja): o aluno não tem checkpoints.
   acompanhamento_individual: z.boolean().default(true),
+  // Entrega 2 (M1): copiado para o aluno no cadastro e na troca. null = sem total.
+  total_aulas: z.number().int().min(0).nullable().default(null),
 });
 export type Programa = z.infer<typeof ProgramaSchema>;
 
@@ -98,6 +105,7 @@ export const ProgramaDoAlunoSchema = z.object({
   duracao_meses: z.number().int().nullable().optional(),
   observacoes: z.string().nullable().optional(),
   acompanhamento_individual: z.boolean().optional(),
+  total_aulas: z.number().int().nullable().optional(),
 });
 export type ProgramaDoAluno = z.infer<typeof ProgramaDoAlunoSchema>;
 
@@ -273,6 +281,17 @@ export const IntervencaoSchema = z.object({
 });
 export type Intervencao = z.infer<typeof IntervencaoSchema>;
 
+// Entrega 2 (M1): aula do aluno. Nomes provisórios (modo demonstração) até o
+// plano do backend. `mentor` vem resolvido, como o responsável.
+export const AulaSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  data: z.string().nullable(),
+  mentor: ResponsavelDoAluno.nullable(),
+  status: StatusAulaSchema,
+});
+export type Aula = z.infer<typeof AulaSchema>;
+
 export const HighlightSchema = z.object({ data_aula: z.string(), texto: z.string() });
 
 // ---------- análise de aula (Fase 3, seção 7) ----------
@@ -366,6 +385,12 @@ export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
   intervencoes: z.array(IntervencaoSchema),
   // Programas: início do programa (a troca grava).
   data_inicio_programa: z.string().nullable().default(null),
+  // Entrega 2 (M1): total editável na ficha; aplicadas e saldo vêm calculados
+  // da API (null = sem cálculo). Com padrão até a API mandar.
+  aulas: z.array(AulaSchema).default([]),
+  total_aulas: z.number().int().nullable().default(null),
+  aulas_aplicadas: z.number().int().nullable().default(null),
+  saldo_aulas: z.number().int().nullable().default(null),
   // Fase 3: com padrão, para a tela não cair enquanto a API ainda não manda.
   analises: z.array(AnaliseResumoSchema).default([]),
   progresso_origem: z
@@ -421,6 +446,7 @@ export type AlunoNoLote = {
   ajustes?: AjusteLote[];
   checkpoints?: ItemLote[];
   intervencoes?: ItemLote[];
+  aulas?: ItemLote[];
 };
 export type PedidoLote = { motivo_padrao?: string; alunos: AlunoNoLote[] };
 export const LIMITE_LOTE = 100;
@@ -431,7 +457,7 @@ export type ResultadoLoteAluno =
   | { aluno_id: string; ok: false; error: "validacao"; campo: string; mensagem: string };
 export type RespostaLote = { lote_id: string; resultados: ResultadoLoteAluno[] };
 
-export const ENTIDADES_HISTORICO = ["aluno", "checkpoint", "intervencao", "ajuste"] as const;
+export const ENTIDADES_HISTORICO = ["aluno", "checkpoint", "intervencao", "aula", "ajuste"] as const;
 export type EntidadeHistorico = (typeof ENTIDADES_HISTORICO)[number];
 
 export const ItemHistoricoSchema = z.object({
@@ -488,6 +514,7 @@ export type CamposDiretosAluno = Partial<{
   email: string | null;
   telefone: string | null;
   discord: string | null;
+  total_aulas: number | null;
 }>;
 
 export type NovoAluno = {
@@ -516,6 +543,13 @@ export type CamposCheckpoint = Partial<{
   status: StatusCheckpoint;
   observacao: string | null;
   big_win: boolean;
+}>;
+
+export type CamposAula = Partial<{
+  nome: string;
+  data: string | null;
+  mentor_id: string | null;
+  status: StatusAula;
 }>;
 
 export type CamposIntervencao = Partial<{
@@ -568,6 +602,7 @@ export function validarAlunoDetalhe(bruto: unknown): AlunoDetalhe | null {
     checkpoints: validarLista(daJornada, CheckpointSchema, "checkpoint").validos,
     intervencoes: validarLista(b.intervencoes, IntervencaoSchema, "intervenção").validos,
     highlights: validarLista(b.highlights, HighlightSchema, "highlight").validos,
+    aulas: b.aulas === undefined ? undefined : validarLista(b.aulas, AulaSchema, "aula").validos,
     // Fase 3: cada análise validada sozinha (uma ruim não derruba o aluno).
     analises: b.analises === undefined ? undefined : validarLista(b.analises, AnaliseResumoSchema, "análise").validos,
   };

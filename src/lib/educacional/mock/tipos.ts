@@ -6,6 +6,7 @@ import type {
   NivelInicial,
   ResultadoAnalise,
   StatusAluno,
+  StatusAula,
   StatusCheckpoint,
   Usuario,
 } from "../contrato";
@@ -45,6 +46,8 @@ export type AlunoBanco = {
   email: string | null;
   telefone: string | null;
   discord: string | null;
+  // Entrega 2 (M1): copiado do programa no cadastro e na troca; editável.
+  total_aulas: number | null;
 };
 
 export type CheckpointBanco = {
@@ -74,6 +77,18 @@ export type IntervencaoBanco = {
   status: "aberta" | "concluida";
   concluida_em: string | null;
   criada_por: Usuario;
+  criada_em: string;
+  arquivado_em: string | null;
+};
+
+// Entrega 2 (M1).
+export type AulaBanco = {
+  id: string;
+  aluno_id: string;
+  nome: string;
+  data: string | null;
+  mentor_id: string | null;
+  status: StatusAula;
   criada_em: string;
   arquivado_em: string | null;
 };
@@ -131,6 +146,7 @@ export type Banco = {
   alunos: AlunoBanco[];
   checkpoints: CheckpointBanco[];
   intervencoes: IntervencaoBanco[];
+  aulas: AulaBanco[];
   ajustes: AjusteBanco[];
   historico: HistoricoBanco[];
   analises: AnaliseBanco[];

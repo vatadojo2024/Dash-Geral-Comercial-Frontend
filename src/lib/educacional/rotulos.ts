@@ -6,6 +6,7 @@ import type {
   NivelInicial,
   Sinal,
   StatusAluno,
+  StatusAula,
   StatusCheckpoint,
   StatusFinanceiro,
   TipoResponsavel,
@@ -103,12 +104,29 @@ export const AVISOS_CONHECIDOS: Record<string, { rotulo: string; dica: string }>
   sem_programa: { rotulo: "Programa não definido", dica: "Aluno sem programa. Defina pelo Raio-X, em “Definir programa”." },
 };
 
+// Entrega 2 (M1): status da aula (nomes da planilha do Vata).
+export const ROTULO_STATUS_AULA: Record<StatusAula, string> = {
+  agendada: "Agendada",
+  feito: "Feito",
+  no_show: "NoShow",
+  remarcada: "Remarcada",
+  cancelada: "Cancelada",
+};
+export const TAG_STATUS_AULA: Record<StatusAula, string> = {
+  agendada: "tag-info",
+  feito: "tag-success",
+  no_show: "tag-error",
+  remarcada: "tag-warning",
+  cancelada: "border-cinza/40 bg-cinza/20 text-cinza",
+};
+
 export const ROTULO_STATUS_INTERVENCAO = { aberta: "Aberta", concluida: "Concluída" } as const;
 
 export const ROTULO_ENTIDADE: Record<EntidadeHistorico, string> = {
   aluno: "Aluno",
   checkpoint: "Checkpoint",
   intervencao: "Intervenção",
+  aula: "Aula",
   ajuste: "Ajuste manual",
 };
 

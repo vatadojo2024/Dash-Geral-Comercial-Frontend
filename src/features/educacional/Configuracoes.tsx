@@ -149,6 +149,15 @@ const ABAS: Record<
         exibir: (v) => (v === false ? <span className="text-texto-sec">Não (sem checkpoints)</span> : "Sim"),
       },
       {
+        // Entrega 2 (M1): copiado para o aluno no cadastro e na troca.
+        chave: "total_aulas",
+        rotulo: "Total de aulas",
+        tipo: "numero_opcional",
+        largura: "w-32",
+        dica: "Sem total",
+        exibir: (v) => (v == null ? <span className="text-texto-sec/60">—</span> : `${v} aulas`),
+      },
+      {
         chave: "observacoes",
         rotulo: "Observações",
         tipo: "texto_opcional",
@@ -688,7 +697,7 @@ function FormItem({
                 aria-label={c.rotulo}
                 type={c.tipo.startsWith("numero") ? "number" : "text"}
                 min={c.tipo.startsWith("numero") ? 0 : undefined}
-                placeholder={c.tipo === "numero_opcional" ? "Sem prazo" : c.tipo === "marco" ? "Dia 3 ou Mês 1" : c.dica}
+                placeholder={c.dica ?? (c.tipo === "numero_opcional" ? "Sem prazo" : c.tipo === "marco" ? "Dia 3 ou Mês 1" : undefined)}
                 value={valores[c.chave]}
                 onChange={(e) => setValores({ ...valores, [c.chave]: e.target.value })}
                 className={CAMPO}

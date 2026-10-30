@@ -19,6 +19,7 @@ import {
   ROTULO_ENTIDADE,
   ROTULO_NIVEL,
   ROTULO_STATUS_ALUNO,
+  ROTULO_STATUS_AULA,
   ROTULO_STATUS_CHECKPOINT,
   ROTULO_STATUS_INTERVENCAO,
 } from "@/lib/educacional/rotulos";
@@ -82,6 +83,11 @@ const ROTULO_CAMPO: Record<string, string> = {
   acompanhamento_individual: "Acompanhamento individual",
   data_inicio_programa: "Início do programa",
   substituido: "Saiu da jornada (troca de programa)",
+  // aulas (Entrega 2)
+  total_aulas: "Total de aulas",
+  data: "Data",
+  mentor: "Mentor",
+  mentor_id: "Mentor",
 };
 
 // "Mês 1 · status" → { prefixo: "Mês 1", campo: "status" }
@@ -123,6 +129,7 @@ export function formatarDoHistorico(item: ItemHistorico, valor: unknown, nomes: 
   if ((campo === "status" || campo === "substituido") && item.entidade === "checkpoint") {
     return ROTULO_STATUS_CHECKPOINT[valor as keyof typeof ROTULO_STATUS_CHECKPOINT] ?? valor;
   }
+  if (campo === "status" && item.entidade === "aula") return ROTULO_STATUS_AULA[valor as keyof typeof ROTULO_STATUS_AULA] ?? valor;
   if (campo === "status" && item.entidade === "intervencao") {
     return ROTULO_STATUS_INTERVENCAO[valor as keyof typeof ROTULO_STATUS_INTERVENCAO] ?? valor;
   }

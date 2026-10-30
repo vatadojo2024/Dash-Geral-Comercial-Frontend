@@ -1,7 +1,9 @@
 import type {
   AlunoDetalhe,
   AlunoLinha,
+  Aula,
   CampoAjustavel,
+  CamposAula,
   CamposCheckpoint,
   CamposDiretosAluno,
   CamposIntervencao,
@@ -17,6 +19,7 @@ import {
   ROTULO_AUTORIZACAO,
   ROTULO_NIVEL,
   ROTULO_STATUS_ALUNO,
+  ROTULO_STATUS_AULA,
   ROTULO_STATUS_CHECKPOINT,
   ROTULO_STATUS_INTERVENCAO,
 } from "@/lib/educacional/rotulos";
@@ -315,6 +318,69 @@ export function intervencaoNova(
   };
 }
 
+// ---------- aulas (Entrega 2, M1) ----------
+
+// O que a tela mostra de uma aula editada (o mentor com nome).
+export type AulaNaTela = Partial<Pick<Aula, "mentor">>;
+
+const textoAula = (x: { nome?: unknown; data?: unknown; status?: unknown }) =>
+  `${x.nome ?? "Aula"}${x.data ? ` · ${dataCurta(String(x.data))}` : ""} · ${ROTULO_STATUS_AULA[x.status as keyof typeof ROTULO_STATUS_AULA] ?? "—"}`;
+
+function aulaNaTela(campos: CamposAula, tela: AulaNaTela): Record<string, unknown> {
+  const { mentor_id: _, ...resto } = campos;
+  return { ...resto, ...tela };
+}
+
+const doServidorAula = (x: Aula): Record<string, unknown> => ({ nome: x.nome, data: x.data, mentor_id: x.mentor?.id ?? null, status: x.status });
+
+export function alteracaoDaAula(x: Aula, campos: CamposAula, tela: AulaNaTela = {}, base?: Alteracao): Alteracao {
+  const valor = { ...(base && ehObjeto(base.valor) ? base.valor : {}), ...campos };
+  const campoNaTela = { ...sobreposicaoAnterior(base), ...aulaNaTela(campos, tela) };
+  return {
+    chave: `aula:${x.id}`,
+    valor,
+    anterior: pegar(doServidorAula(x), Object.keys(valor)),
+    antes: textoAula(x),
+    depois: textoAula({ ...x, ...campoNaTela }),
+    pedido: { tipo: "aula", item: { id: x.id, ...valor } },
+    sobrepor: [{ tipo: "item", lista: "aulas", id: x.id, campos: campoNaTela }],
+  };
+}
+
+export function aulaArquivada(x: Aula): Alteracao {
+  return {
+    chave: `aula:${x.id}`,
+    valor: "arquivar",
+    anterior: "ativa",
+    antes: textoAula(x),
+    depois: "Arquivada",
+    pedido: { tipo: "aula", item: { id: x.id, arquivar: true } },
+    sobrepor: [{ tipo: "remover", lista: "aulas", id: x.id }],
+  };
+}
+
+export function aulaNova(temp: string, campos: CamposAula, tela: AulaNaTela, base?: Alteracao): Alteracao {
+  const valor = { ...(base && ehObjeto(base.valor) ? base.valor : {}), ...campos };
+  const item = {
+    id: `${ID_NOVO}${temp}`,
+    nome: "Aula",
+    data: null,
+    mentor: null,
+    status: "agendada",
+    ...sobreposicaoAnterior(base),
+    ...aulaNaTela(campos, tela),
+  };
+  return {
+    chave: `aula:${ID_NOVO}${temp}`,
+    valor,
+    anterior: null,
+    antes: "—",
+    depois: `${textoAula(item)} (nova)`,
+    pedido: { tipo: "aula", item: { novo: true, ...valor } },
+    sobrepor: [{ tipo: "novo", lista: "aulas", item }],
+  };
+}
+
 // Alteração da tabela no status do próximo checkpoint.
 export function alteracaoDoProximoCheckpoint(a: AlunoLinha, campos: CamposCheckpoint, base?: Alteracao): Alteracao | null {
   return a.proximo_checkpoint ? alteracaoDoCheckpoint(a.proximo_checkpoint, campos, base) : null;
@@ -328,7 +394,7 @@ export const lerDoServidor: LeituraDoServidor = (alt, atual) => {
   const i = alt.chave.indexOf(":");
   const tipo = alt.chave.slice(0, i);
   const nome = alt.chave.slice(i + 1);
-  if ((tipo === "checkpoint" || tipo === "intervencao") && nome.startsWith(ID_NOVO)) return { anterior: null, antes: alt.antes };
+  if ((tipo === "checkpoint" || tipo === "intervencao" || tipo === "aula") && nome.startsWith(ID_NOVO)) return { anterior: null, antes: alt.antes };
   if (tipo === "checkpoint") {
     const cp = atual.checkpoints.find((c) => c.id === nome);
     if (!cp) return null;
@@ -341,6 +407,12 @@ export const lerDoServidor: LeituraDoServidor = (alt, atual) => {
     if (alt.valor === "arquivar") return { anterior: "ativa", antes: textoIntervencao(it) };
     const servidor = { tipo_id: it.tipo.id, descricao: it.descricao, responsavel_id: it.responsavel?.id ?? null, prazo: it.prazo, status: it.status };
     return { anterior: pegar(servidor, Object.keys(alt.valor as object)), antes: textoIntervencao(it) };
+  }
+  if (tipo === "aula") {
+    const x = atual.aulas.find((y) => y.id === nome);
+    if (!x) return null;
+    if (alt.valor === "arquivar") return { anterior: "ativa", antes: textoAula(x) };
+    return { anterior: pegar(doServidorAula(x), Object.keys(alt.valor as object)), antes: textoAula(x) };
   }
   if (tipo === "ajuste") {
     const c = campoDe(atual, nome as CampoAjustavel);

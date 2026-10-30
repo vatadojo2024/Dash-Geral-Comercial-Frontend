@@ -14,6 +14,7 @@ import type { AjusteLote, AlunoDetalhe, AlunoNoLote, ItemLote, PedidoLote, Respo
 //   checkpoint:<id>              mudança ou arquivamento de um checkpoint
 //   checkpoint:novo:<temp>       checkpoint avulso novo
 //   intervencao:<id> / intervencao:novo:<temp>   idem, intervenção
+//   aula:<id> / aula:novo:<temp>                 idem, aula (Entrega 2)
 // `anterior` é o valor do servidor na PRIMEIRA edição; editar de novo troca só
 // o valor (vale a última). Se o valor voltar ao anterior, a alteração some.
 // ---------------------------------------------------------------------------
@@ -22,7 +23,8 @@ export type PedidoDaAlteracao =
   | { tipo: "campos"; campos: Record<string, unknown> }
   | { tipo: "ajuste"; ajuste: AjusteLote }
   | { tipo: "checkpoint"; item: ItemLote }
-  | { tipo: "intervencao"; item: ItemLote };
+  | { tipo: "intervencao"; item: ItemLote }
+  | { tipo: "aula"; item: ItemLote };
 
 // Como a alteração aparece na tela, por cima do aluno do servidor. Operações
 // (e não o objeto pronto) para duas alterações no mesmo grupo não se apagarem.
@@ -142,7 +144,7 @@ export function montarPedido(entradas: Entrada[]): PedidoLote {
     alunos: entradas.map((e): AlunoNoLote => {
       const campos: Record<string, unknown> = {};
       const ajustes: AjusteLote[] = [];
-      const itens = { checkpoint: new Map<string, ItemLote>(), intervencao: new Map<string, ItemLote>() };
+      const itens = { checkpoint: new Map<string, ItemLote>(), intervencao: new Map<string, ItemLote>(), aula: new Map<string, ItemLote>() };
       for (const a of Object.values(e.alteracoes)) {
         if (a.pedido.tipo === "campos") Object.assign(campos, a.pedido.campos);
         else if (a.pedido.tipo === "ajuste") ajustes.push(a.pedido.ajuste);
@@ -160,6 +162,7 @@ export function montarPedido(entradas: Entrada[]): PedidoLote {
         ...(ajustes.length ? { ajustes } : {}),
         ...(itens.checkpoint.size ? { checkpoints: [...itens.checkpoint.values()] } : {}),
         ...(itens.intervencao.size ? { intervencoes: [...itens.intervencao.values()] } : {}),
+        ...(itens.aula.size ? { aulas: [...itens.aula.values()] } : {}),
       };
     }),
   };
@@ -174,11 +177,11 @@ export function marcarSalvando(p: Pendencias, ids: string[]): Pendencias {
 // Célula do erro de validação: a alteração cujo pedido tem o campo devolvido.
 export function chaveDoCampo(e: Entrada, campo: string): string | null {
   const alts = Object.values(e.alteracoes);
-  const lista = campo === "checkpoints" ? "checkpoint" : campo === "intervencoes" ? "intervencao" : null;
+  const lista = campo === "checkpoints" ? "checkpoint" : campo === "intervencoes" ? "intervencao" : campo === "aulas" ? "aula" : null;
   const achada =
     alts.find((a) => a.pedido.tipo === "campos" && campo in a.pedido.campos) ??
     alts.find((a) => a.pedido.tipo === "ajuste" && a.pedido.ajuste.campo === campo) ??
-    alts.find((a) => (a.pedido.tipo === "checkpoint" || a.pedido.tipo === "intervencao") && campo in a.pedido.item) ??
+    alts.find((a) => (a.pedido.tipo === "checkpoint" || a.pedido.tipo === "intervencao" || a.pedido.tipo === "aula") && campo in a.pedido.item) ??
     (lista ? alts.find((a) => a.pedido.tipo === lista) : undefined) ??
     // "motivo"/"valor" sem dizer o campo: é de um ajuste (o primeiro do aluno).
     (campo === "motivo" || campo === "valor" ? alts.find((a) => a.pedido.tipo === "ajuste") : undefined);
@@ -340,6 +343,7 @@ const AlteracaoGuardada = z.object({
     z.object({ tipo: z.literal("ajuste"), ajuste: z.object({ campo: z.string() }).passthrough() }),
     z.object({ tipo: z.literal("checkpoint"), item: Item }),
     z.object({ tipo: z.literal("intervencao"), item: Item }),
+    z.object({ tipo: z.literal("aula"), item: Item }),
   ]),
   sobrepor: z.array(z.object({ tipo: z.enum(["campo", "dentro", "item", "novo", "remover"]) }).passthrough()),
   afetaTotais: z.boolean().optional(),

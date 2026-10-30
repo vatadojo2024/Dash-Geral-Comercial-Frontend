@@ -65,6 +65,12 @@ const ROTULOS: Record<string, Rotulo> = {
   telefone: m("Número"),
   discord: m("Discord"),
   acompanhamento_individual: m("Acompanhamento individual"),
+  // Entrega 2 (M1): aulas.
+  total_aulas: m("Total de aulas"),
+  aulas: { nome: "Aulas", g: "fp" },
+  data: f("Data"),
+  mentor: m("Mentor"),
+  mentor_id: m("Mentor"),
 };
 
 // Caminho da API ("alunos.0.checkpoints.<id>.data_prevista") → o campo mais

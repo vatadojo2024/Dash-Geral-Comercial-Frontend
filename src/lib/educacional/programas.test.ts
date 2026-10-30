@@ -168,7 +168,7 @@ describe("trocar programa (prévia e confirmação)", () => {
     const pv = await previaTrocaPrograma(a.id, a.versao, { programa_id: destino.id, data_inicio: a.data_entrada });
     const realizados = a.checkpoints.filter((x) => x.status === "realizado");
     // Formato do backend: o programa é o mesmo objeto do aluno; criados com id null.
-    expect(pv.programa).toEqual({ id: destino.id, nome: destino.nome, mentoria: destino.mentoria, duracao_meses: 12 });
+    expect(pv.programa).toEqual({ id: destino.id, nome: destino.nome, mentoria: destino.mentoria, duracao_meses: 12, total_aulas: 53 });
     expect(pv.ficam.map((x) => x.id).sort()).toEqual(realizados.map((x) => x.id).sort());
     expect(pv.saem.map((x) => x.id).sort()).toEqual(a.checkpoints.filter((x) => x.status !== "realizado").map((x) => x.id).sort());
     const ultimo = realizados.map((x) => x.data_realizada ?? x.data_prevista ?? "").sort().at(-1)!;

@@ -1,5 +1,6 @@
 import type {
   AlunoDetalhe,
+  Aula,
   CampoAjustavel,
   CampoCalculado,
   Checkpoint,
@@ -120,6 +121,7 @@ function programaAninhado(banco: Banco, id: string | null | undefined) {
         duracao_meses: p.duracao_meses,
         observacoes: p.observacoes ?? null,
         acompanhamento_individual: p.acompanhamento_individual ?? true,
+        total_aulas: p.total_aulas ?? null,
       }
     : null;
 }
@@ -149,6 +151,14 @@ function intervencoesDoAluno(banco: Banco, alunoId: string): Intervencao[] {
     });
 }
 
+// Aulas por data (sem data no fim); empate pela criação.
+function aulasDoAluno(banco: Banco, alunoId: string): Aula[] {
+  return (banco.aulas ?? [])
+    .filter((x) => x.aluno_id === alunoId && !x.arquivado_em)
+    .sort((a, b) => (a.data ?? "9999").localeCompare(b.data ?? "9999") || a.criada_em.localeCompare(b.criada_em))
+    .map((x) => ({ id: x.id, nome: x.nome, data: x.data, mentor: responsavelDe(banco, x.mentor_id), status: x.status }));
+}
+
 // Próximo checkpoint: o primeiro (pela ordem) ainda não realizado.
 export function proximoCheckpoint(checkpoints: Checkpoint[]) {
   const c = checkpoints.find((x) => x.status !== "realizado");
@@ -159,6 +169,10 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
   const etapa = banco.config.etapas.find((e) => e.id === a.etapa_id);
   const checkpoints = checkpointsDoAluno(banco, a.id);
   const intervencoes = intervencoesDoAluno(banco, a.id);
+  const aulas = aulasDoAluno(banco, a.id);
+  // Regra do backend (imitada): aplicadas = aulas "Feito"; saldo = total − aplicadas.
+  const aplicadas = aulas.filter((x) => x.status === "feito").length;
+  const totalAulas = a.total_aulas ?? null;
   const c = <T,>(nome: CampoAjustavel, auto: T | null) => campo<T>(banco, a.id, nome, auto);
   // Fase 3: análises confirmadas (todas para a lista e a última atividade; as da
   // etapa ATUAL para o progresso automático e os highlights).
@@ -261,6 +275,10 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
       : [...a.highlights].sort((x, y) => y.data_aula.localeCompare(x.data_aula)),
     checkpoints,
     intervencoes,
+    aulas,
+    total_aulas: totalAulas,
+    aulas_aplicadas: aplicadas,
+    saldo_aulas: totalAulas == null ? null : totalAulas - aplicadas,
     analises,
     progresso_origem: {
       consumiu: origem(progresso.consumiu),

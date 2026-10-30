@@ -187,8 +187,8 @@ export function NovoAluno({
           dica={
             programa
               ? `Mentoria ${programa.mentoria} · ${programa.duracao_meses} meses${
-                  semAcompanhamentoIndividual(programa) ? " · sem acompanhamento individual (sem checkpoints)" : ""
-                }`
+                  programa.total_aulas != null ? ` · ${programa.total_aulas} aulas` : ""
+                }${semAcompanhamentoIndividual(programa) ? " · sem acompanhamento individual (sem checkpoints)" : ""}`
               : semProgramas
                 ? "Nenhum programa ativo. Cadastre um em Configurações → Programas."
                 : undefined

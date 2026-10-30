@@ -45,6 +45,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { useSession } from "@/features/session/SessionProvider";
 import { cn } from "@/lib/utils/cn";
+import { Aulas } from "./Aulas";
 import { Bloco, CampoCalculadoView, ConfirmarAcao } from "./Blocos";
 import { Timeline } from "./Checkpoints";
 import { ativos, CHAVES, etapasAtivas, useConfig } from "./dados";
@@ -264,6 +265,7 @@ export function RaioXAluno({ id }: { id: string }) {
                   <Sinais a={a} />
                 </div>
                 <Timeline a={a} individual={!semAcompanhamentoIndividual(programaDoAluno(a, config.data))} />
+                <Aulas a={a} config={config.data} />
                 <div className="grid gap-4 lg:grid-cols-2">
                   <Progresso a={a} />
                   <Diagnostico a={a} config={config.data} />

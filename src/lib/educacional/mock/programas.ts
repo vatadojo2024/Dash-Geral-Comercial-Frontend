@@ -1,13 +1,20 @@
-import { contagemDoMarco, type CheckpointModelo, type Programa, type Roteiro, type StatusCheckpoint } from "../contrato";
+import { contagemDoMarco, type CheckpointModelo, type Programa, type Roteiro, type StatusAula, type StatusCheckpoint } from "../contrato";
 import { dataPrevistaDoModelo, diasEntre } from "./motor";
-import type { Banco, CheckpointBanco } from "./tipos";
+import type { AulaBanco, Banco, CheckpointBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // Programas do modo demonstração (specs/educacional/programas): as 6 listas do
 // Vata (28/10). Os roteiros são textos curtos de exemplo; os reais vêm do backend.
 // ---------------------------------------------------------------------------
 
-type Definicao = { mentoria: string; meses: number; marcos: [string, string][]; observacao?: string; individual?: false };
+type Definicao = {
+  mentoria: string;
+  meses: number;
+  marcos: [string, string][];
+  observacao?: string;
+  individual?: false;
+  aulas?: number; // Entrega 2 (M1): total de aulas do programa (exemplo)
+};
 
 const INDICACAO = "Em que momento solicitar indicação? Idealmente após o primeiro UAU.";
 
@@ -15,33 +22,39 @@ const DEFINICOES: Definicao[] = [
   {
     mentoria: "Blackbelt",
     meses: 6,
+    aulas: 26,
     observacao: INDICACAO,
     marcos: [["Dia 0", "Boas-vindas"], ["Dia 3", "Sprint"], ["Mês 1", "Revisão"], ["Mês 3", "Big Win"], ["Mês 5", "Reta Final"], ["Mês 6", "Fim"]],
   },
   {
     mentoria: "Blackbelt",
     meses: 12,
+    aulas: 53,
     observacao: INDICACAO,
     marcos: [["Dia 0", "Boas-vindas"], ["Dia 3", "Onboarding"], ["Mês 1", "Revisão"], ["Mês 4", "Big Win"], ["Mês 6", "Metade"], ["Mês 12", "Fim"]],
   },
   {
     mentoria: "Prime",
     meses: 6,
+    aulas: 12,
     marcos: [["Dia 0", "Welcome"], ["Dia 3", "Check-in"], ["Mês 1", "Revisão"], ["Mês 3", "Big Win"], ["Mês 5", "Pré-fim"], ["Mês 6", "Fim"]],
   },
   {
     mentoria: "Prime",
     meses: 12,
+    aulas: 24,
     marcos: [["Dia 0", "Welcome"], ["Dia 3", "Check-in"], ["Mês 1", "Avaliação"], ["Mês 6", "Metade"], ["Mês 9", "Big Win"], ["Mês 12", "Decisão"]],
   },
   {
     mentoria: "Private",
     meses: 6,
+    aulas: 24,
     marcos: [["Dia 0", "Welcome"], ["Dia 3", "Check-in"], ["Mês 1", "Revisão"], ["Mês 3", "Big Win"], ["Mês 5", "Pré-fim"], ["Mês 6", "Fim"]],
   },
   {
     mentoria: "Private",
     meses: 12,
+    aulas: 48,
     marcos: [["Dia 0", "Welcome"], ["Dia 3", "Check-in"], ["Mês 1", "Avaliação"], ["Mês 6", "Metade"], ["Mês 9", "Big Win"], ["Mês 12", "Decisão"]],
   },
   // Entrega 1: Ninja, sem acompanhamento individual (sem checkpoints).
@@ -83,6 +96,7 @@ export function catalogoDeProgramas(): { programas: Programa[]; modelos: Checkpo
       ordem: i + 1,
       ativo: true,
       acompanhamento_individual: d.individual ?? true,
+      total_aulas: d.aulas ?? null,
     });
     d.marcos.forEach(([marco, nome], k) => {
       const bigWin = nome === "Big Win";
@@ -197,4 +211,47 @@ export function semearEntrega1(banco: Banco) {
       banco.checkpoints = banco.checkpoints.filter((c) => c.aluno_id !== a.id);
     }
   });
+}
+
+// Semente v5 (Entrega 2, M1), só demonstração: o total de aulas do programa em
+// cada aluno e uma aula por semana desde o início do programa (até o total),
+// com Feito na maioria das que passaram, alguns NoShow, Remarcada e Cancelada,
+// e Agendada nas próximas 3 semanas. Mentor: o responsável, se for mentor.
+function statusDeExemplo(n: number, passou: boolean): StatusAula {
+  if (!passou) return "agendada";
+  if (n % 7 === 0) return "no_show";
+  if (n % 11 === 0) return "remarcada";
+  if (n % 13 === 0) return "cancelada";
+  return "feito";
+}
+
+export function semearEntrega2(banco: Banco, hoje: string) {
+  const mentores = banco.config.responsaveis.filter((r) => r.tipo === "mentor" && r.ativo);
+  const aulas: AulaBanco[] = [];
+  banco.alunos.forEach((a, i) => {
+    const programa = banco.config.programas.find((p) => p.id === a.programa_id);
+    a.total_aulas = programa?.total_aulas ?? null;
+    if (!a.total_aulas || !a.data_inicio_programa) return;
+    const responsavel = mentores.find((r) => r.id === a.responsavel_id);
+    const limite = new Date(`${hoje}T12:00:00Z`);
+    limite.setUTCDate(limite.getUTCDate() + 21);
+    for (let n = 1; n <= a.total_aulas; n += 1) {
+      const d = new Date(`${a.data_inicio_programa}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + 7 * n);
+      if (d > limite) break;
+      const dia = d.toISOString().slice(0, 10);
+      const mentor = responsavel ?? mentores[(i + n) % mentores.length] ?? null;
+      aulas.push({
+        id: `aula-${a.id}-${n}`,
+        aluno_id: a.id,
+        nome: `Aula ${n}`,
+        data: dia,
+        mentor_id: mentor?.id ?? null,
+        status: statusDeExemplo(n + i, dia <= hoje),
+        criada_em: `${dia}T12:00:00.000Z`,
+        arquivado_em: null,
+      });
+    }
+  });
+  banco.aulas = aulas;
 }

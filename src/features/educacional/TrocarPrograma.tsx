@@ -175,7 +175,10 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
           <p className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-texto">
             <span className="font-semibold">{previa.programa.nome}</span> a partir de {dataCurta(previa.data_inicio)} · término{" "}
             {dataCurta(previa.data_termino_sugerida)}
-            <span className="block text-xs text-texto-sec">A troca grava o início, a mentoria e o término do programa.</span>
+            <span className="block text-xs text-texto-sec">
+              A troca grava o início, a mentoria e o término do programa
+              {previa.programa.total_aulas != null ? `, e o total de aulas passa a ${previa.programa.total_aulas}` : ""}.
+            </span>
           </p>
           <div className="grid gap-3 md:grid-cols-3">
             <ListaDaPrevia

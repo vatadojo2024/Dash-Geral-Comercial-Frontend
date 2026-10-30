@@ -84,7 +84,7 @@ export function CampoTexto({
   rotulo: string;
   valor: string | null;
   onConfirmar: (v: string | null) => void;
-  tipo?: "text" | "date" | "email" | "tel";
+  tipo?: "text" | "date" | "email" | "tel" | "number";
   area?: boolean;
   obrigatorio?: boolean;
   className?: string;
@@ -121,6 +121,8 @@ export function CampoTexto({
           <input
             {...comum}
             type={tipo}
+            min={tipo === "number" ? 0 : undefined}
+            step={tipo === "number" ? 1 : undefined}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), e.currentTarget.blur())}
             className={CAMPO}
           />
