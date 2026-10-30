@@ -13,7 +13,7 @@ import {
   previaTrocaPrograma,
   trocarPrograma,
 } from "./apiEducacional";
-import type { Config } from "./contrato";
+import { AlunoLinhaSchema, type Config } from "./contrato";
 import { _zerarMemoria } from "./mock/banco";
 import { hojeBR } from "./mock/motor";
 
@@ -50,21 +50,32 @@ describe("contato", () => {
     const numero = await erroDe(criarAluno({ ...base, ...CONTATO, telefone: "1234" }));
     expect(numero.corpo.campo).toBe("telefone");
     const novo = await criarAluno({ ...base, ...CONTATO });
-    expect([novo.email, novo.telefone, novo.discord, novo.contato_incompleto]).toEqual([...Object.values(CONTATO), false]);
+    expect([novo.email, novo.telefone, novo.discord, novo.avisos]).toEqual([...Object.values(CONTATO), []]);
   });
 
   it("aluno sem contato tem o aviso e continua editável; completar o contato tira o aviso", async () => {
     const { itens } = await buscarAlunos({ por_pagina: "todos" });
-    const incompletos = itens.filter((a) => a.contato_incompleto);
+    const incompletos = itens.filter((a) => a.avisos.includes("contato_incompleto"));
     expect(incompletos.length).toBeGreaterThanOrEqual(1);
     const semNada = incompletos.find((a) => !a.email && !a.telefone && !a.discord)!;
     expect(semNada).toBeTruthy();
     const editado = await atualizarAluno(semNada.id, semNada.versao, { objetivo: "Outra edição, sem contato" });
-    expect([editado.objetivo, editado.contato_incompleto]).toEqual(["Outra edição, sem contato", true]);
+    expect([editado.objetivo, editado.avisos]).toEqual(["Outra edição, sem contato", ["contato_incompleto"]]);
     const completo = await atualizarAluno(editado.id, editado.versao, CONTATO);
-    expect(completo.contato_incompleto).toBe(false);
+    expect(completo.avisos).toEqual([]);
     // Apagar o contato não vale: é obrigatório.
     expect((await erroDe(atualizarAluno(completo.id, completo.versao, { discord: "" }))).corpo.campo).toBe("discord");
+  });
+
+  it("avisos vêm como lista de códigos; sem o campo, lista vazia", async () => {
+    const { itens } = await buscarAlunos({ por_pagina: "todos" });
+    const { avisos: _fora, ...semAvisos } = itens[0];
+    expect(AlunoLinhaSchema.parse(semAvisos).avisos).toEqual([]);
+    expect(AlunoLinhaSchema.parse({ ...semAvisos, avisos: ["contato_incompleto", "outro_aviso"] }).avisos).toEqual([
+      "contato_incompleto",
+      "outro_aviso",
+    ]);
+    expect(AlunoLinhaSchema.safeParse({ ...semAvisos, avisos: true }).success).toBe(false);
   });
 
   it("formato mínimo na tela, antes de enviar", () => {

@@ -7,6 +7,7 @@ import { EducacionalError, FONTE_EDUCACIONAL } from "@/lib/educacional/apiEducac
 import type { AlunoLinha, FaixaSaude, StatusCheckpoint } from "@/lib/educacional/contrato";
 import { textoDoErro } from "@/lib/educacional/erros";
 import {
+  AVISOS_CONHECIDOS,
   PONTO_DO_TOM,
   ROTULO_FAIXA,
   ROTULO_STATUS_CHECKPOINT,
@@ -61,6 +62,25 @@ export function NomeResponsavel({
       <span className="text-texto">{responsavel.nome}</span>
       <span className="text-texto-sec"> · {ROTULO_TIPO_RESPONSAVEL[responsavel.tipo]}</span>
     </span>
+  );
+}
+
+// Avisos do backend ao lado do nome (Raio-X, tabela e Kanban). Só informam.
+export function AvisosDoAluno({ avisos, compacto = false }: { avisos: string[]; compacto?: boolean }) {
+  const conhecidos = avisos.filter((c, i) => AVISOS_CONHECIDOS[c] && avisos.indexOf(c) === i);
+  if (!conhecidos.length) return null;
+  return (
+    <>
+      {conhecidos.map((c) => (
+        <span
+          key={c}
+          className={cn("tag tag-warning shrink-0 whitespace-nowrap", compacto && "px-1.5 py-0 text-[10px]")}
+          title={AVISOS_CONHECIDOS[c].dica}
+        >
+          {AVISOS_CONHECIDOS[c].rotulo}
+        </span>
+      ))}
+    </>
   );
 }
 

@@ -61,7 +61,7 @@ import { programasPorMentoria, temProgramas } from "./programas";
 import { FormAjuste } from "./FormAjuste";
 import { Kanban } from "./Kanban";
 import { NovoAluno } from "./NovoAluno";
-import { BadgeCheckpoint, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
+import { AvisosDoAluno, BadgeCheckpoint, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
 import { ROTULO_CONTATO, type CampoContato } from "./contato";
 import { COLUNAS_DA_TABELA, ordenavel, SeletorColunas, useColunasVisiveis, type IdColuna } from "./SeletorColunas";
 import { useGravacao } from "./useGravacao";
@@ -523,6 +523,7 @@ const LinhaAluno = memo(function LinhaAluno({ a, entrada, acoes, colunas, etapas
                 >
                   {a.nome}
                 </Link>
+                <AvisosDoAluno avisos={a.avisos} />
                 {a.arquivado && <span className="tag">Arquivado</span>}
               </span>
             }

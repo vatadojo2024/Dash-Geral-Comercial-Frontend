@@ -31,7 +31,7 @@ import { alteracaoDaEtapa } from "./lote/alteracoes";
 import { MenuDesfazer } from "./lote/MarcaPendente";
 import type { Entrada, Pendencias } from "./lote/pendencias";
 import { useAcoesDoLote } from "./lote/ProvedorLote";
-import { BadgeCheckpoint, Faixa, NomeResponsavel } from "./partes";
+import { AvisosDoAluno, BadgeCheckpoint, Faixa, NomeResponsavel } from "./partes";
 
 // ---------------------------------------------------------------------------
 // Kanban (spec Fase 2, seção 3): uma coluna por etapa ativa, na ordem da
@@ -308,6 +308,7 @@ const Cartao = memo(function Cartao({
         >
           {a.nome}
         </Link>
+        <AvisosDoAluno avisos={a.avisos} compacto />
         {temAjusteNoCard(a) && (
           <span title="Algum campo deste card tem ajuste manual" className="mt-0.5 shrink-0">
             <PencilLine className="h-3 w-3 text-amarelo" aria-label="Com ajuste manual" />

@@ -224,14 +224,16 @@ export const AlunoLinhaSchema = z.object({
   // `programaDoAluno`, que completa pela config o que faltar).
   programa_id: z.string().nullable().default(null),
   programa: ProgramaDoAlunoSchema.nullable().default(null),
-  // Contato (Entrega 1): obrigatório no cadastro; `contato_incompleto` vem do
-  // backend e mostra o aviso, sem bloquear as outras edições.
+  // Contato (Entrega 1): obrigatório no cadastro.
   email: z.string().nullable().default(null),
   telefone: z.string().nullable().default(null),
   discord: z.string().nullable().default(null),
-  contato_incompleto: z.boolean().default(false),
+  // Avisos do backend (ex.: "contato_incompleto"): só mostram, não bloqueiam
+  // edição. Código desconhecido é ignorado na tela.
+  avisos: z.array(z.string()).default([]),
 });
 export type AlunoLinha = z.infer<typeof AlunoLinhaSchema>;
+export const AVISO_CONTATO_INCOMPLETO = "contato_incompleto";
 
 export const CheckpointSchema = z.preprocess(
   daApi,

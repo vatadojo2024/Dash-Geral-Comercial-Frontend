@@ -67,7 +67,7 @@ import {
 import { comPendencias, contar } from "./lote/pendencias";
 import { useAcoesDoLote, usePendencias } from "./lote/ProvedorLote";
 import { NovaIntervencao } from "./NovaIntervencao";
-import { EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
+import { AvisosDoAluno, EtiquetaDemonstracao, Faixa, mensagemDoErro, NomeResponsavel, useRedirecionarSeSemPermissao } from "./partes";
 import { programaDoAluno, semAcompanhamentoIndividual, temProgramas } from "./programas";
 import { TrocarPrograma } from "./TrocarPrograma";
 import { useGravacao } from "./useGravacao";
@@ -389,11 +389,7 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">{a.nome}</h1>
             <span className="tag">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>
-            {a.contato_incompleto && (
-              <span className="tag tag-warning" title="Falta e-mail, número ou Discord. Complete pela ficha.">
-                Contato incompleto
-              </span>
-            )}
+            <AvisosDoAluno avisos={a.avisos} />
             <EtiquetaDemonstracao />
           </div>
           {f.editando ? (

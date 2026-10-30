@@ -97,6 +97,11 @@ export const ROTULO_AUTORIZACAO: Record<AutorizacaoProvaSocial, string> = {
   pendente: "Pendente",
 };
 
+// Avisos do aluno (`avisos` da API): rótulo e dica. Código fora daqui não aparece.
+export const AVISOS_CONHECIDOS: Record<string, { rotulo: string; dica: string }> = {
+  contato_incompleto: { rotulo: "Contato incompleto", dica: "Falta e-mail, número ou Discord. Complete pela ficha do aluno." },
+};
+
 export const ROTULO_STATUS_INTERVENCAO = { aberta: "Aberta", concluida: "Concluída" } as const;
 
 export const ROTULO_ENTIDADE: Record<EntidadeHistorico, string> = {

@@ -11,7 +11,7 @@ import type {
   StatusCheckpoint,
   StatusFinanceiro,
 } from "../contrato";
-import { marcoDe, RE_MARCO, type Contagem } from "../contrato";
+import { AVISO_CONTATO_INCOMPLETO, marcoDe, RE_MARCO, type Contagem } from "../contrato";
 import { confirmadasDoAluno } from "./analises";
 import type { AlunoBanco, Banco } from "./tipos";
 
@@ -242,7 +242,7 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
     email: a.email ?? null,
     telefone: a.telefone ?? null,
     discord: a.discord ?? null,
-    contato_incompleto: !a.email || !a.telefone || !a.discord,
+    avisos: !a.email || !a.telefone || !a.discord ? [AVISO_CONTATO_INCOMPLETO] : [],
     data_inicio_programa: a.data_inicio_programa ?? null,
     data_entrada: a.data_entrada,
     data_termino: a.data_termino,
