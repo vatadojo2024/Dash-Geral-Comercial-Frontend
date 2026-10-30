@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FlaskConical } from "lucide-react";
 import { EducacionalError, FONTE_EDUCACIONAL } from "@/lib/educacional/apiEducacional";
 import type { AlunoLinha, FaixaSaude, StatusCheckpoint } from "@/lib/educacional/contrato";
+import { textoDoErro } from "@/lib/educacional/erros";
 import {
   PONTO_DO_TOM,
   ROTULO_FAIXA,
@@ -85,6 +86,7 @@ export function useRedirecionarSeSemPermissao(erros: unknown[]): boolean {
   return semPermissao;
 }
 
+// Sempre em português: erro que não veio da API (ex.: "Failed to fetch") vira texto da tela.
 export function mensagemDoErro(e: unknown): string {
-  return e instanceof Error ? e.message : "Tente novamente em instantes.";
+  return textoDoErro(e);
 }

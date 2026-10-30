@@ -103,7 +103,7 @@ describe("gravarAluno", () => {
     const r = await gravarAluno(deps(), renomear(a, "   "));
     expect(r.ok).toBe(false);
     expect(naLista(a.id).nome).toBe(a.nome);
-    expect(avisos[0]).toEqual({ tipo: "erro", texto: "Não foi possível salvar. Campo obrigatório." });
+    expect(avisos[0]).toEqual({ tipo: "erro", texto: "Não foi possível salvar. Nome é obrigatório. Preencha o campo." });
   });
 
   it("rede: desfaz e oferece 'Tentar de novo', que grava de verdade", async () => {

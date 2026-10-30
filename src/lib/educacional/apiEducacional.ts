@@ -42,6 +42,7 @@ import {
   type StatusCheckpoint,
   type Usuario,
 } from "./contrato";
+import { mensagemDoStatus, traduzirCorpo, traduzirMensagem } from "./erros";
 
 // ---------------------------------------------------------------------------
 // ÚNICA porta de dados do módulo Educacional (Fase 2). Não importa nada do
@@ -223,8 +224,7 @@ function simularGravacao(): SimularGravacao {
   return v === "409" || v === "400" || v === "rede" ? v : null;
 }
 
-const ERRO_DE_REDE = "Sem conexão com o servidor. Verifique a internet e tente de novo.";
-const NAO_ENCONTRADO = "Registro não encontrado. Ele pode ter sido arquivado ou removido; atualize a página.";
+const ERRO_DE_REDE = mensagemDoStatus(0);
 
 // Tipos do mock (só tipos: o código do mock é carregado sob demanda).
 type ServidorMock = typeof import("./mock/servidor");
@@ -270,7 +270,10 @@ async function transporteMock(p: Pedido): Promise<unknown> {
     if (escrita) salvarBanco(banco, hoje);
     return JSON.parse(JSON.stringify(resposta)) as unknown;
   } catch (e) {
-    if (e instanceof ErroDaApi) throw new EducacionalError(e.corpo.mensagem ?? e.corpo.error, e.status, e.corpo);
+    if (e instanceof ErroDaApi) {
+      const { texto, corpo: traduzido } = traduzirCorpo(e.status, e.corpo);
+      throw new EducacionalError(texto, e.status, traduzido ?? undefined);
+    }
     throw e;
   }
 }
@@ -368,12 +371,10 @@ async function transporteApi(p: Pedido): Promise<unknown> {
       limparCookieSessao();
       window.location.href = "/login";
     }
-    // 404 vem sem `mensagem` ({ error: "nao_encontrado" }): não mostrar o código cru.
-    const mensagem =
-      corpo?.mensagem ??
-      (res.status === 404 ? NAO_ENCONTRADO : corpo?.error) ??
-      `O serviço educacional respondeu ${res.status}.`;
-    throw new EducacionalError(mensagem, res.status, corpo ?? { error: mensagem });
+    // Em português, com o campo e o que fazer: a validação do backend às vezes
+    // manda a mensagem crua, em inglês; sem mensagem (404), o texto vem do status.
+    const { texto, corpo: traduzido } = traduzirCorpo(res.status, corpo);
+    throw new EducacionalError(texto, res.status, traduzido ?? { error: texto });
   }
   return corpo;
 }
@@ -598,7 +599,7 @@ function resultadoDoLote(alunoId: string, bruto: unknown): ResultadoLoteAluno {
     ok: false,
     error: "validacao",
     campo: typeof b.campo === "string" ? b.campo : "",
-    mensagem: typeof b.mensagem === "string" ? b.mensagem : "Não foi possível salvar este aluno.",
+    mensagem: typeof b.mensagem === "string" ? traduzirMensagem(b.mensagem, typeof b.campo === "string" ? b.campo : null) : "Não foi possível salvar este aluno.",
   };
 }
 

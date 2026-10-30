@@ -284,7 +284,11 @@ describe("escrita em aluno — seção 5 do backend", () => {
     const curto = cfg.programas.find((p) => p.nome === "Prime 1 mês")!;
     cfg = await atualizarItemConfig("programas", curto.id, { ativo: false });
     const inativo = await erroDe(criarAluno({ ...base, programa_id: curto.id }));
-    expect([inativo.status, inativo.corpo.campo, inativo.corpo.mensagem]).toEqual([400, "programa_id", "programa inativo"]);
+    expect([inativo.status, inativo.corpo.campo, inativo.corpo.mensagem]).toEqual([
+      400,
+      "programa_id",
+      "Programa: a opção escolhida não existe mais ou foi inativada. Escolha outra na lista.",
+    ]);
   });
 
   it("filtro checkpoint=substituido dá 400 (não é status da jornada)", async () => {
