@@ -58,8 +58,9 @@ describe("semente — contrato da Fase 2", () => {
     expect(banco.config.checkpoints_modelo.every((m) => (m.dias_apos_entrada === null) !== (m.meses_apos_inicio === null))).toBe(true);
   });
 
-  it("todo aluno tem programa, a mentoria dele e os checkpoints da lista do programa", () => {
-    for (const a of alunos) {
+  it("aluno com programa tem a mentoria dele e os checkpoints da lista do programa; um veio sem programa", () => {
+    expect(alunos.filter((a) => !a.programa_id)).toHaveLength(1);
+    for (const a of alunos.filter((x) => x.programa_id)) {
       const programa = banco.config.programas.find((p) => p.id === a.programa_id);
       expect(programa).toBeTruthy();
       expect(a.mentoria).toBe(programa!.mentoria);

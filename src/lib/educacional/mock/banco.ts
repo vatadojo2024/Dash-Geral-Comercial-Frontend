@@ -17,8 +17,8 @@ import type { AnaliseBanco, Banco } from "./tipos";
 export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // Sobe quando o formato da semente muda: banco salvo com outra versão é trocado.
 // 2 = Fase 3 (análises de aula; semente D4). 3 = programas e roteiros.
-// 4 = Entrega 1 (contato, "Não solicitado" e Ninja).
-export const VERSAO_DADOS = 4;
+// 4 = Entrega 1 (contato, "Não solicitado" e Ninja). 5 = aluno sem programa.
+export const VERSAO_DADOS = 5;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };

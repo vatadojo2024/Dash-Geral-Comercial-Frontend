@@ -200,7 +200,11 @@ export const AlunoLinhaSchema = z.object({
   id: z.string().min(1),
   versao: z.number().int(),
   nome: z.string().min(1),
-  mentoria: z.string(),
+  // Aluno da planilha sem programa pode vir sem mentoria: vira texto vazio.
+  mentoria: z
+    .string()
+    .nullish()
+    .transform((v) => v ?? ""),
   nivel_inicial: NivelInicialSchema,
   status_aluno: StatusAlunoSchema,
   etapa: z.object({ id: z.string(), nome: z.string() }),
@@ -234,6 +238,7 @@ export const AlunoLinhaSchema = z.object({
 });
 export type AlunoLinha = z.infer<typeof AlunoLinhaSchema>;
 export const AVISO_CONTATO_INCOMPLETO = "contato_incompleto";
+export const AVISO_SEM_PROGRAMA = "sem_programa";
 
 export const CheckpointSchema = z.preprocess(
   daApi,

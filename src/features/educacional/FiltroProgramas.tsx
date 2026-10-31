@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { PROGRAMA_NENHUM } from "@/lib/educacional/apiEducacional";
 import { cn } from "@/lib/utils/cn";
 import type { GrupoDeProgramas } from "./programas";
 
@@ -9,12 +10,15 @@ import type { GrupoDeProgramas } from "./programas";
 // Filtro por programa (programas, P6): vários ao mesmo tempo (ex.: Blackbelt 6
 // e 12 meses), opções agrupadas por mentoria. A caixa da mentoria marca ou
 // desmarca o grupo todo. Vale para a lista, o Kanban e a aba Alunos (M2).
+// "Sem programa" fica no topo: a Ninja continua por último.
 // ---------------------------------------------------------------------------
 
 export function resumoDosProgramas(grupos: GrupoDeProgramas[], valor: string[]): string {
   if (!valor.length) return "Todos";
   const todos = grupos.flatMap((g) => g.programas);
-  if (valor.length === 1) return todos.find((p) => p.id === valor[0])?.nome ?? "1 programa";
+  if (valor.length === 1) {
+    return valor[0] === PROGRAMA_NENHUM ? "Sem programa" : (todos.find((p) => p.id === valor[0])?.nome ?? "1 programa");
+  }
   const inteiro = grupos.find((g) => g.programas.length === valor.length && g.programas.every((p) => valor.includes(p.id)));
   return inteiro ? `${inteiro.mentoria} (todos)` : `${valor.length} programas`;
 }
@@ -69,6 +73,15 @@ export function FiltroProgramas({
       {aberto && (
         <fieldset className="absolute left-0 top-full z-30 mt-1 w-64 rounded-xl border border-white/15 bg-painel p-2 shadow-2xl">
           <legend className="sr-only">Programas</legend>
+          <label className="mb-0.5 flex cursor-pointer items-center gap-2 rounded-md border-b border-white/10 px-2 py-1.5 text-sm font-medium text-texto hover:bg-white/[0.06]">
+            <input
+              type="checkbox"
+              checked={valor.includes(PROGRAMA_NENHUM)}
+              onChange={(e) => alternar([PROGRAMA_NENHUM], e.target.checked)}
+              className="accent-azul"
+            />
+            Sem programa
+          </label>
           {grupos.map((g) => {
             const ids = g.programas.map((p) => p.id);
             const marcados = ids.filter((x) => valor.includes(x)).length;

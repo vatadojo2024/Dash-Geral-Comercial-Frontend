@@ -8,6 +8,7 @@ import { AlertTriangle, Archive, ArrowLeft, CheckCircle2, Lightbulb, PencilLine,
 import { arquivarAluno, buscarAluno, EducacionalError } from "@/lib/educacional/apiEducacional";
 import {
   AUTORIZACOES_PROVA_SOCIAL,
+  AVISO_SEM_PROGRAMA,
   FAIXAS_SAUDE,
   NIVEIS_INICIAIS,
   SINAIS,
@@ -205,6 +206,8 @@ export function RaioXAluno({ id }: { id: string }) {
             <Cabecalho
               a={a}
               config={config.data}
+              // O aviso leva ao "Definir programa": só quando o botão está na tela.
+              onDefinirPrograma={!editando && !a.arquivado && temProgramas(config.data) ? () => setTrocar(true) : undefined}
               acoes={
                 editando ? (
                   <>
@@ -376,7 +379,17 @@ function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 
 const TIPO_DO_CONTATO: Record<CampoContato, "email" | "tel" | "text"> = { email: "email", telefone: "tel", discord: "text" };
 
-function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; acoes: ReactNode }) {
+function Cabecalho({
+  a,
+  config,
+  acoes,
+  onDefinirPrograma,
+}: {
+  a: AlunoDetalhe;
+  config?: Config;
+  acoes: ReactNode;
+  onDefinirPrograma?: () => void;
+}) {
   const f = useFicha();
   const programa = programaDoAluno(a, config);
   const etapas = etapasAtivas(config);
@@ -389,7 +402,10 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-jakarta text-2xl font-semibold tracking-tight text-texto">{a.nome}</h1>
             <span className="tag">{ROTULO_STATUS_ALUNO[a.status_aluno]}</span>
-            <AvisosDoAluno avisos={a.avisos} />
+            <AvisosDoAluno
+              avisos={a.avisos}
+              acoes={onDefinirPrograma ? { [AVISO_SEM_PROGRAMA]: { rotulo: "Definir programa", executar: onDefinirPrograma } } : undefined}
+            />
             <EtiquetaDemonstracao />
           </div>
           {f.editando ? (
@@ -443,7 +459,7 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
               />
               <div className="min-w-0 text-xs text-texto-sec sm:col-span-2">
                 Programa: <span className="text-texto">{programa?.nome ?? "Sem programa"}</span> · Mentoria:{" "}
-                <span className="text-texto">{a.mentoria}</span>
+                <span className="text-texto">{a.mentoria || "—"}</span>
                 <span className="block">Programa e mentoria mudam por “Trocar programa”.</span>
               </div>
               {CAMPOS_CONTATO.map((c) => (
@@ -470,7 +486,7 @@ function Cabecalho({ a, config, acoes }: { a: AlunoDetalhe; config?: Config; aco
             <>
               <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-6">
                 <Dado rotulo="Programa">{programa?.nome ?? "Sem programa"}</Dado>
-                <Dado rotulo="Mentoria">{a.mentoria}</Dado>
+                <Dado rotulo="Mentoria">{a.mentoria || "—"}</Dado>
                 <Dado rotulo="Entrada">{dataCurta(a.data_entrada)}</Dado>
                 <Dado rotulo="Término">{dataCurta(a.data_termino)}</Dado>
                 <Dado rotulo="Nível inicial">{ROTULO_NIVEL[a.nivel_inicial]}</Dado>

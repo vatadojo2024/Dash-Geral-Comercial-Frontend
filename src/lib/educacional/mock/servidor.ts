@@ -134,7 +134,7 @@ function listarAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
       if (statusAluno.length && !statusAluno.includes(a.status_aluno)) return false;
       if (faixas.length && !(a.faixa_saude.valor && faixas.includes(a.faixa_saude.valor))) return false;
       if (mentorias.length && !mentorias.includes(a.mentoria)) return false;
-      if (programas.length && !(a.programa_id && programas.includes(a.programa_id))) return false;
+      if (programas.length && !programas.includes(a.programa_id ?? "sem")) return false;
       if (busca.length >= 2 && !normalizar(a.nome).includes(busca)) return false;
       const sinal = q.get("sinal") as keyof AlunoLinha["sinais"] | null;
       if (sinal && a.sinais[sinal]?.valor !== true) return false;

@@ -9,6 +9,7 @@ import {
 import {
   buscaValida,
   ehOrdem,
+  PROGRAMA_NENHUM,
   queryDosFiltros,
   RESPONSAVEL_NENHUM,
   type FiltrosAlunos,
@@ -119,7 +120,9 @@ export function descreverFiltros(e: EstadoTabela, nomes: NomesDosFiltros = {}): 
   if (e.health_max != null) partes.push(`Health Score abaixo de ${e.health_max}`);
   const status = e.status_aluno == null ? [] : ([] as StatusAluno[]).concat(e.status_aluno);
   if (status.length) partes.push(`Status: ${status.map((s) => ROTULO_STATUS_ALUNO[s]).join(" + ")}`);
-  if (e.programa?.length) partes.push(`Programa: ${e.programa.map((p) => nomes.programa?.(p) ?? "—").join(" + ")}`);
+  if (e.programa?.length) {
+    partes.push(`Programa: ${e.programa.map((p) => (p === PROGRAMA_NENHUM ? "Sem programa" : (nomes.programa?.(p) ?? "—"))).join(" + ")}`);
+  }
   return partes;
 }
 

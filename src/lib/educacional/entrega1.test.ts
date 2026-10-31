@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { erroDoContato } from "@/features/educacional/contato";
+import { descreverFiltros, lerEstado } from "@/features/educacional/estado";
+import { resumoDosProgramas } from "@/features/educacional/FiltroProgramas";
 import { programasPorMentoria, programaDoAluno, semAcompanhamentoIndividual } from "@/features/educacional/programas";
 import {
   _simularGravacaoEmTeste,
@@ -11,10 +13,13 @@ import {
   definirUsuarioDaSessao,
   EducacionalError,
   previaTrocaPrograma,
+  PROGRAMA_NENHUM,
+  queryDaApi,
   trocarPrograma,
 } from "./apiEducacional";
-import { AlunoLinhaSchema, type Config } from "./contrato";
+import { AlunoLinhaSchema, validarAlunoDetalhe, type Config } from "./contrato";
 import { _zerarMemoria } from "./mock/banco";
+import { AVISOS_CONHECIDOS } from "./rotulos";
 import { hojeBR } from "./mock/motor";
 
 // Entrega 1: contato do aluno, "Não solicitado" e mentoria Ninja (programa sem
@@ -140,5 +145,44 @@ describe("Ninja (sem acompanhamento individual)", () => {
     const ninjas = itens.filter((a) => a.mentoria === "Ninja");
     expect(ninjas).toHaveLength(2);
     for (const n of ninjas) expect((await buscarAluno(n.id)).checkpoints).toEqual([]);
+  });
+});
+
+describe("aluno sem programa (aviso sem_programa)", () => {
+  it("aviso na linha e no detalhe; definir o programa tira o aviso", async () => {
+    const { itens } = await buscarAlunos({ por_pagina: "todos" });
+    const sem = itens.filter((a) => a.avisos.includes("sem_programa"));
+    expect(sem).toHaveLength(1);
+    expect(sem[0].programa_id).toBeNull();
+    expect(AVISOS_CONHECIDOS.sem_programa.rotulo).toBe("Programa não definido");
+    const a = await buscarAluno(sem[0].id);
+    expect([a.avisos.includes("sem_programa"), a.checkpoints]).toEqual([true, []]);
+    const c = await buscarConfig();
+    const depois = await trocarPrograma(a.id, a.versao, { programa_id: c.programas[0].id, data_inicio: HOJE, motivo: "Definindo o programa" });
+    expect(depois.avisos.includes("sem_programa")).toBe(false);
+  });
+
+  it("filtro: `programa_id=sem`, sozinho ou junto com programas", async () => {
+    expect(queryDaApi({ programa: [PROGRAMA_NENHUM] })).toContain("programa_id=sem");
+    const { itens: todos } = await buscarAlunos({ por_pagina: "todos" });
+    const so = await buscarAlunos({ por_pagina: "todos", programa: [PROGRAMA_NENHUM] });
+    expect(so.itens.map((a) => a.id)).toEqual(todos.filter((a) => !a.programa_id).map((a) => a.id));
+    const p = todos.find((a) => a.programa_id)!.programa_id!;
+    const junto = await buscarAlunos({ por_pagina: "todos", programa: [PROGRAMA_NENHUM, p] });
+    expect(junto.itens.length).toBe(todos.filter((a) => !a.programa_id || a.programa_id === p).length);
+  });
+
+  it("a URL guarda o filtro, e o texto dos filtros diz “Sem programa”", () => {
+    const e = lerEstado(new URLSearchParams("programa=sem"));
+    expect(e.programa).toEqual(["sem"]);
+    expect(descreverFiltros(e)).toEqual(["Programa: Sem programa"]);
+    expect(resumoDosProgramas([], ["sem"])).toBe("Sem programa");
+  });
+
+  it("aluno sem mentoria não é descartado: vira texto vazio", async () => {
+    const { itens } = await buscarAlunos({ por_pagina: "todos" });
+    const detalhe = await buscarAluno(itens[0].id);
+    expect(validarAlunoDetalhe({ ...detalhe, mentoria: null })?.mentoria).toBe("");
+    expect(AlunoLinhaSchema.parse({ ...itens[0], mentoria: null }).mentoria).toBe("");
   });
 });

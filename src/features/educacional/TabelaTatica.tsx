@@ -725,7 +725,7 @@ const LinhaAluno = memo(function LinhaAluno({ a, entrada, acoes, colunas, etapas
         );
       case "mentoria":
         // Vem do programa: só leitura (troca por "Trocar programa", no Raio-X).
-        return <span className="whitespace-nowrap text-texto-sec">{a.mentoria}</span>;
+        return <span className="whitespace-nowrap text-texto-sec">{a.mentoria || "—"}</span>;
       case "email":
       case "telefone":
       case "discord":

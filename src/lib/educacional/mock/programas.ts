@@ -173,6 +173,8 @@ export function semearProgramas(banco: Banco, hoje: string) {
 const SEM_DISCORD = 3;
 const SEM_CONTATO = 11;
 const NINJA: Record<number, number> = { 12: 6, 13: 12 };
+// Veio da planilha sem programa: aviso "Programa não definido", sem checkpoints.
+const SEM_PROGRAMA = 10;
 
 export function semearEntrega1(banco: Banco) {
   banco.alunos.forEach((a, i) => {
@@ -182,6 +184,11 @@ export function semearEntrega1(banco: Banco) {
     a.telefone = temContato ? `(11) 9${String(8000 + i * 37).padStart(4, "0")}-${String(1000 + i * 113).slice(-4)}` : null;
     a.discord = temContato && i !== SEM_DISCORD ? usuario.replace(/\./g, "_") : null;
     if (a.autorizacao_prova_social === "pendente" && i % 2 === 1) a.autorizacao_prova_social = "nao_solicitado";
+    if (i === SEM_PROGRAMA) {
+      a.programa_id = null;
+      a.data_inicio_programa = null;
+      banco.checkpoints = banco.checkpoints.filter((c) => c.aluno_id !== a.id);
+    }
     const meses = NINJA[i];
     const ninja = meses ? banco.config.programas.find((p) => p.mentoria === "Ninja" && p.duracao_meses === meses) : null;
     if (ninja) {

@@ -65,21 +65,41 @@ export function NomeResponsavel({
   );
 }
 
-// Avisos do backend ao lado do nome (Raio-X, tabela e Kanban). Só informam.
-export function AvisosDoAluno({ avisos, compacto = false }: { avisos: string[]; compacto?: boolean }) {
+// Avisos do backend ao lado do nome (Raio-X, tabela e Kanban). Só informam; com
+// `acoes`, o aviso vira botão (no Raio-X, "Programa não definido" abre "Definir programa").
+export function AvisosDoAluno({
+  avisos,
+  compacto = false,
+  acoes,
+}: {
+  avisos: string[];
+  compacto?: boolean;
+  acoes?: Record<string, { rotulo: string; executar: () => void }>;
+}) {
   const conhecidos = avisos.filter((c, i) => AVISOS_CONHECIDOS[c] && avisos.indexOf(c) === i);
   if (!conhecidos.length) return null;
   return (
     <>
-      {conhecidos.map((c) => (
-        <span
-          key={c}
-          className={cn("tag tag-warning shrink-0 whitespace-nowrap", compacto && "px-1.5 py-0 text-[10px]")}
-          title={AVISOS_CONHECIDOS[c].dica}
-        >
-          {AVISOS_CONHECIDOS[c].rotulo}
-        </span>
-      ))}
+      {conhecidos.map((c) => {
+        const classe = cn("tag tag-warning shrink-0 whitespace-nowrap", compacto && "px-1.5 py-0 text-[10px]");
+        const acao = acoes?.[c];
+        return acao ? (
+          <button
+            key={c}
+            type="button"
+            onClick={acao.executar}
+            aria-label={`${AVISOS_CONHECIDOS[c].rotulo}: ${acao.rotulo}`}
+            title={AVISOS_CONHECIDOS[c].dica}
+            className={cn(classe, "cursor-pointer hover:brightness-125")}
+          >
+            {AVISOS_CONHECIDOS[c].rotulo}
+          </button>
+        ) : (
+          <span key={c} className={classe} title={AVISOS_CONHECIDOS[c].dica}>
+            {AVISOS_CONHECIDOS[c].rotulo}
+          </span>
+        );
+      })}
     </>
   );
 }
