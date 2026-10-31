@@ -1,6 +1,7 @@
 import {
   ENTIDADES_HISTORICO,
   FILTROS_MURAL,
+  type HistoricoMural,
   TIPOS_EVENTO_CALENDARIO,
   type EventoCalendario,
   linhaDoDetalhe,
@@ -13,7 +14,7 @@ import {
 import { detalheDaAnalise, itemDaLista, statusDe } from "./analises";
 import * as escrita from "./escrita";
 import { montarAluno, montarComentario, montarResumo, numeroDaAula } from "./motor";
-import { ErroDaApi, type Banco } from "./tipos";
+import { ErroDaApi, type Banco, type HistoricoBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
 // "Servidor" do modo demonstração: atende as MESMAS rotas da seção 4 do backend
@@ -214,6 +215,44 @@ function historico(banco: Banco, alunoId: string, q: URLSearchParams) {
   };
 }
 
+// Histórico do mural: um cartão por "Salvar" (mesmo lote_id) e um por linha sem
+// lote. O mock não conhece as colunas da planilha: manda o campo cru como rótulo
+// (com o checkpoint na frente), como o backend faz com campo sem coluna.
+const MAX_MUDANCAS_NO_CARTAO = 50;
+
+function cartoesDoHistorico(banco: Banco, alunoId: string): HistoricoMural[] {
+  const grupos = new Map<string, HistoricoBanco[]>();
+  for (const h of banco.historico) {
+    if (h.aluno_id !== alunoId) continue;
+    const chave = h.lote_id ? `lote:${h.lote_id}` : `hist:${h.id}`;
+    grupos.set(chave, [...(grupos.get(chave) ?? []), h]);
+  }
+  return [...grupos].map(([id, linhas]) => {
+    const [primeira] = linhas;
+    const mudancas = linhas.slice(0, MAX_MUDANCAS_NO_CARTAO).map((h) => ({
+      entidade: h.entidade,
+      entidade_id: h.entidade_id,
+      campo: h.campo.split(" · ").at(-1) ?? h.campo,
+      rotulo: h.campo,
+      de: h.valor_antes,
+      para: h.valor_depois,
+      motivo: h.motivo,
+    }));
+    return {
+      tipo: "historico",
+      id,
+      em: primeira.em,
+      autor: primeira.usuario,
+      origem: "dash",
+      lote_id: primeira.lote_id ?? null,
+      tipos: [...new Set(linhas.map((h) => h.entidade))],
+      titulo: linhas.length === 1 ? mudancas[0].rotulo : `${linhas.length} alterações na ficha`,
+      total_mudancas: linhas.length,
+      mudancas,
+    };
+  });
+}
+
 // Mural (Entrega 2, M2): comentários e histórico juntos, mais recente primeiro.
 // `cursor` = "em|id" do último item da página anterior (opaco para a tela).
 function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: string) {
@@ -226,21 +265,7 @@ function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: str
       ? []
       : (banco.comentarios ?? []).filter((c) => c.aluno_id === alunoId && !c.arquivado_em).map((c) => montarComentario(banco, c, usuarioId));
   const alteracoes: ItemMural[] =
-    tipo === "comentario"
-      ? []
-      : banco.historico
-          .filter((h) => h.aluno_id === alunoId && (!tipo || h.entidade === tipo))
-          .map(({ id, em, usuario, entidade, campo, valor_antes, valor_depois, motivo }) => ({
-            tipo: "historico" as const,
-            id,
-            em,
-            usuario,
-            entidade,
-            campo,
-            valor_antes,
-            valor_depois,
-            motivo,
-          }));
+    tipo === "comentario" ? [] : cartoesDoHistorico(banco, alunoId).filter((c) => !tipo || c.tipos.includes(tipo));
   const ordem = (x: ItemMural, y: ItemMural) => y.em.localeCompare(x.em) || y.id.localeCompare(x.id);
   let todos = [...comentarios, ...alteracoes].sort(ordem);
   const cursor = q.get("cursor");
@@ -252,7 +277,7 @@ function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: str
   const limite = Math.min(50, Math.max(1, Number(q.get("por_pagina")) || TAMANHO_PAGINA_MURAL));
   const itens = todos.slice(0, limite);
   const ultimo = itens.at(-1);
-  return { itens, proximo_cursor: todos.length > limite && ultimo ? `${ultimo.em}|${ultimo.id}` : null };
+  return { itens, proximo: todos.length > limite && ultimo ? `${ultimo.em}|${ultimo.id}` : null };
 }
 
 // Calendário (Entrega 2, M3): checkpoints (data prevista), intervenções e

@@ -127,11 +127,11 @@ describe("aulas — gravação pela ficha (lote)", () => {
   it("na tela: a pendência aparece por cima (nova no fim, status trocado, arquivada some)", async () => {
     const a = await comAulas();
     const [x, y] = a.aulas;
-    let p = registrar(SEM_PENDENCIAS, a, alteracaoDaAula(x, { status: "no_show" }));
+    let p = registrar(SEM_PENDENCIAS, a, alteracaoDaAula(x, { status: "noshow" }));
     p = registrar(p, a, aulaArquivada(y));
     p = registrar(p, a, aulaNova("t2", { data: HOJE, status: "agendada" }, {}));
     const tela = comPendencias(a, p[a.id]);
-    expect(tela.aulas.find((z) => z.id === x.id)?.status).toBe("no_show");
+    expect(tela.aulas.find((z) => z.id === x.id)?.status).toBe("noshow");
     expect(tela.aulas.some((z) => z.id === y.id)).toBe(false);
     expect(tela.aulas.at(-1)).toMatchObject({ id: "novo:t2", numero: null, data: HOJE, status: "agendada" });
     // Voltar ao valor do servidor desfaz a alteração.

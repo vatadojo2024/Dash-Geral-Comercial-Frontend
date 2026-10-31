@@ -3,7 +3,6 @@ import {
   AnaliseDetalheSchema,
   AnaliseItemListaSchema,
   CheckpointModeloSchema,
-  ComentarioSchema,
   EventoCalendarioSchema,
   ImagemMuralSchema,
   ItemMuralSchema,
@@ -30,7 +29,6 @@ import {
   type CamposCheckpoint,
   type CamposDiretosAluno,
   type CamposIntervencao,
-  type Comentario,
   type Config,
   type EventoCalendario,
   type FiltrosCalendario,
@@ -773,8 +771,7 @@ export async function restaurarDemonstracao(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Mural do aluno (Entrega 2, M2). Rotas provisórias (ver contrato.ts) até o
-// plano do backend. Comentário grava na hora, sem a versão do aluno.
+// Mural do aluno (Entrega 2, M2). Comentário grava na hora, sem a versão do aluno.
 // ---------------------------------------------------------------------------
 
 export const TAMANHO_PAGINA_MURAL = 20;
@@ -786,13 +783,10 @@ export async function buscarMural(alunoId: string, opcoes: { cursor?: string | n
   if (opcoes.tipo) qs.set("tipo", opcoes.tipo);
   const corpo = (await chamar({ metodo: "GET", caminho: `alunos/${id(alunoId)}/mural`, query: qs.toString() })) as {
     itens?: unknown;
-    proximo_cursor?: unknown;
     proximo?: unknown;
   } | null;
   const { validos } = validarLista(corpo?.itens, ItemMuralSchema, "item do mural");
-  // O nome do campo do próximo cursor ainda não foi fechado: aceita os dois.
-  const proximo = corpo?.proximo_cursor ?? corpo?.proximo;
-  return { itens: validos, proximo: typeof proximo === "string" && proximo ? proximo : null };
+  return { itens: validos, proximo: typeof corpo?.proximo === "string" && corpo.proximo ? corpo.proximo : null };
 }
 
 const tamanhoEmMb = (bytes: number) => (bytes / 1024 / 1024).toFixed(1).replace(".", ",");
@@ -815,18 +809,13 @@ export async function enviarImagemDoMural(arquivo: File): Promise<ImagemMural> {
   return r.data;
 }
 
-function comentarioDaResposta(bruto: unknown): Comentario {
-  const r = ComentarioSchema.safeParse(bruto);
-  if (!r.success) throw new EducacionalError("Comentário gravado, mas a resposta veio fora do contrato. Atualize o mural.", 502);
-  return r.data;
+// A escrita responde só { id }: o comentário completo vem do mural, pedido de novo.
+export async function comentar(alunoId: string, c: NovoComentario): Promise<void> {
+  await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/comentarios`, corpo: c });
 }
 
-export async function comentar(alunoId: string, c: NovoComentario): Promise<Comentario> {
-  return comentarioDaResposta(await chamar({ metodo: "POST", caminho: `alunos/${id(alunoId)}/comentarios`, corpo: c }));
-}
-
-export async function editarComentario(comentarioId: string, c: Partial<NovoComentario>): Promise<Comentario> {
-  return comentarioDaResposta(await chamar({ metodo: "PATCH", caminho: `comentarios/${id(comentarioId)}`, corpo: c }));
+export async function editarComentario(comentarioId: string, c: Partial<NovoComentario>): Promise<void> {
+  await chamar({ metodo: "PATCH", caminho: `comentarios/${id(comentarioId)}`, corpo: c });
 }
 
 export async function arquivarComentario(comentarioId: string): Promise<void> {

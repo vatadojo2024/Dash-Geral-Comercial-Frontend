@@ -35,7 +35,7 @@ import {
 } from "../contrato";
 import { marcoDe } from "../contrato";
 import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
-import { dataPrevistaDoModelo, montarAluno, montarComentario, naJornada, numeroDaAula, somarMeses } from "./motor";
+import { dataPrevistaDoModelo, montarAluno, naJornada, numeroDaAula, somarMeses } from "./motor";
 import {
   ErroDaApi,
   type AlunoBanco,
@@ -692,7 +692,7 @@ export function comentar(banco: Banco, alunoId: string, corpo: Record<string, un
     arquivado_em: null,
   };
   (banco.comentarios ??= []).push(c);
-  return montarComentario(banco, c, ctx.usuario.id);
+  return { id: c.id };
 }
 
 function comentarioDoAutor(banco: Banco, id: string, ctx: Contexto): ComentarioBanco {
@@ -713,13 +713,13 @@ export function editarComentario(banco: Banco, id: string, corpo: Record<string,
     c.imagens = imagens;
     c.editado_em = ctx.agora;
   }
-  return montarComentario(banco, c, ctx.usuario.id);
+  return { id: c.id };
 }
 
 export function arquivarComentario(banco: Banco, id: string, ctx: Contexto) {
   const c = comentarioDoAutor(banco, id, ctx);
   c.arquivado_em = ctx.agora;
-  return montarComentario(banco, c, ctx.usuario.id);
+  return { id: c.id };
 }
 
 // ---------------------------------------------------------------------------

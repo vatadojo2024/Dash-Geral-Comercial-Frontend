@@ -19,8 +19,8 @@ export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // 2 = Fase 3 (análises de aula; semente D4). 3 = programas e roteiros.
 // 4 = Entrega 1 (contato, "Não solicitado" e Ninja). 5 = aluno sem programa.
 // 6 = Entrega 2 (aulas). 7 = mural (comentários e imagens).
-// 8 = aula com número, hora e observação.
-export const VERSAO_DADOS = 8;
+// 8 = aula com número, hora e observação. 9 = status "noshow".
+export const VERSAO_DADOS = 9;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };

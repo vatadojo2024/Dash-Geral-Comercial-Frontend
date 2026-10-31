@@ -122,7 +122,7 @@ export const AVISOS_CONHECIDOS: Record<string, { rotulo: string; dica: string }>
 export const ROTULO_STATUS_AULA: Record<StatusAula, string> = {
   agendada: "Agendada",
   feito: "Feito",
-  no_show: "NoShow",
+  noshow: "NoShow",
   remarcada: "Remarcada",
   cancelada: "Cancelada",
 };
@@ -135,7 +135,7 @@ export const quandoDaAula = (x: { data?: string | null; hora?: string | null }) 
 export const TAG_STATUS_AULA: Record<StatusAula, string> = {
   agendada: "tag-info",
   feito: "tag-success",
-  no_show: "tag-error",
+  noshow: "tag-error",
   remarcada: "tag-warning",
   cancelada: "border-cinza/40 bg-cinza/20 text-cinza",
 };

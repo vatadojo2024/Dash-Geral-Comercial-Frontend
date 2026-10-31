@@ -1,4 +1,4 @@
-import { CAMPOS_AJUSTAVEIS, type CampoAjustavel, type ItemHistorico } from "@/lib/educacional/contrato";
+import { CAMPOS_AJUSTAVEIS, type CampoAjustavel, type MudancaMural } from "@/lib/educacional/contrato";
 import {
   dataCurta,
   dataHoraBr,
@@ -29,6 +29,7 @@ const ROTULO_CAMPO: Record<string, string> = {
   nivel_inicial: "Nível inicial",
   status_aluno: "Status do aluno",
   etapa: "Etapa",
+  etapa_desde: "Na etapa desde",
   responsavel: "Responsável",
   proxima_acao: "Próxima ação",
   proxima_acao_prazo: "Prazo da próxima ação",
@@ -71,24 +72,35 @@ const ROTULO_CAMPO: Record<string, string> = {
   mentor_id: "Mentor",
 };
 
+type Alteracao = { entidade: string; campo: string };
+
 // "Mês 1 · status" → { prefixo: "Mês 1", campo: "status" }
-function partes(item: ItemHistorico) {
+function partes(item: Alteracao) {
   const i = item.campo.lastIndexOf(" · ");
   return i < 0 ? { prefixo: null, campo: item.campo } : { prefixo: item.campo.slice(0, i), campo: item.campo.slice(i + 3) };
 }
 
-export function rotuloDoCampo(item: ItemHistorico): string {
+export function rotuloDoCampo(item: Alteracao): string {
   const { prefixo, campo } = partes(item);
   const nome = item.entidade === "ajuste" ? (ROTULO_CAMPO_AJUSTAVEL[campo as CampoAjustavel] ?? campo) : (ROTULO_CAMPO[campo] ?? campo);
   return prefixo ? `${prefixo} · ${nome}` : nome;
 }
 
-// Nomes que o backend manda como id (hoje, o programa): resolvidos pela config.
-export type NomesDoHistorico = { programa?: (id: string) => string | undefined };
+// O backend manda o nome da coluna da planilha. Campo sem coluna vem cru ("Aula 3 ·
+// programa_id"): aí vale o nosso nome.
+export function rotuloDaMudanca(m: Pick<MudancaMural, "entidade" | "campo" | "rotulo">): string {
+  const cru = m.rotulo === m.campo || m.rotulo.endsWith(` · ${m.campo}`);
+  return cru ? rotuloDoCampo({ entidade: m.entidade, campo: m.rotulo }) : m.rotulo;
+}
+
+// Nomes que o backend manda como id: resolvidos pela config. O programa e o
+// mentor sempre; etapa, tipo e responsável dentro do objeto de "criado"/"criada".
+type Nome = (id: string) => string | undefined;
+export type NomesDoHistorico = { programa?: Nome; responsavel?: Nome; etapa?: Nome; tipo?: Nome };
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUS_SUBSTITUIDO = "Substituído (troca de programa)";
 
-export function formatarDoHistorico(item: ItemHistorico, valor: unknown, nomes: NomesDoHistorico = {}): string {
+export function formatarDoHistorico(item: Alteracao, valor: unknown, nomes: NomesDoHistorico = {}): string {
   if (valor == null || valor === "") return "—";
   const { campo } = partes(item);
   if (item.entidade === "ajuste" && campo in CAMPOS_AJUSTAVEIS) return formatarValor(campo as CampoAjustavel, valor);
@@ -103,6 +115,8 @@ export function formatarDoHistorico(item: ItemHistorico, valor: unknown, nomes: 
   }
   if (typeof valor !== "string") return String(valor);
   if (campo === "programa_id" || campo === "programa") return nomes.programa?.(valor) ?? (RE_UUID.test(valor) ? "Programa não encontrado" : valor);
+  const porId = { mentor_id: nomes.responsavel, responsavel_id: nomes.responsavel, etapa_id: nomes.etapa, tipo_id: nomes.tipo }[campo];
+  if (porId && RE_UUID.test(valor)) return porId(valor) ?? "Registro não encontrado";
   if (valor === "substituido") return STATUS_SUBSTITUIDO;
   if (campo === "nivel_inicial") return ROTULO_NIVEL[valor as keyof typeof ROTULO_NIVEL] ?? valor;
   if (campo === "status_aluno") return ROTULO_STATUS_ALUNO[valor as keyof typeof ROTULO_STATUS_ALUNO] ?? valor;
@@ -116,6 +130,8 @@ export function formatarDoHistorico(item: ItemHistorico, valor: unknown, nomes: 
   }
   if (/^\d{4}-\d{2}-\d{2}T/.test(valor)) return dataHoraBr(valor);
   if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) return dataCurta(valor);
+  // Hora como o banco guarda ("08:30:00"): a tela mostra hora e minuto.
+  if (/^\d{2}:\d{2}:\d{2}$/.test(valor)) return valor.slice(0, 5);
   // Nunca um id cru na tela.
   if (RE_UUID.test(valor)) return "Registro não encontrado";
   return valor;

@@ -219,7 +219,7 @@ export function semearEntrega1(banco: Banco) {
 // e Agendada nas próximas 3 semanas. Mentor: o responsável, se for mentor.
 function statusDeExemplo(n: number, passou: boolean): StatusAula {
   if (!passou) return "agendada";
-  if (n % 7 === 0) return "no_show";
+  if (n % 7 === 0) return "noshow";
   if (n % 11 === 0) return "remarcada";
   if (n % 13 === 0) return "cancelada";
   return "feito";
@@ -249,7 +249,7 @@ export function semearEntrega2(banco: Banco, hoje: string) {
         hora: (n + i) % 3 === 0 ? null : ["09:00", "14:30", "19:00"][(n + i) % 3],
         mentor_id: mentor?.id ?? null,
         status,
-        observacao: status === "no_show" ? "Não entrou na sala. Remarcar." : null,
+        observacao: status === "noshow" ? "Não entrou na sala. Remarcar." : null,
         criada_em: `${dia}T12:00:00.000Z`,
         arquivado_em: null,
       });

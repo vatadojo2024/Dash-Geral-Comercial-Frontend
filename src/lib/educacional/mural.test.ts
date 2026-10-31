@@ -42,6 +42,14 @@ async function primeiroAluno() {
   return (await buscarAlunos({ por_pagina: "todos" })).itens[0];
 }
 
+// O comentário como a tela recebe: a escrita devolve só o id.
+async function comentarioNoMural(alunoId: string, texto: string) {
+  const { itens } = await buscarMural(alunoId, { tipo: "comentario" });
+  const c = itens.find((x) => x.tipo === "comentario" && x.texto === texto);
+  if (c?.tipo !== "comentario") throw new Error(`comentário "${texto}" não apareceu no mural`);
+  return c;
+}
+
 // Aluno com comentários da semente (com imagem).
 async function alunoComComentarios() {
   for (const a of (await buscarAlunos({ por_pagina: "todos" })).itens) {
@@ -85,7 +93,7 @@ describe("mural — leitura", () => {
     expect(so.itens.length).toBeGreaterThan(0);
     expect(so.itens.every((x) => x.tipo === "comentario")).toBe(true);
     const alunoSo = await buscarMural(a.id, { tipo: "aluno" });
-    expect(alunoSo.itens.every((x) => x.tipo === "historico" && x.entidade === "aluno")).toBe(true);
+    expect(alunoSo.itens.every((x) => x.tipo === "historico" && x.tipos.includes("aluno"))).toBe(true);
   });
 
   it("item fora do contrato sai sozinho, sem derrubar o mural", () => {
@@ -94,20 +102,50 @@ describe("mural — leitura", () => {
     const ok = ItemMuralSchema.parse({ tipo: "comentario", id: "c", em: "2026-10-30T10:00:00Z", texto: "oi", autor: EU });
     expect(ok.tipo === "comentario" && [ok.imagens, ok.editado_em, ok.pode_editar]).toEqual([[], null, false]);
   });
+
+  it("um “Salvar” de vários campos vira um cartão só, com o total e os tipos", async () => {
+    const a = await primeiroAluno();
+    await salvarLote({ alunos: [{ aluno_id: a.id, versao: a.versao, campos: { objetivo: "Novo objetivo", observacoes: "Nova observação" } }] });
+    const { itens } = await buscarMural(a.id, { tipo: "aluno" });
+    const cartao = itens[0];
+    if (cartao.tipo !== "historico") throw new Error("esperava o cartão do histórico");
+    expect(cartao.id).toMatch(/^lote:/);
+    expect([cartao.titulo, cartao.total_mudancas, cartao.tipos, cartao.autor]).toEqual(["2 alterações na ficha", 2, ["aluno"], EU]);
+    expect(cartao.mudancas.map((m) => m.campo).sort()).toEqual(["objetivo", "observacoes"]);
+    expect(itens.filter((x) => x.id === cartao.id)).toHaveLength(1);
+  });
+
+  it("aceita o cartão no formato do backend, e um tipo novo não derruba o cartão", () => {
+    const r = ItemMuralSchema.safeParse({
+      tipo: "historico",
+      id: "lote:9f3e",
+      em: "2026-10-31T14:32:00.000Z",
+      autor: EU,
+      origem: "planilha",
+      lote_id: "9f3e",
+      tipos: ["aluno", "config"],
+      titulo: "60 alterações na ficha",
+      total_mudancas: 60,
+      mudancas: [{ entidade: "config", entidade_id: null, campo: "x", rotulo: "X", de: null, para: 1, motivo: null }],
+    });
+    expect(r.success).toBe(true);
+    expect(r.success && r.data.tipo === "historico" && [r.data.origem, r.data.total_mudancas]).toEqual(["planilha", 60]);
+  });
 });
 
 describe("mural — comentários", () => {
   it("comentar grava na hora e não muda a versão do aluno; o autor edita e arquiva", async () => {
     const a = await primeiroAluno();
-    const c = await comentar(a.id, { texto: "  Primeira conversa ótima.  ", imagens: [] });
-    expect([c.texto, c.pode_editar, c.editado_em, c.autor]).toEqual(["Primeira conversa ótima.", true, null, EU]);
+    await comentar(a.id, { texto: "  Primeira conversa ótima.  ", imagens: [] });
+    const c = await comentarioNoMural(a.id, "Primeira conversa ótima.");
+    expect([c.pode_editar, c.editado_em, c.autor]).toEqual([true, null, EU]);
     expect((await buscarMural(a.id)).itens[0].id).toBe(c.id);
     expect((await buscarAlunos({ por_pagina: "todos" })).itens[0].versao).toBe(a.versao);
     // A ficha continua salvando com a mesma versão.
     const r = await salvarLote({ alunos: [{ aluno_id: a.id, versao: a.versao, campos: { objetivo: "Depois do comentário" } }] });
     expect(r.resultados[0].ok).toBe(true);
-    const editado = await editarComentario(c.id, { texto: "Primeira conversa excelente." });
-    expect([editado.texto, editado.editado_em]).toEqual(["Primeira conversa excelente.", expect.any(String)]);
+    await editarComentario(c.id, { texto: "Primeira conversa excelente." });
+    expect((await comentarioNoMural(a.id, "Primeira conversa excelente.")).editado_em).toEqual(expect.any(String));
     await arquivarComentario(c.id);
     expect((await buscarMural(a.id)).itens.some((x) => x.id === c.id)).toBe(false);
   });
@@ -115,10 +153,10 @@ describe("mural — comentários", () => {
   it("de outra pessoa: aparece sem editar; editar ou arquivar é recusado em português", async () => {
     const a = await primeiroAluno();
     definirUsuarioDaSessao(OUTRA);
-    const dela = await comentar(a.id, { texto: "Comentário dela", imagens: [] });
+    await comentar(a.id, { texto: "Comentário dela", imagens: [] });
     definirUsuarioDaSessao(EU);
-    const visto = (await buscarMural(a.id)).itens.find((x) => x.id === dela.id);
-    expect(visto?.tipo === "comentario" && visto.pode_editar).toBe(false);
+    const dela = await comentarioNoMural(a.id, "Comentário dela");
+    expect(dela.pode_editar).toBe(false);
     const e = await erroDe(editarComentario(dela.id, { texto: "Mudei" }));
     expect([e.status, e.message]).toEqual([403, "Só quem escreveu o comentário pode editar ou arquivar."]);
     expect((await erroDe(arquivarComentario(dela.id))).status).toBe(403);
@@ -129,8 +167,8 @@ describe("mural — comentários", () => {
     const e = await erroDe(comentar(a.id, { texto: "   ", imagens: [] }));
     expect([e.status, e.corpo.campo, e.message]).toEqual([400, "texto", "Escreva um comentário ou anexe uma imagem."]);
     const img = await enviarImagemDoMural(png());
-    const soImagem = await comentar(a.id, { texto: "", imagens: [img.id] });
-    expect(soImagem.imagens).toEqual([{ id: img.id, url: expect.stringMatching(/^data:image\/png;base64,/), nome: "print.png" }]);
+    await comentar(a.id, { texto: "", imagens: [img.id] });
+    expect((await comentarioNoMural(a.id, "")).imagens).toEqual([{ id: img.id, url: expect.stringMatching(/^data:image\/png;base64,/), nome: "print.png" }]);
   });
 });
 
@@ -155,15 +193,15 @@ describe("mural — imagens", () => {
     const minhas = await Promise.all(Array.from({ length: 6 }, (_, i) => enviarImagemDoMural(png(`p${i}.png`))));
     const muitas = await erroDe(comentar(a.id, { texto: "Muitas", imagens: minhas.map((x) => x.id) }));
     expect(muitas.message).toBe("No máximo 5 imagens por comentário.");
-    expect((await comentar(a.id, { texto: "Cinco", imagens: minhas.slice(0, 5).map((x) => x.id) })).imagens).toHaveLength(5);
+    await comentar(a.id, { texto: "Cinco", imagens: minhas.slice(0, 5).map((x) => x.id) });
+    expect((await comentarioNoMural(a.id, "Cinco")).imagens).toHaveLength(5);
   });
 
   it("editar troca as imagens (tirar uma, pôr outra)", async () => {
     const a = await primeiroAluno();
     const [i1, i2] = [await enviarImagemDoMural(png("um.png")), await enviarImagemDoMural(png("dois.png"))];
-    const c = await comentar(a.id, { texto: "Prints", imagens: [i1.id] });
-    const depois = await editarComentario(c.id, { imagens: [i2.id] });
-    expect(depois.imagens.map((x) => x.nome)).toEqual(["dois.png"]);
-    expect(depois.texto).toBe("Prints");
+    await comentar(a.id, { texto: "Prints", imagens: [i1.id] });
+    await editarComentario((await comentarioNoMural(a.id, "Prints")).id, { imagens: [i2.id] });
+    expect((await comentarioNoMural(a.id, "Prints")).imagens.map((x) => x.nome)).toEqual(["dois.png"]);
   });
 });

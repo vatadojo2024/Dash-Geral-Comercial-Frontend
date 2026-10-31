@@ -16,11 +16,14 @@ import {
   ENTIDADES_HISTORICO,
   LIMITE_TEXTO_COMENTARIO,
   MAX_IMAGENS_COMENTARIO,
+  ORIGEM_PLANILHA,
   TIPOS_IMAGEM_MURAL,
   type Comentario,
+  type EntidadeHistorico,
   type FiltroMural,
+  type HistoricoMural,
   type ImagemMural,
-  type ItemHistorico,
+  type MudancaMural,
 } from "@/lib/educacional/contrato";
 import { dataHoraBr, ROTULO_ENTIDADE } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
@@ -31,7 +34,7 @@ import { cn } from "@/lib/utils/cn";
 import { ConfirmarAcao } from "./Blocos";
 import { CAMPO } from "./Dialogo";
 import { CHAVES, useConfig } from "./dados";
-import { formatarDoHistorico, rotuloDoCampo, type NomesDoHistorico } from "./Historico";
+import { formatarDoHistorico, rotuloDaMudanca, type NomesDoHistorico } from "./Historico";
 import { mensagemDoErro } from "./partes";
 
 // ---------------------------------------------------------------------------
@@ -39,8 +42,8 @@ import { mensagemDoErro } from "./partes";
 // lista só, mais recente primeiro: comentários da equipe (texto e imagens) e as
 // alterações do histórico, com "Mostrar mais" para as antigas. Comentar grava
 // na hora (fora da ficha e sem a versão do aluno). Editar e arquivar aparecem
-// só quando a API diz que pode (`pode_editar`: o autor). Respostas e reações
-// ficam para depois.
+// só quando a API diz que pode (`pode_editar`: o autor; o admin em qualquer um).
+// Um "Salvar" da ficha é um cartão só. Respostas e reações ficam para depois.
 // ---------------------------------------------------------------------------
 
 const FILTROS: { valor: FiltroMural | null; rotulo: string }[] = [
@@ -53,7 +56,13 @@ export function MuralDoAluno({ alunoId }: { alunoId: string }) {
   const [filtro, setFiltro] = useState<FiltroMural | null>(null);
   const queryClient = useQueryClient();
   const config = useConfig();
-  const nomes: NomesDoHistorico = { programa: (id) => config.data?.programas.find((p) => p.id === id)?.nome };
+  const c = config.data;
+  const nomes: NomesDoHistorico = {
+    programa: (id) => c?.programas.find((p) => p.id === id)?.nome,
+    responsavel: (id) => c?.responsaveis.find((r) => r.id === id)?.nome,
+    etapa: (id) => c?.etapas.find((e) => e.id === id)?.nome,
+    tipo: (id) => c?.tipos_intervencao.find((t) => t.id === id)?.nome,
+  };
   const consulta = useInfiniteQuery({
     // Sob a chave do histórico: o "Salvar ficha" e as ações imediatas já a invalidam.
     queryKey: [...CHAVES.historico(alunoId), "mural", filtro],
@@ -469,27 +478,73 @@ function EditorDeComentario({
 }
 
 // ---------------------------------------------------------------------------
-// Alteração do histórico (linha compacta entre os comentários)
+// Alteração do histórico: uma mudança numa linha compacta; um "Salvar" com várias
+// vira um cartão com o título, as 3 primeiras e o botão para ver as outras.
 // ---------------------------------------------------------------------------
 
-function ItemAlteracao({ h, nomes }: { h: ItemHistorico; nomes: NomesDoHistorico }) {
+const MUDANCAS_RESUMIDAS = 3;
+
+function DeParaDaMudanca({ m, nomes }: { m: MudancaMural; nomes: NomesDoHistorico }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5 break-words text-texto-sec">
+      <span className="line-through decoration-white/30">{formatarDoHistorico(m, m.de, nomes)}</span>
+      <ArrowRight className="h-3 w-3 shrink-0" aria-label="para" />
+      <span className="text-texto">{formatarDoHistorico(m, m.para, nomes)}</span>
+    </span>
+  );
+}
+
+function ItemAlteracao({ h, nomes }: { h: HistoricoMural; nomes: NomesDoHistorico }) {
+  const [todas, setTodas] = useState(false);
+  const unica = h.total_mudancas === 1 ? h.mudancas[0] : undefined;
+  const visiveis = todas ? h.mudancas : h.mudancas.slice(0, MUDANCAS_RESUMIDAS);
+  const escondidas = h.mudancas.length - visiveis.length;
+  const tipos = h.tipos.filter((t): t is EntidadeHistorico => t in ROTULO_ENTIDADE);
+
   return (
     <li className="flex gap-3 px-3 py-2 text-sm">
       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-white/30" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="tag">{ROTULO_ENTIDADE[h.entidade]}</span>
-          <span className="font-medium text-texto">{rotuloDoCampo(h)}</span>
+          {tipos.map((t) => (
+            <span key={t} className="tag">
+              {ROTULO_ENTIDADE[t]}
+            </span>
+          ))}
+          <span className="font-medium text-texto">{unica ? rotuloDaMudanca(unica) : h.titulo}</span>
           <span className="text-xs text-texto-sec">
-            {h.usuario.nome} · <span className="tabular-nums">{dataHoraBr(h.em)}</span>
+            {h.autor.nome} · <span className="tabular-nums">{dataHoraBr(h.em)}</span>
           </span>
+          {h.origem === ORIGEM_PLANILHA && <span className="tag">via planilha</span>}
         </p>
-        <p className="mt-1 flex flex-wrap items-center gap-1.5 break-words text-texto-sec">
-          <span className="line-through decoration-white/30">{formatarDoHistorico(h, h.valor_antes, nomes)}</span>
-          <ArrowRight className="h-3 w-3 shrink-0" aria-label="para" />
-          <span className="text-texto">{formatarDoHistorico(h, h.valor_depois, nomes)}</span>
-        </p>
-        {h.motivo && <p className="mt-1 text-xs italic text-texto-sec">“{h.motivo}”</p>}
+        {unica ? (
+          <>
+            <p className="mt-1">
+              <DeParaDaMudanca m={unica} nomes={nomes} />
+            </p>
+            {unica.motivo && <p className="mt-1 text-xs italic text-texto-sec">“{unica.motivo}”</p>}
+          </>
+        ) : (
+          <ul className="mt-1.5 space-y-1 border-l border-white/10 pl-3" aria-label="Alterações deste salvamento">
+            {visiveis.map((m, i) => (
+              <li key={`${m.entidade_id ?? ""}-${m.campo}-${i}`}>
+                <span className="mr-2 text-xs font-medium text-texto">{rotuloDaMudanca(m)}</span>
+                <DeParaDaMudanca m={m} nomes={nomes} />
+                {m.motivo && <p className="text-xs italic text-texto-sec">“{m.motivo}”</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+        {escondidas > 0 && (
+          <button type="button" onClick={() => setTodas(true)} className="mt-1 text-xs text-azul hover:underline">
+            Ver mais {escondidas} {escondidas === 1 ? "alteração" : "alterações"}
+          </button>
+        )}
+        {escondidas === 0 && h.total_mudancas > h.mudancas.length && (
+          <p className="mt-1 text-xs text-texto-sec">
+            Mostrando {h.mudancas.length} de {h.total_mudancas} alterações.
+          </p>
+        )}
       </div>
     </li>
   );

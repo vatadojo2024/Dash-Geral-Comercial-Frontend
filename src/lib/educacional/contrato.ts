@@ -44,7 +44,7 @@ export type TipoResponsavel = z.infer<typeof TipoResponsavelSchema>;
 export const STATUS_INTERVENCAO = ["aberta", "concluida"] as const;
 
 // Entrega 2 (M1): status da aula. Só "feito" conta como aula aplicada (o backend conta).
-export const STATUS_AULA = ["agendada", "feito", "no_show", "remarcada", "cancelada"] as const;
+export const STATUS_AULA = ["agendada", "feito", "noshow", "remarcada", "cancelada"] as const;
 export const StatusAulaSchema = z.enum(STATUS_AULA);
 export type StatusAula = z.infer<typeof StatusAulaSchema>;
 export const SINAIS = ["upgrade", "renovacao", "prova_social"] as const;
@@ -281,9 +281,10 @@ export const IntervencaoSchema = z.object({
 });
 export type Intervencao = z.infer<typeof IntervencaoSchema>;
 
-// Entrega 2 (M1): aula do aluno, no contrato do plano do backend (30/10).
-// `numero` é calculado pelo backend, pela data (a aula nova, ainda não salva,
-// não tem). `hora` é opcional ("HH:MM"). `mentor` vem resolvido.
+// Entrega 2 (M1): aula do aluno. `numero` é calculado pelo backend, pela data (a
+// aula nova, ainda não salva, não tem). `hora` é opcional ("HH:MM"). `mentor`
+// vem resolvido. PATCH /aulas/:id e POST /aulas/:id/arquivar existem, mas a
+// ficha edita pelo lote.
 export const AulaSchema = z.object({
   id: z.string(),
   numero: z.number().int().nullable().default(null),
@@ -389,7 +390,7 @@ export const AlunoDetalheSchema = AlunoLinhaSchema.extend({
   // Programas: início do programa (a troca grava).
   data_inicio_programa: z.string().nullable().default(null),
   // Entrega 2 (M1): total editável na ficha; aplicadas e saldo vêm calculados
-  // da API (null = sem cálculo). Com padrão até a API mandar.
+  // da API. Total null = não se aplica, e o saldo também; ele pode ser negativo.
   aulas: z.array(AulaSchema).default([]),
   total_aulas: z.number().int().nullable().default(null),
   aulas_aplicadas: z.number().int().nullable().default(null),
@@ -477,15 +478,14 @@ export type ItemHistorico = z.infer<typeof ItemHistoricoSchema>;
 
 // ---------- mural do aluno (Entrega 2, M2) ----------
 // Uma rota só com comentários e histórico juntos, mais recente primeiro, por
-// cursor. Rotas do plano do backend (30/10); o formato do histórico agrupado
-// por "Salvar" ainda será confirmado.
-//   GET  /alunos/:id/mural?cursor=&por_pagina=&tipo= → { itens, proximo_cursor }
+// cursor.
+//   GET  /alunos/:id/mural?cursor=&por_pagina=&tipo= → { itens, proximo }
 //   POST /mural/imagens (multipart, uma imagem)   → ImagemMural
-//   POST /alunos/:id/comentarios { texto, imagens: [id] } → comentário
-//   PATCH /comentarios/:id { texto?, imagens? }   → comentário (só o autor)
-//   POST /comentarios/:id/arquivar                → comentário arquivado (só o autor)
-// `pode_editar` vem da API (o autor é ela quem confere). O link da imagem vale
-// 5 minutos: vencido, a tela pede o mural de novo.
+//   POST /alunos/:id/comentarios { texto, imagens: [id] } → { id }
+//   PATCH /comentarios/:id { texto?, imagens? }   → { id }
+//   POST /comentarios/:id/arquivar                → { id }
+// `pode_editar` vem da API (o autor; o admin em qualquer um). O link da imagem
+// vale 5 minutos: vencido, a tela pede o mural de novo.
 export const TIPOS_IMAGEM_MURAL = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
 export const LIMITE_IMAGEM_MURAL = 4 * 1024 * 1024;
 export const MAX_IMAGENS_COMENTARIO = 5;
@@ -506,10 +506,38 @@ export const ComentarioSchema = z.object({
 });
 export type Comentario = z.infer<typeof ComentarioSchema>;
 
-export const ItemMuralSchema = z.discriminatedUnion("tipo", [
-  ComentarioSchema,
-  ItemHistoricoSchema.extend({ tipo: z.literal("historico") }),
-]);
+// Uma alteração dentro do cartão. `rotulo` é o nome da coluna da planilha (com
+// "Aula 3 · " ou o checkpoint na frente); campo sem coluna vem cru. `entidade` é
+// texto para um tipo novo do backend não derrubar o cartão inteiro.
+export const MudancaMuralSchema = z.object({
+  entidade: z.string(),
+  entidade_id: z.string().nullable().default(null),
+  campo: z.string(),
+  rotulo: z.string(),
+  de: z.unknown(),
+  para: z.unknown(),
+  motivo: z.string().nullable().default(null),
+});
+export type MudancaMural = z.infer<typeof MudancaMuralSchema>;
+
+// Histórico agrupado: um "Salvar" é um cartão só. `id` = "lote:<lote_id>" ou
+// "hist:<id>". `mudancas` vem com até 50 itens; `total_mudancas` é o número real.
+export const HistoricoMuralSchema = z.object({
+  tipo: z.literal("historico"),
+  id: z.string(),
+  em: z.string(),
+  autor: Usuario,
+  origem: z.string().default("dash"),
+  lote_id: z.string().nullable().default(null),
+  tipos: z.array(z.string()).default([]),
+  titulo: z.string(),
+  total_mudancas: z.number().int(),
+  mudancas: z.array(MudancaMuralSchema),
+});
+export type HistoricoMural = z.infer<typeof HistoricoMuralSchema>;
+export const ORIGEM_PLANILHA = "planilha";
+
+export const ItemMuralSchema = z.discriminatedUnion("tipo", [ComentarioSchema, HistoricoMuralSchema]);
 export type ItemMural = z.infer<typeof ItemMuralSchema>;
 
 // Filtro do mural: comentários ou um tipo de alteração do histórico.
@@ -519,9 +547,9 @@ export type NovoComentario = { texto: string; imagens: string[] };
 
 // ---------- calendário (Entrega 2, M3) ----------
 // GET /calendario?inicio=&fim=&responsavel_id=&programa_id=&tipo= → { itens }.
-// Rota do plano do backend (30/10); o formato de cada item é proposta nossa
-// (modo demonstração) até o backend fechar. `sla` (checkpoint em SLA) vem
-// marcado pela API: a tela só destaca.
+// `id` = "<tipo>:<id da origem>". `responsavel` é o do item (mentor na aula, o da
+// intervenção, o do aluno nos outros). `sla` (checkpoint em SLA) vem marcado
+// pela API: a tela só destaca.
 export const TIPOS_EVENTO_CALENDARIO = ["checkpoint", "intervencao", "proxima_acao", "aula"] as const;
 export type TipoEventoCalendario = (typeof TIPOS_EVENTO_CALENDARIO)[number];
 
