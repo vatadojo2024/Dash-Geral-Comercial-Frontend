@@ -46,7 +46,8 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
 
   const dataDeInicio = inicio === "entrada" ? a.data_entrada.slice(0, 10) : inicio === "hoje" ? hojeEmBrasilia() : outraData;
   const atual = programaDoAluno(a, config.data);
-  const definir = !a.programa_id;
+  // A API manda `programa` aninhado, sem `programa_id`.
+  const definir = !atual;
 
   async function verPrevia() {
     const novos: typeof erros = {};
@@ -128,7 +129,7 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
                   {g.programas.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nome}
-                      {p.id === a.programa_id ? " (atual: novo ciclo)" : ""}
+                      {p.id === atual?.id ? " (atual: novo ciclo)" : ""}
                     </option>
                   ))}
                 </optgroup>

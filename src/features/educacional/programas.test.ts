@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Config } from "@/lib/educacional/contrato";
 import { normalizarMarco } from "./Configuracoes";
 import { resumoDosProgramas } from "./FiltroProgramas";
-import { marcoENome, marcoVisivel, programasPorMentoria, sugerirTermino, temProgramas } from "./programas";
+import { marcoENome, marcoVisivel, programaDoAluno, programasPorMentoria, sugerirTermino, temProgramas } from "./programas";
 
 const programa = (id: string, mentoria: string, meses: number, ativo = true) => ({
   id,
@@ -62,5 +62,13 @@ describe("marco ao lado do nome", () => {
     expect(marcoVisivel(null, "Avulso")).toBeNull();
     expect(marcoENome("Mês 3", "Mês 3 (Big Win)")).toBe("Mês 3 (Big Win)");
     expect(marcoENome("Mês 3", "Big Win")).toBe("Mês 3 · Big Win");
+  });
+});
+
+describe("programaDoAluno", () => {
+  it("a API manda só `programa` aninhado: sem `programa_id`, o aluno continua com programa", () => {
+    const aluno = { programa_id: null, programa: { id: "p1", nome: "Blackbelt 6 meses" } };
+    expect(programaDoAluno(aluno, undefined)?.id).toBe("p1");
+    expect(programaDoAluno({ programa_id: null, programa: null }, undefined)).toBeNull();
   });
 });

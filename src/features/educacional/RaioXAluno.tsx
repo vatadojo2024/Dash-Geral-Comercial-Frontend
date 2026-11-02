@@ -236,7 +236,7 @@ export function RaioXAluno({ id }: { id: string }) {
                     {!a.arquivado && temProgramas(config.data) && (
                       <Button size="sm" variant="outline" onClick={() => setTrocar(true)}>
                         <Repeat className="h-3.5 w-3.5" aria-hidden />
-                        {a.programa_id ? "Trocar programa" : "Definir programa"}
+                        {programaDoAluno(a, config.data) ? "Trocar programa" : "Definir programa"}
                       </Button>
                     )}
                     {!a.arquivado && (
