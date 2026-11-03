@@ -36,7 +36,8 @@ import { cn } from "@/lib/utils/cn";
 // calendário de primeiras calls (features/agendamentos), sem importar nada de
 // lá: mês (semanas dom→sáb, até 3 itens por dia) e semana. Na semana, o que
 // tem hora (aula) fica na linha da hora; o resto, em "Dia todo". Cor por tipo;
-// checkpoint em SLA (marcado pela API) com borda vermelha e alerta.
+// checkpoint em SLA (marcado pela API) e contrato já vencido com borda vermelha
+// e alerta.
 // Clicar num item abre o Raio-X; clicar no dia (ou no "+") oferece criar uma
 // intervenção ou uma aula naquele dia (na semana, naquela hora).
 // ---------------------------------------------------------------------------
@@ -48,12 +49,14 @@ export const COR_DO_TIPO: Record<TipoEventoCalendario, string> = {
   intervencao: "border-laranja/40 bg-laranja/15",
   proxima_acao: "border-violeta/40 bg-violeta/10",
   aula: "border-teal/40 bg-teal/15",
+  vencimento: "border-amarelo/40 bg-amarelo/10",
 };
 export const PONTO_DO_TIPO: Record<TipoEventoCalendario, string> = {
   checkpoint: "bg-info",
   intervencao: "bg-laranja",
   proxima_acao: "bg-violeta",
   aula: "bg-teal",
+  vencimento: "bg-amarelo",
 };
 
 // Status com rótulo da tela (código desconhecido não aparece).
@@ -68,7 +71,10 @@ function rotuloDoStatus(e: EventoCalendario): string | null {
 // Já resolvido (só apagado na tela): checkpoint realizado, intervenção concluída, aula feita ou cancelada.
 const resolvido = (e: EventoCalendario) => ["realizado", "concluida", "feito", "cancelada"].includes(e.status ?? "");
 
-function descricao(e: EventoCalendario): string {
+// Vencimento de contrato com a data já passada.
+const vencido = (e: EventoCalendario, hoje: string) => e.tipo === "vencimento" && e.data.slice(0, 10) < hoje;
+
+function descricao(e: EventoCalendario, hoje: string): string {
   const status = rotuloDoStatus(e);
   return [
     `${ROTULO_TIPO_EVENTO[e.tipo]}: ${e.titulo}`,
@@ -77,27 +83,40 @@ function descricao(e: EventoCalendario): string {
     status,
     e.responsavel?.nome,
     e.sla ? "em SLA" : null,
+    vencido(e, hoje) ? "vencido" : null,
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
-function Chip({ e, onAbrir, detalhado = false }: { e: EventoCalendario; onAbrir: (e: EventoCalendario) => void; detalhado?: boolean }) {
+function Chip({
+  e,
+  hoje,
+  onAbrir,
+  detalhado = false,
+}: {
+  e: EventoCalendario;
+  hoje: string;
+  onAbrir: (e: EventoCalendario) => void;
+  detalhado?: boolean;
+}) {
+  const alerta = e.sla || vencido(e, hoje);
   return (
     <button
       type="button"
       onClick={() => onAbrir(e)}
-      title={descricao(e)}
-      aria-label={`${descricao(e)}. Abrir o Raio-X.`}
+      title={descricao(e, hoje)}
+      aria-label={`${descricao(e, hoje)}. Abrir o Raio-X.`}
       className={cn(
         "w-full rounded-md border px-1.5 py-1 text-left text-[11px] leading-tight text-texto transition-all hover:-translate-y-px hover:border-white/30",
         COR_DO_TIPO[e.tipo],
-        e.sla && "border-erro-forte/70 ring-1 ring-erro-forte/50",
+        alerta && "border-erro-forte/70 ring-1 ring-erro-forte/50",
+        vencido(e, hoje) && "bg-erro-forte/15",
         resolvido(e) && "opacity-55",
       )}
     >
       <span className="flex items-center gap-1">
-        {e.sla ? (
+        {alerta ? (
           <AlertTriangle className="h-3 w-3 shrink-0 text-erro" aria-hidden />
         ) : (
           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", PONTO_DO_TIPO[e.tipo])} aria-hidden />
@@ -227,7 +246,7 @@ export function GradeDoCalendario({
             </span>
           ))}
           <span className="inline-flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3 text-erro" aria-hidden /> Checkpoint em SLA
+            <AlertTriangle className="h-3 w-3 text-erro" aria-hidden /> Checkpoint em SLA ou contrato vencido
           </span>
           <span className="ml-auto tabular-nums">
             {itens.length} {itens.length === 1 ? "item" : "itens"} no período
@@ -264,7 +283,7 @@ export function GradeDoCalendario({
                           <BotaoCriar dia={dia} onDia={onDia} />
                         </div>
                         {doDia.slice(0, MAX_POR_DIA).map((e) => (
-                          <Chip key={e.id} e={e} onAbrir={onAbrir} />
+                          <Chip key={e.id} e={e} hoje={hoje} onAbrir={onAbrir} />
                         ))}
                         {doDia.length > MAX_POR_DIA && (
                           <button
@@ -348,7 +367,7 @@ function Semana({
             {(mapa.get(dia) ?? [])
               .filter((e) => horaDe(e) == null)
               .map((e) => (
-                <Chip key={e.id} e={e} onAbrir={onAbrir} detalhado />
+                <Chip key={e.id} e={e} hoje={hoje} onAbrir={onAbrir} detalhado />
               ))}
           </div>
         ))}
@@ -369,7 +388,7 @@ function Semana({
               {(mapa.get(dia) ?? [])
                 .filter((e) => horaDe(e) === h)
                 .map((e) => (
-                  <Chip key={e.id} e={e} onAbrir={onAbrir} detalhado />
+                  <Chip key={e.id} e={e} hoje={hoje} onAbrir={onAbrir} detalhado />
                 ))}
             </div>
           ))}

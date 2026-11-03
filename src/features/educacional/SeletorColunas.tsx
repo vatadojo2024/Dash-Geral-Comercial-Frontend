@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 // Colunas visíveis da Tabela tática (spec Fase 2, seção 4), lembradas no
 // navegador. As 8 colunas da spec vêm ligadas; Health Score, Dias sem
 // atividade, Status do aluno e Mentoria ficam disponíveis. Contato (Entrega 1):
-// E-mail, Número e Discord, opcionais e sem ordenação na API.
+// E-mail, Número e Discord, opcionais e sem ordenação na API. Coluna nova que
+// vem ligada aparece também para quem já tinha escolhido as suas.
 // ---------------------------------------------------------------------------
 
 export const COLUNAS_DA_TABELA = [
@@ -16,6 +17,7 @@ export const COLUNAS_DA_TABELA = [
   { id: "nivel_inicial", rotulo: "Nível inicial", padrao: true },
   { id: "etapa", rotulo: "Etapa atual", padrao: true },
   { id: "checkpoint", rotulo: "Checkpoint", padrao: true },
+  { id: "vencimento", rotulo: "Vencimento", padrao: true },
   { id: "dias_na_etapa", rotulo: "Dias na etapa", padrao: true },
   { id: "faixa_saude", rotulo: "Faixa de saúde", padrao: true },
   { id: "proxima_acao", rotulo: "Próxima ação", padrao: true },
@@ -34,14 +36,28 @@ export type IdColunaOrdenavel = Exclude<IdColuna, "email" | "telefone" | "discor
 export const ordenavel = (id: IdColuna): id is IdColunaOrdenavel => !COLUNAS_DA_TABELA.some((c) => c.id === id && "semOrdem" in c);
 
 const CHAVE = "mdc_edu_colunas";
+const TODAS = COLUNAS_DA_TABELA.map((c) => c.id) as IdColuna[];
 const PADRAO = COLUNAS_DA_TABELA.filter((c) => c.padrao).map((c) => c.id) as IdColuna[];
+// Colunas que já existiam quando a escolha era salva só como lista (formato antigo).
+const ANTES_DO_VENCIMENTO = TODAS.filter((id) => id !== "vencimento");
+
+// Escolha salva → colunas visíveis. Salva-se { visiveis, conhecidas }: coluna
+// ligada por padrão que a pessoa ainda não conhecia entra ligada.
+export function colunasDaEscolha(bruto: unknown): IdColuna[] {
+  const salvo = Array.isArray(bruto)
+    ? { visiveis: bruto, conhecidas: ANTES_DO_VENCIMENTO }
+    : bruto && typeof bruto === "object" && Array.isArray((bruto as { visiveis?: unknown }).visiveis)
+      ? (bruto as { visiveis: unknown[]; conhecidas?: unknown })
+      : null;
+  if (!salvo) return PADRAO;
+  const conhecidas = Array.isArray(salvo.conhecidas) ? salvo.conhecidas : TODAS;
+  const validos = TODAS.filter((id) => salvo.visiveis.includes(id) || (PADRAO.includes(id) && !conhecidas.includes(id)));
+  return validos.includes("nome") ? validos : ["nome", ...validos];
+}
 
 function ler(): IdColuna[] {
   try {
-    const bruto = JSON.parse(window.localStorage.getItem(CHAVE) ?? "null") as unknown;
-    if (!Array.isArray(bruto)) return PADRAO;
-    const validos = COLUNAS_DA_TABELA.map((c) => c.id).filter((id) => bruto.includes(id));
-    return validos.includes("nome") ? validos : ["nome", ...validos];
+    return colunasDaEscolha(JSON.parse(window.localStorage.getItem(CHAVE) ?? "null"));
   } catch {
     return PADRAO;
   }
@@ -53,9 +69,9 @@ export function useColunasVisiveis() {
   useEffect(() => setVisiveis(ler()), []);
   const alternar = (id: IdColuna) =>
     setVisiveis((atual) => {
-      const novo = COLUNAS_DA_TABELA.map((c) => c.id).filter((c) => (c === id ? !atual.includes(c) : atual.includes(c)));
+      const novo = TODAS.filter((c) => (c === id ? !atual.includes(c) : atual.includes(c)));
       try {
-        window.localStorage.setItem(CHAVE, JSON.stringify(novo));
+        window.localStorage.setItem(CHAVE, JSON.stringify({ visiveis: novo, conhecidas: TODAS }));
       } catch {
         // Sem armazenamento: vale só nesta aba.
       }

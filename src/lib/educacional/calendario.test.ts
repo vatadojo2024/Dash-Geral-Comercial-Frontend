@@ -74,11 +74,11 @@ describe("datas da grade", () => {
 describe("rota do calendário (modo demonstração)", () => {
   const periodo = () => ({ inicio: somarDias(HOJE, -60), fim: somarDias(HOJE, 30) });
 
-  it("os 4 tipos no período, em ordem de data; checkpoint pendente ou sem resposta vem com SLA", async () => {
+  it("os 5 tipos no período, em ordem de data; checkpoint pendente ou sem resposta vem com SLA", async () => {
     const itens = await buscarCalendario(periodo());
     const tipos = new Set(itens.map((e) => e.tipo));
-    // A semente tem os quatro tipos no período.
-    expect([...tipos].sort()).toEqual(["aula", "checkpoint", "intervencao", "proxima_acao"]);
+    // A semente tem os cinco tipos no período.
+    expect([...tipos].sort()).toEqual(["aula", "checkpoint", "intervencao", "proxima_acao", "vencimento"]);
     const datas = itens.map((e) => e.data);
     expect(datas).toEqual([...datas].sort());
     expect(itens.every((e) => e.data >= periodo().inicio && e.data <= periodo().fim)).toBe(true);

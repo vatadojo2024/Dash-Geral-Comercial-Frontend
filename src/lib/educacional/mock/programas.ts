@@ -305,3 +305,16 @@ export function semearMural(banco: Banco, hoje: string) {
   banco.comentarios = comentarios;
   banco.imagens = imagens;
 }
+
+// Semente v10 (vencimento do contrato), só demonstração: dois alunos ativos com
+// o contrato já vencido (há 4 e há 12 dias), para o calendário mostrar o
+// vencimento em vermelho.
+const CONTRATO_VENCIDO_HA = [4, 12];
+
+export function semearVencimentos(banco: Banco, hoje: string) {
+  const ativos = banco.alunos.filter((a) => a.status_aluno === "ativo" && a.programa_id && !a.arquivado_em);
+  CONTRATO_VENCIDO_HA.forEach((dias, i) => {
+    const a = ativos[i];
+    if (a) a.data_termino = new Date(Date.parse(`${hoje}T12:00:00Z`) - dias * 86_400_000).toISOString().slice(0, 10);
+  });
+}

@@ -102,10 +102,14 @@ function ordenador(ordem: string, banco: Banco): (a: AlunoLinha, b: AlunoLinha) 
     // decrescente, com os sem valor no fim.
     atencao: (a, b) =>
       faixa(a) - faixa(b) || (b.dias_sem_atividade.valor ?? -1) - (a.dias_sem_atividade.valor ?? -1),
+    vencimento: (a, b) => (a.data_termino ?? "").localeCompare(b.data_termino ?? ""),
   };
   const desc = ordem.startsWith("-");
-  const f = base[desc ? ordem.slice(1) : ordem] ?? padrao;
-  return (a, b) => (desc ? -f(a, b) : f(a, b)) || padrao(a, b);
+  const chave = desc ? ordem.slice(1) : ordem;
+  const f = base[chave] ?? padrao;
+  // Vencimento: sem data fica no fim nas duas direções.
+  const semData = (a: AlunoLinha, b: AlunoLinha) => (chave === "vencimento" ? Number(!a.data_termino) - Number(!b.data_termino) : 0);
+  return (a, b) => semData(a, b) || (desc ? -f(a, b) : f(a, b)) || padrao(a, b);
 }
 
 // Sem acento e em minúsculas, para a busca por nome.
@@ -281,7 +285,8 @@ function mural(banco: Banco, alunoId: string, q: URLSearchParams, usuarioId: str
 }
 
 // Calendário (Entrega 2, M3): checkpoints (data prevista), intervenções e
-// próximas ações (prazo) e aulas (data e hora) dos alunos não arquivados, no
+// próximas ações (prazo), aulas (data e hora) e vencimento do contrato (data de
+// término, de quem está ativo ou em pausa) dos alunos não arquivados, no
 // período [inicio, fim]. Responsável do item: o do aluno (checkpoint e próxima
 // ação), o da intervenção ou o mentor da aula. SLA: checkpoint pendente ou sem
 // resposta (o mesmo critério do resumo).
@@ -329,6 +334,9 @@ function calendario(banco: Banco, q: URLSearchParams) {
     for (const x of banco.aulas ?? []) {
       if (x.aluno_id !== a.id || x.arquivado_em || !noPeriodo(x.data)) continue;
       itens.push({ ...base, id: `aula:${x.id}`, tipo: "aula", data: x.data, hora: x.hora, titulo: `Aula ${numeroDaAula(banco, x)}`, responsavel: resp(x.mentor_id), status: x.status, sla: false });
+    }
+    if ((a.status_aluno === "ativo" || a.status_aluno === "em_pausa") && noPeriodo(a.data_termino)) {
+      itens.push({ ...base, id: `vencimento:${a.id}`, tipo: "vencimento", data: a.data_termino.slice(0, 10), hora: null, titulo: p?.nome ?? "Contrato", responsavel: resp(a.responsavel_id), status: null, sla: false });
     }
   }
   const filtrados = itens.filter((e) => (!tipo || e.tipo === tipo) && (!responsavelId || e.responsavel?.id === responsavelId));

@@ -1,6 +1,6 @@
 import semente from "@/lib/mock/data_educacional.json";
 import { diasEntre } from "./motor";
-import { semearEntrega1, semearEntrega2, semearMural, semearProgramas } from "./programas";
+import { semearEntrega1, semearEntrega2, semearMural, semearProgramas, semearVencimentos } from "./programas";
 import type { AnaliseBanco, Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -20,7 +20,8 @@ export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // 4 = Entrega 1 (contato, "Não solicitado" e Ninja). 5 = aluno sem programa.
 // 6 = Entrega 2 (aulas). 7 = mural (comentários e imagens).
 // 8 = aula com número, hora e observação. 9 = status "noshow".
-export const VERSAO_DADOS = 9;
+// 10 = dois contratos ativos já vencidos (calendário).
+export const VERSAO_DADOS = 10;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };
@@ -62,6 +63,7 @@ export function bancoDaSemente(hoje: string): Banco {
   semearEntrega1(banco);
   semearEntrega2(banco, hoje);
   semearMural(banco, hoje);
+  semearVencimentos(banco, hoje);
   importarDaFase1(banco);
   return banco;
 }

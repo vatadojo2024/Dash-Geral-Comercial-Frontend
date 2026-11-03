@@ -120,6 +120,7 @@ const CHAVES_ORDEM = [
   "proxima_acao",
   "responsavel",
   "atencao", // D3 (Fase 3): faixa efetiva, depois dias sem atividade desc
+  "vencimento", // data de término: a que vence primeiro em cima; sem data no fim
 ] as const;
 export type ChaveOrdem = (typeof CHAVES_ORDEM)[number];
 export type OrdemAlunos = ChaveOrdem | `-${ChaveOrdem}`;

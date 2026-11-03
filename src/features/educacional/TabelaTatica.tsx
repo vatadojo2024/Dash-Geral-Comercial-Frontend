@@ -726,6 +726,9 @@ const LinhaAluno = memo(function LinhaAluno({ a, entrada, acoes, colunas, etapas
       case "mentoria":
         // Vem do programa: só leitura (troca por "Trocar programa", no Raio-X).
         return <span className="whitespace-nowrap text-texto-sec">{a.mentoria || "—"}</span>;
+      case "vencimento":
+        // Data de término do contrato: só leitura aqui (edita-se no Raio-X).
+        return <span className="whitespace-nowrap tabular-nums text-texto">{a.data_termino ? dataCurta(a.data_termino) : "—"}</span>;
       case "email":
       case "telefone":
       case "discord":

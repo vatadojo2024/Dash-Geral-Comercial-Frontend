@@ -104,12 +104,14 @@ export const ROTULO_TIPO_EVENTO = {
   intervencao: "Intervenção",
   proxima_acao: "Próxima ação",
   aula: "Aula",
+  vencimento: "Vencimento do contrato",
 } as const;
 export const ROTULO_TIPO_EVENTO_PLURAL = {
   checkpoint: "Checkpoints",
   intervencao: "Intervenções",
   proxima_acao: "Próximas ações",
   aula: "Aulas",
+  vencimento: "Vencimentos de contrato",
 } as const;
 
 // Avisos do aluno (`avisos` da API): rótulo e dica. Código fora daqui não aparece.

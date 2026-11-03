@@ -243,6 +243,8 @@ export const AlunoLinhaSchema = z.object({
   // Avisos do backend (ex.: "contato_incompleto"): só mostram, não bloqueiam
   // edição. Código desconhecido é ignorado na tela.
   avisos: z.array(z.string()).default([]),
+  // Vencimento do contrato (coluna "Vencimento" da Lista; ordem=vencimento).
+  data_termino: z.string().nullable().default(null),
 });
 export type AlunoLinha = z.infer<typeof AlunoLinhaSchema>;
 export const AVISO_CONTATO_INCOMPLETO = "contato_incompleto";
@@ -549,8 +551,9 @@ export type NovoComentario = { texto: string; imagens: string[] };
 // GET /calendario?inicio=&fim=&responsavel_id=&programa_id=&tipo= → { itens }.
 // `id` = "<tipo>:<id da origem>". `responsavel` é o do item (mentor na aula, o da
 // intervenção, o do aluno nos outros). `sla` (checkpoint em SLA) vem marcado
-// pela API: a tela só destaca.
-export const TIPOS_EVENTO_CALENDARIO = ["checkpoint", "intervencao", "proxima_acao", "aula"] as const;
+// pela API: a tela só destaca. `vencimento` é a data de término do contrato
+// (tipo=vencimento); a que já passou aparece em vermelho.
+export const TIPOS_EVENTO_CALENDARIO = ["checkpoint", "intervencao", "proxima_acao", "aula", "vencimento"] as const;
 export type TipoEventoCalendario = (typeof TIPOS_EVENTO_CALENDARIO)[number];
 
 export const EventoCalendarioSchema = z.object({
