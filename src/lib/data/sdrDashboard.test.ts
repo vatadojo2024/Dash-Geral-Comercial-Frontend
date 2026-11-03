@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   agregarDashboard,
   INICIO_REGRA_NINJA_QC,
+  detalheDosQualificados,
   metasDoSdr,
-  notaDaMeta,
   normalizarSdr,
   SDRS_DASHBOARD,
   type SdrDashboardPayload,
@@ -64,10 +64,20 @@ describe("Meta individual: Ninja e QC (decisões de 11/10/2026)", () => {
     expect([de("Benhur").qualificados, de("Benhur").qualificadosMeta, de("Benhur").gap]).toEqual([10, 10, 30]);
   });
 
-  it("texto da conta: só Ninja, nada fora", () => {
-    expect(notaDaMeta(de("Glaucio"))).toBe("3 Ninja fora");
-    expect(notaDaMeta(de("Delrue"))).toBe("4 Ninja fora");
-    expect(notaDaMeta(de("Benhur"))).toBe("nada fora");
+  it("dica do card: os números fecham a conta da meta", () => {
+    expect(detalheDosQualificados(de("Glaucio"))).toBe("11 qualificados · 3 Ninja fora · 0 bônus QC");
+    expect(detalheDosQualificados(de("Delrue"))).toBe("10 qualificados · 4 Ninja fora · 0 bônus QC");
+    expect(detalheDosQualificados(de("Benhur"))).toBe("10 qualificados · 0 Ninja fora · 0 bônus QC");
+  });
+
+  it("exemplo do pedido de 03/11: 30 qualificados, 6 Ninja fora → card 24, gap 16", () => {
+    const d = agregarDashboard(
+      payload([linha("Glaucio", "2026-11-02", "Ninja", 6), linha("Glaucio", "2026-11-03", "Black", 24)]),
+      "2026-11",
+    );
+    const g = d.sdrs.find((s) => s.sdr === "Glaucio")!;
+    expect([g.qualificadosMeta, g.metaAtual, g.gap]).toEqual([24, 40, 16]);
+    expect(detalheDosQualificados(g)).toBe("30 qualificados · 6 Ninja fora · 0 bônus QC");
   });
 
   it("demais SDRs: QC não conta direto, mas cada 3 valem +1", () => {
@@ -82,7 +92,7 @@ describe("Meta individual: Ninja e QC (decisões de 11/10/2026)", () => {
     const b = d.sdrs.find((s) => s.sdr === "Benhur")!;
     expect(b.qualificadosMeta).toBe(10); // 8 Black + ⌊7/3⌋
     expect(b.foraDaMeta).toBe(10);
-    expect(notaDaMeta(b)).toBe("3 Ninja, 7 QC fora · +2 bônus");
+    expect(detalheDosQualificados(b)).toBe("11 qualificados · 3 Ninja fora · 2 bônus QC");
     expect(b.qualificados).toBe(13); // total segue a regra antiga: 11 Ninja+ + ⌊7/3⌋
   });
 
@@ -99,7 +109,7 @@ describe("Meta individual: Ninja e QC (decisões de 11/10/2026)", () => {
     expect(a.qualificadosMeta).toBe(33);
     expect(a.foraDaMeta).toBe(0);
     expect([a.metasBatidas, a.metaAtual, a.nivelAtual, a.gap]).toEqual([1, 40, "M2", 7]);
-    expect(notaDaMeta(a)).toBe("Ninja e QC valem 1 cada");
+    expect(detalheDosQualificados(a)).toBe("21 qualificados · 12 QC · Ninja e QC valem 1 cada");
     expect(a.qualificados).toBe(25); // número da equipe: 21 Ninja+ + ⌊12/3⌋
   });
 
@@ -115,6 +125,7 @@ describe("Meta individual: Ninja e QC (decisões de 11/10/2026)", () => {
     const dl = d.sdrs.find((s) => s.sdr === "Delrue")!;
     expect(dl.metaDetalhe).toEqual({ ninja: 2, qc: 6, bonusQC: 2, regra: "padrao" });
     expect(dl.qualificadosMeta).toBe(5); // 3 do produto novo + ⌊6/3⌋
+    expect(detalheDosQualificados(dl)).toBe("5 qualificados · 2 Ninja fora · 2 bônus QC");
   });
 
   it("meses anteriores não mudam: setembro segue a regra antiga", () => {
@@ -130,6 +141,6 @@ describe("Meta individual: Ninja e QC (decisões de 11/10/2026)", () => {
     expect(g.qualificados).toBe(15);
     expect(g.qualificadosMeta).toBe(15); // 8 Ninja + 4 Black + ⌊9/3⌋
     expect(g.foraDaMeta).toBe(0);
-    expect(notaDaMeta(g)).toBe("regra antiga (antes de out/2026)");
+    expect(detalheDosQualificados(g)).toBe("12 qualificados · 3 bônus QC · regra antiga (antes de out/2026)");
   });
 });

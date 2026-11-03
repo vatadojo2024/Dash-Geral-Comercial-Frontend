@@ -19,11 +19,11 @@ import {
   agregarDashboard,
   corDoGap,
   corDoNoShow,
+  detalheDosQualificados,
   fetchSdrPayload,
   mesesDisponiveis,
   mesPadrao,
   normalizarSdr,
-  notaDaMeta,
   periodoDoMes,
   PRODUTO_ROTULO,
   rotuloMes,
@@ -112,19 +112,21 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
         <div className="mt-3">
           <Metrica rotulo="Calls agendadas">{m.callsAgendadas}</Metrica>
           <Metrica rotulo="Calls realizadas">{m.callsRealizadas}</Metrica>
+          {/* O número que conta para a meta; o detalhe da conta fica na dica. */}
           <Metrica rotulo="Leads qualificados">
-            {m.qualificados}{" "}
-            <span className="text-xs text-texto-sec">
-              ({m.qualificadosBase}+{m.bonusQC} bônus{m.metas && m.foraDaMeta > 0 ? " · total, sem o desconto da meta" : ""})
-            </span>
+            {m.metas ? (
+              <span
+                className="cursor-help underline decoration-dotted decoration-texto-sec/60 underline-offset-4"
+                title={detalheDosQualificados(m)}
+                tabIndex={0}
+                aria-label={`${m.qualificadosMeta}: ${detalheDosQualificados(m)}`}
+              >
+                {m.qualificadosMeta}
+              </span>
+            ) : (
+              m.qualificados
+            )}
           </Metrica>
-          <Metrica rotulo="Bônus QC (+1 a cada 3)">{m.bonusQC}</Metrica>
-          {m.metas && (
-            <Metrica rotulo="Contam p/ meta">
-              {m.qualificadosMeta}
-              <span className="text-xs text-texto-sec"> · {notaDaMeta(m)}</span>
-            </Metrica>
-          )}
           <Metrica rotulo="Produtos">{linhaProdutos}</Metrica>
           {m.gap !== null && (
             <Metrica rotulo="Gap p/ meta">

@@ -383,14 +383,17 @@ export async function fetchSdrPayload(): Promise<SdrDashboardPayload> {
   return SdrDashboardPayloadSchema.parse(await res.json());
 }
 
-// Texto da conta da meta no card: "8 · 3 Ninja fora", "8 · 3 Ninja, 2 QC fora ·
-// +0 bônus", "10 · nada fora". O bônus só aparece quando há QC. Arthur: "Ninja e
-// QC valem 1". Mês anterior a out/2026: "regra antiga".
-export function notaDaMeta(m: Pick<SdrMetrics, "metaDetalhe">): string {
-  const { ninja, qc, bonusQC, regra } = m.metaDetalhe;
-  if (regra === "ninja_qc") return "Ninja e QC valem 1 cada";
-  if (regra === "anterior") return "regra antiga (antes de out/2026)";
-  const partes = [ninja > 0 ? `${ninja} Ninja` : null, qc > 0 ? `${qc} QC` : null].filter(Boolean);
-  if (partes.length === 0) return "nada fora";
-  return `${partes.join(", ")} fora${qc > 0 ? ` · +${bonusQC} bônus` : ""}`;
+// Dica do número de "Leads qualificados" no card (que é o que conta para a meta):
+// "30 qualificados · 6 Ninja fora · 0 bônus QC" (30 − 6 + 0 = 24). Os números
+// fecham a conta da meta. Arthur: "21 qualificados · 12 QC · Ninja e QC valem 1
+// cada". Mês anterior a out/2026: "12 qualificados · 3 bônus QC · regra antiga".
+export function detalheDosQualificados(m: Pick<SdrMetrics, "qualificadosMeta" | "produtos" | "metaDetalhe">): string {
+  const { ninja, bonusQC, regra } = m.metaDetalhe;
+  if (regra === "ninja_qc") {
+    return `${m.qualificadosMeta - m.produtos.qc} qualificados · ${m.produtos.qc} QC · Ninja e QC valem 1 cada`;
+  }
+  if (regra === "anterior") {
+    return `${m.qualificadosMeta - bonusQC} qualificados · ${bonusQC} bônus QC · regra antiga (antes de out/2026)`;
+  }
+  return `${m.qualificadosMeta - bonusQC + ninja} qualificados · ${ninja} Ninja fora · ${bonusQC} bônus QC`;
 }
