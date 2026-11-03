@@ -387,13 +387,49 @@ export async function fetchSdrPayload(): Promise<SdrDashboardPayload> {
 // "30 qualificados · 6 Ninja fora · 0 bônus QC" (30 − 6 + 0 = 24). Os números
 // fecham a conta da meta. Arthur: "21 qualificados · 12 QC · Ninja e QC valem 1
 // cada". Mês anterior a out/2026: "12 qualificados · 3 bônus QC · regra antiga".
-export function detalheDosQualificados(m: Pick<SdrMetrics, "qualificadosMeta" | "produtos" | "metaDetalhe">): string {
+export function detalheDosQualificados(m: MetricasDoCard): string {
+  const p = partesDosQualificados(m);
+  if (p.regra === "ninja_qc") return `${p.qualificados} qualificados · ${p.qcValem1} QC · Ninja e QC valem 1 cada`;
+  if (p.regra === "anterior") {
+    return `${p.qualificados} qualificados · ${p.bonusQC} bônus QC · regra antiga (antes de out/2026)`;
+  }
+  return `${p.qualificados} qualificados · ${p.ninjaFora} Ninja fora · ${p.bonusQC} bônus QC`;
+}
+
+type MetricasDoCard = Pick<SdrMetrics, "sdr" | "metas" | "qualificados" | "qualificadosBase" | "bonusQC" | "qualificadosMeta" | "produtos" | "metaDetalhe">;
+
+// O número de "Leads qualificados" no card: o que conta para a meta (sem meta, o total).
+export function qualificadosDoCard(m: MetricasDoCard): number {
+  return m.metas ? m.qualificadosMeta : m.qualificados;
+}
+
+// Partes da conta do card, que sempre fecham: qualificados − ninjaFora + bonusQC +
+// qcValem1 = número do card. Sem meta: o total (Ninja+ e bônus QC).
+function partesDosQualificados(m: MetricasDoCard) {
+  if (!m.metas) {
+    return { qualificados: m.qualificadosBase, ninjaFora: 0, bonusQC: m.bonusQC, qcValem1: 0, regra: m.metaDetalhe.regra };
+  }
   const { ninja, bonusQC, regra } = m.metaDetalhe;
   if (regra === "ninja_qc") {
-    return `${m.qualificadosMeta - m.produtos.qc} qualificados · ${m.produtos.qc} QC · Ninja e QC valem 1 cada`;
+    return { qualificados: m.qualificadosMeta - m.produtos.qc, ninjaFora: 0, bonusQC: 0, qcValem1: m.produtos.qc, regra };
   }
-  if (regra === "anterior") {
-    return `${m.qualificadosMeta - bonusQC} qualificados · ${bonusQC} bônus QC · regra antiga (antes de out/2026)`;
+  if (regra === "anterior") return { qualificados: m.qualificadosMeta - bonusQC, ninjaFora: 0, bonusQC, qcValem1: 0, regra };
+  return { qualificados: m.qualificadosMeta - bonusQC + ninja, ninjaFora: ninja, bonusQC, qcValem1: 0, regra };
+}
+
+// Total do topo da aba: a soma dos cards, com a dica somada no mesmo formato. No
+// mês da regra nova, o QC de quem conta 1 cada (Arthur) entra como parte própria.
+export function totalDosQualificados(sdrs: MetricasDoCard[]): { total: number; detalhe: string } {
+  const partes = sdrs.map(partesDosQualificados);
+  const soma = (k: "qualificados" | "ninjaFora" | "bonusQC" | "qcValem1") => partes.reduce((a, p) => a + p[k], 0);
+  const total = sdrs.reduce((a, m) => a + qualificadosDoCard(m), 0);
+  if (partes.length > 0 && partes.every((p) => p.regra === "anterior")) {
+    return { total, detalhe: `${soma("qualificados")} qualificados · ${soma("bonusQC")} bônus QC · regra antiga (antes de out/2026)` };
   }
-  return `${m.qualificadosMeta - bonusQC + ninja} qualificados · ${ninja} Ninja fora · ${bonusQC} bônus QC`;
+  const nomes = sdrs.filter((_, i) => partes[i].qcValem1 > 0).map((m) => m.sdr);
+  const qc = soma("qcValem1") > 0 ? ` · ${soma("qcValem1")} QC que valem 1 (${nomes.join(", ")})` : "";
+  return {
+    total,
+    detalhe: `${soma("qualificados")} qualificados · ${soma("ninjaFora")} Ninja fora · ${soma("bonusQC")} bônus QC${qc}`,
+  };
 }

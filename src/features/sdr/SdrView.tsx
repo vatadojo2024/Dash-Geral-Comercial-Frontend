@@ -26,7 +26,9 @@ import {
   normalizarSdr,
   periodoDoMes,
   PRODUTO_ROTULO,
+  qualificadosDoCard,
   rotuloMes,
+  totalDosQualificados,
   type ProdutoChave,
   type SdrMetrics,
 } from "@/lib/data/sdrDashboard";
@@ -119,12 +121,12 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
                 className="cursor-help underline decoration-dotted decoration-texto-sec/60 underline-offset-4"
                 title={detalheDosQualificados(m)}
                 tabIndex={0}
-                aria-label={`${m.qualificadosMeta}: ${detalheDosQualificados(m)}`}
+                aria-label={`${qualificadosDoCard(m)}: ${detalheDosQualificados(m)}`}
               >
-                {m.qualificadosMeta}
+                {qualificadosDoCard(m)}
               </span>
             ) : (
-              m.qualificados
+              qualificadosDoCard(m)
             )}
           </Metrica>
           <Metrica rotulo="Produtos">{linhaProdutos}</Metrica>
@@ -291,6 +293,8 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
   const totalAgendadas = sdrs.reduce((a, s) => a + s.callsAgendadas, 0);
   const totalRealizadas = sdrs.reduce((a, s) => a + s.callsRealizadas, 0);
   const totalQualificados = sdrs.reduce((a, s) => a + s.qualificados, 0);
+  // O KPI "Leads qualificados" é a soma dos cards (o que conta para a meta).
+  const qualificadosDaMeta = totalDosQualificados(sdrs);
   const totalNoShow = sdrs.reduce((a, s) => a + s.noShowCount, 0);
   const totalQC = sdrs.reduce((a, s) => a + s.produtos.qc, 0);
   const totalBonus = sdrs.reduce((a, s) => a + s.bonusQC, 0);
@@ -327,7 +331,19 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9">
             <KpiChip icon={CalendarDays} rotulo="Calls agendadas" valor={String(totalAgendadas)} />
             <KpiChip icon={PhoneCall} rotulo="Calls realizadas" valor={String(totalRealizadas)} />
-            <KpiChip icon={UserCheck2} rotulo="Leads qualificados" valor={String(totalQualificados)} />
+            <div
+              className="flex cursor-help"
+              title={qualificadosDaMeta.detalhe}
+              tabIndex={0}
+              aria-label={`Leads qualificados ${qualificadosDaMeta.total}: ${qualificadosDaMeta.detalhe}`}
+            >
+              <KpiChip
+                icon={UserCheck2}
+                rotulo="Leads qualificados"
+                valor={String(qualificadosDaMeta.total)}
+                className="w-full"
+              />
+            </div>
             <KpiChip icon={UserX} rotulo="No-show (total)" valor={String(totalNoShow)} />
             <KpiChip icon={BookOpenCheck} rotulo="QC (reuniões)" valor={String(totalQC)} />
             <KpiChip icon={Sparkles} rotulo="Bônus QC (+1/3)" valor={String(totalBonus)} />

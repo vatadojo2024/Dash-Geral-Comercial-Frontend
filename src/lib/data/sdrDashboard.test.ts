@@ -5,7 +5,9 @@ import {
   detalheDosQualificados,
   metasDoSdr,
   normalizarSdr,
+  qualificadosDoCard,
   SDRS_DASHBOARD,
+  totalDosQualificados,
   type SdrDashboardPayload,
 } from "./sdrDashboard";
 
@@ -142,5 +144,52 @@ describe("Meta individual: Ninja e QC (decisões de 11/10/2026)", () => {
     expect(g.qualificadosMeta).toBe(15); // 8 Ninja + 4 Black + ⌊9/3⌋
     expect(g.foraDaMeta).toBe(0);
     expect(detalheDosQualificados(g)).toBe("12 qualificados · 3 bônus QC · regra antiga (antes de out/2026)");
+  });
+});
+
+describe("Total \"Leads qualificados\" do topo (pedido de 03/11/2026)", () => {
+  const time = (d: ReturnType<typeof agregarDashboard>) => d.sdrs.filter((s) => s.sdr !== "Hana");
+
+  it("regra nova: soma dos cards, com a dica somada que fecha a conta (Arthur à parte)", () => {
+    const d = agregarDashboard(
+      payload([
+        linha("Glaucio", "2026-11-02", "Ninja", 6),
+        linha("Glaucio", "2026-11-03", "Black", 24),
+        linha("Delrue", "2026-11-03", "Ninja", 2),
+        linha("Delrue", "2026-11-04", "QC", 7),
+        linha("Delrue", "2026-11-05", "Prime", 5),
+        linha("Benhur", "2026-11-05", "Private", 3),
+        linha("Arthur", "2026-11-06", "Ninja", 4),
+        linha("Arthur", "2026-11-06", "QC", 5),
+      ]),
+      "2026-11",
+    );
+    const sdrs = time(d);
+    const t = totalDosQualificados(sdrs);
+    // Cards: Glaucio 24, Delrue 5 + ⌊7/3⌋ = 7, Benhur 3, Arthur 4 + 5 = 9.
+    expect(sdrs.map(qualificadosDoCard)).toEqual([24, 7, 3, 9]);
+    expect(t.total).toBe(43);
+    expect(t.detalhe).toBe("44 qualificados · 8 Ninja fora · 2 bônus QC · 5 QC que valem 1 (Arthur)");
+    expect(44 - 8 + 2 + 5).toBe(t.total);
+  });
+
+  it("sem QC do Arthur, a dica tem o formato do card", () => {
+    const d = agregarDashboard(payload([linha("Glaucio", "2026-11-02", "Ninja", 6), linha("Glaucio", "2026-11-03", "Black", 24)]), "2026-11");
+    expect(totalDosQualificados(time(d))).toEqual({ total: 24, detalhe: "30 qualificados · 6 Ninja fora · 0 bônus QC" });
+  });
+
+  it("meses antes de out/2026: regra antiga, como no card", () => {
+    const d = agregarDashboard(
+      payload([
+        linha("Glaucio", "2026-09-15", "Ninja", 8),
+        linha("Glaucio", "2026-09-20", "QC", 9),
+        linha("Arthur", "2026-09-21", "QC", 3),
+        linha("Arthur", "2026-09-22", "Black", 2),
+      ]),
+      "2026-09",
+    );
+    const t = totalDosQualificados(time(d));
+    expect(t.total).toBe(11 + 3); // Glaucio 8 + ⌊9/3⌋; Arthur 2 + ⌊3/3⌋
+    expect(t.detalhe).toBe("10 qualificados · 4 bônus QC · regra antiga (antes de out/2026)");
   });
 });
