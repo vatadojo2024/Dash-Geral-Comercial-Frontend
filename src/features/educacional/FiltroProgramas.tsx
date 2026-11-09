@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils/cn";
 import type { GrupoDeProgramas } from "./programas";
 
 // ---------------------------------------------------------------------------
-// Filtro por programa (programas, P6): vários ao mesmo tempo (ex.: Blackbelt 6
-// e 12 meses), opções agrupadas por mentoria. A caixa da mentoria marca ou
+// Filtro por programa (programas, P6): vários ao mesmo tempo (ex.: Blackbelt
+// Semestral e Anual), opções agrupadas por mentoria. A caixa da mentoria marca ou
 // desmarca o grupo todo. Vale para a lista, o Kanban e a aba Alunos (M2).
 // "Sem programa" fica no topo: a Ninja continua por último.
 // ---------------------------------------------------------------------------

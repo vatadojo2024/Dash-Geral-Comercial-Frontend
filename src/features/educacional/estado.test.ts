@@ -98,8 +98,8 @@ describe("estado da aba Alunos na URL", () => {
     expect(e.programa).toEqual(["prog-a", "prog-b"]);
     expect(queryDoEstado(e)).toBe("programa=prog-a%2Cprog-b");
     expect(temFiltro(e)).toBe(true);
-    const nomes = { programa: (id: string) => ({ "prog-a": "Blackbelt 6 meses", "prog-b": "Blackbelt 12 meses" })[id] };
-    expect(descreverFiltros(e, nomes)).toEqual(["Programa: Blackbelt 6 meses + Blackbelt 12 meses"]);
+    const nomes = { programa: (id: string) => ({ "prog-a": "Blackbelt Semestral", "prog-b": "Blackbelt Anual" })[id] };
+    expect(descreverFiltros(e, nomes)).toEqual(["Programa: Blackbelt Semestral + Blackbelt Anual"]);
     expect(semFiltros(e).programa).toEqual([]);
   });
 });

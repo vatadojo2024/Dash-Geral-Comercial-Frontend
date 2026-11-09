@@ -236,7 +236,7 @@ describe("escrita em aluno — seção 5 do backend", () => {
 
   it("aluno novo recebe os checkpoints do programa: Dia N = +N dias, Mês N no calendário (fim do mês)", async () => {
     const c = await buscarConfig();
-    const prime6 = c.programas.find((p) => p.nome === "Prime 6 meses")!;
+    const prime6 = c.programas.find((p) => p.nome === "Prime Semestral")!;
     const novo = await criarAluno({ ...CONTATO,
       nome: "Paula Teste",
       programa_id: prime6.id,
@@ -263,11 +263,11 @@ describe("escrita em aluno — seção 5 do backend", () => {
     expect(novo.checkpoints[0].roteiro?.objetivo_contato).toBeTruthy();
     expect((await buscarAlunos({ por_pagina: "todos" })).itens.some((x) => x.id === novo.id)).toBe(true);
     // Programa aninhado na resposta e checkpoint com o padrão de origem.
-    expect(novo.programa).toMatchObject({ id: prime6.id, nome: "Prime 6 meses", mentoria: "Prime", duracao_meses: 6 });
+    expect(novo.programa).toMatchObject({ id: prime6.id, nome: "Prime Semestral", mentoria: "Prime", duracao_meses: 6 });
     const welcome = c.checkpoints_modelo.find((m) => m.programa_id === prime6.id && m.nome === "Welcome")!;
     expect(novo.checkpoints[0].modelo_id).toBe(welcome.id);
     const linha = (await buscarAlunos({ por_pagina: "todos" })).itens.find((x) => x.id === novo.id)!;
-    expect(linha.programa?.nome).toBe("Prime 6 meses");
+    expect(linha.programa?.nome).toBe("Prime Semestral");
     const base = { data_entrada: "2026-11-02", nivel_inicial: "iniciante" as const, etapa_id: c.etapas[0].id };
     const sem = await erroDe(criarAluno({ ...CONTATO,  nome: "Sem Programa", ...base } as never));
     expect(sem.corpo.campo).toBe("programa_id");
@@ -277,7 +277,7 @@ describe("escrita em aluno — seção 5 do backend", () => {
 
   it("como o backend: mentoria recusada no POST e no PATCH; programa inativo dá 400", async () => {
     const c = await buscarConfig();
-    const prime6 = c.programas.find((p) => p.nome === "Prime 6 meses")!;
+    const prime6 = c.programas.find((p) => p.nome === "Prime Semestral")!;
     const base = { nome: "Rui", data_entrada: "2026-11-02", nivel_inicial: "iniciante" as const, etapa_id: c.etapas[0].id };
     expect((await erroDe(criarAluno({ ...CONTATO,  ...base, programa_id: prime6.id, mentoria: "Prime" } as never))).corpo.campo).toBe("mentoria");
     const a = await primeiro();

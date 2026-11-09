@@ -62,6 +62,9 @@ const DEFINICOES: Definicao[] = [
   { mentoria: "Ninja", meses: 12, marcos: [], individual: false },
 ];
 
+// Nomes de produção desde 09/11/2026: "Blackbelt Semestral", "Blackbelt Anual"…
+const NOME_DA_DURACAO: Record<number, string> = { 6: "Semestral", 12: "Anual" };
+
 const slug = (t: string) =>
   t
     .normalize("NFD")
@@ -89,7 +92,7 @@ export function catalogoDeProgramas(): { programas: Programa[]; modelos: Checkpo
     const id = `prog-${slug(d.mentoria)}-${d.meses}`;
     programas.push({
       id,
-      nome: `${d.mentoria} ${d.meses} meses`,
+      nome: `${d.mentoria} ${NOME_DA_DURACAO[d.meses] ?? `${d.meses} meses`}`,
       mentoria: d.mentoria,
       duracao_meses: d.meses,
       observacoes: d.observacao ?? null,

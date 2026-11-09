@@ -32,24 +32,24 @@ describe("semente — contrato da Fase 2", () => {
         .join(", ");
     };
     expect(banco.config.programas.map((p) => p.nome)).toEqual([
-      "Blackbelt 6 meses",
-      "Blackbelt 12 meses",
-      "Prime 6 meses",
-      "Prime 12 meses",
-      "Private 6 meses",
-      "Private 12 meses",
-      "Ninja 6 meses",
-      "Ninja 12 meses",
+      "Blackbelt Semestral",
+      "Blackbelt Anual",
+      "Prime Semestral",
+      "Prime Anual",
+      "Private Semestral",
+      "Private Anual",
+      "Ninja Semestral",
+      "Ninja Anual",
     ]);
     // Ninja (Entrega 1): sem acompanhamento individual e sem checkpoints padrão.
-    expect(banco.config.programas.filter((p) => !p.acompanhamento_individual).map((p) => p.nome)).toEqual(["Ninja 6 meses", "Ninja 12 meses"]);
-    expect(lista("Ninja 6 meses")).toBe("");
-    expect(lista("Blackbelt 6 meses")).toBe("Dia 0 (Boas-vindas), Dia 3 (Sprint), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Reta Final), Mês 6 (Fim)");
-    expect(lista("Blackbelt 12 meses")).toBe("Dia 0 (Boas-vindas), Dia 3 (Onboarding), Mês 1 (Revisão), Mês 4 (Big Win), Mês 6 (Metade), Mês 12 (Fim)");
-    expect(lista("Prime 6 meses")).toBe("Dia 0 (Welcome), Dia 3 (Check-in), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Pré-fim), Mês 6 (Fim)");
-    expect(lista("Prime 12 meses")).toBe("Dia 0 (Welcome), Dia 3 (Check-in), Mês 1 (Avaliação), Mês 6 (Metade), Mês 9 (Big Win), Mês 12 (Decisão)");
-    expect(lista("Private 6 meses")).toBe(lista("Prime 6 meses"));
-    expect(lista("Private 12 meses")).toBe(lista("Prime 12 meses"));
+    expect(banco.config.programas.filter((p) => !p.acompanhamento_individual).map((p) => p.nome)).toEqual(["Ninja Semestral", "Ninja Anual"]);
+    expect(lista("Ninja Semestral")).toBe("");
+    expect(lista("Blackbelt Semestral")).toBe("Dia 0 (Boas-vindas), Dia 3 (Sprint), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Reta Final), Mês 6 (Fim)");
+    expect(lista("Blackbelt Anual")).toBe("Dia 0 (Boas-vindas), Dia 3 (Onboarding), Mês 1 (Revisão), Mês 4 (Big Win), Mês 6 (Metade), Mês 12 (Fim)");
+    expect(lista("Prime Semestral")).toBe("Dia 0 (Welcome), Dia 3 (Check-in), Mês 1 (Revisão), Mês 3 (Big Win), Mês 5 (Pré-fim), Mês 6 (Fim)");
+    expect(lista("Prime Anual")).toBe("Dia 0 (Welcome), Dia 3 (Check-in), Mês 1 (Avaliação), Mês 6 (Metade), Mês 9 (Big Win), Mês 12 (Decisão)");
+    expect(lista("Private Semestral")).toBe(lista("Prime Semestral"));
+    expect(lista("Private Anual")).toBe(lista("Prime Anual"));
     expect(banco.config.checkpoints_modelo.filter((m) => m.big_win).every((m) => m.nome === "Big Win")).toBe(true);
     expect(banco.config.checkpoints_modelo.filter((m) => m.big_win)).toHaveLength(6);
     expect(banco.config.programas.filter((p) => p.observacoes).map((p) => p.mentoria)).toEqual(["Blackbelt", "Blackbelt"]);

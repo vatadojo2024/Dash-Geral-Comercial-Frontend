@@ -141,7 +141,7 @@ export type FiltrosAlunos = {
   busca?: string | null; // nome, a partir de BUSCA_MINIMA letras
   mentoria?: string[];
   faixa_saude?: FaixaSaude[];
-  // Programas: vários ao mesmo tempo (ex.: Blackbelt 6 e 12 meses).
+  // Programas: vários ao mesmo tempo (ex.: Blackbelt Semestral e Anual).
   programa?: string[];
   incluir_arquivados?: boolean;
   ordem?: OrdemAlunos;

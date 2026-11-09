@@ -21,7 +21,8 @@ export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // 6 = Entrega 2 (aulas). 7 = mural (comentários e imagens).
 // 8 = aula com número, hora e observação. 9 = status "noshow".
 // 10 = dois contratos ativos já vencidos (calendário).
-export const VERSAO_DADOS = 10;
+// 11 = programas renomeados ("Blackbelt Semestral", "Blackbelt Anual"…).
+export const VERSAO_DADOS = 11;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };

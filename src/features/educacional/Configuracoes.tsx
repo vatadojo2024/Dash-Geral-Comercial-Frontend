@@ -130,7 +130,7 @@ const ABAS: Record<
     ordenavel: true,
     avisoEdicao: "Mudar a duração não recalcula o término de quem já está no programa.",
     colunas: [
-      { chave: "nome", rotulo: "Nome", tipo: "texto", largura: "min-w-[10rem] flex-1", dica: "Ex.: Blackbelt 6 meses" },
+      { chave: "nome", rotulo: "Nome", tipo: "texto", largura: "min-w-[10rem] flex-1", dica: "Ex.: Blackbelt Semestral" },
       {
         chave: "mentoria",
         rotulo: "Mentoria",

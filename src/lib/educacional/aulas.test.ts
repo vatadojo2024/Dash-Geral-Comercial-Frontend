@@ -48,11 +48,12 @@ async function salvar(a: AlunoDetalhe, ...alts: Parameters<typeof registrar>[2][
 }
 
 describe("aulas — leitura", () => {
-  it("semente: aulas com mentor, total do programa, aplicadas = Feito e saldo = total − aplicadas", async () => {
+  it("semente: aulas com mentor, total do programa, aplicadas = Feito + NoShow e saldo = total − aplicadas", async () => {
     const a = await comAulas();
-    const feitas = a.aulas.filter((x) => x.status === "feito").length;
-    expect(a.aulas_aplicadas).toBe(feitas);
-    expect(a.saldo_aulas).toBe((a.total_aulas ?? 0) - feitas);
+    const contam = a.aulas.filter((x) => x.status === "feito" || x.status === "noshow").length;
+    expect(a.aulas.some((x) => x.status === "noshow")).toBe(true);
+    expect(a.aulas_aplicadas).toBe(contam);
+    expect(a.saldo_aulas).toBe((a.total_aulas ?? 0) - contam);
     // Número pela ordem de data e hora (o backend calcula; o mock imita).
     expect(a.aulas.map((x) => x.numero)).toEqual(a.aulas.map((_, i) => i + 1));
     expect(a.aulas.every((x) => x.mentor?.nome)).toBe(true);
@@ -76,7 +77,7 @@ describe("aulas — gravação pela ficha (lote)", () => {
     const a = await comAulas();
     const c = await buscarConfig();
     const mentor = c.responsaveis.find((r) => r.ativo)!;
-    const agendada = a.aulas.find((x) => x.status !== "feito")!;
+    const agendada = a.aulas.find((x) => x.status === "agendada")!;
     const outra = a.aulas.find((x) => x.id !== agendada.id && x.status === "feito")!;
     const { pedido, resposta } = await salvar(
       a,
@@ -101,6 +102,24 @@ describe("aulas — gravação pela ficha (lote)", () => {
     expect(depois.aulas_aplicadas).toBe((a.aulas_aplicadas ?? 0) + 1);
     expect(depois.saldo_aulas).toBe((a.saldo_aulas ?? 0) - 1);
     expect(depois.versao).toBe(a.versao + 1);
+  });
+
+  it("NoShow conta como aplicada; Remarcada, Cancelada e Agendada não contam (regra de 09/11)", async () => {
+    const a = await comAulas();
+    const x = a.aulas.find((w) => w.status === "agendada")!;
+    const [y, z] = a.aulas.filter((w) => w.status === "feito");
+    // Agendada → NoShow: +1. Feito → Remarcada e Feito → Cancelada: −1 cada.
+    const r = (
+      await salvar(a, alteracaoDaAula(x, { status: "noshow" }), alteracaoDaAula(y, { status: "remarcada" }), alteracaoDaAula(z, { status: "cancelada" }))
+    ).resposta.resultados[0];
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.aluno.aulas_aplicadas).toBe((a.aulas_aplicadas ?? 0) - 1);
+    expect(r.aluno.saldo_aulas).toBe((a.saldo_aulas ?? 0) + 1);
+    // Feito → NoShow não muda a conta.
+    const feita = r.aluno.aulas.find((w) => w.status === "feito")!;
+    const s = (await salvar(r.aluno, alteracaoDaAula(feita, { status: "noshow" }))).resposta.resultados[0];
+    expect(s.ok && s.aluno.aulas_aplicadas).toBe(r.aluno.aulas_aplicadas);
   });
 
   it("total de aulas é campo do aluno, editável sem motivo; inválido volta em português", async () => {
@@ -149,8 +168,8 @@ describe("aulas — gravação pela ficha (lote)", () => {
 describe("total de aulas do programa", () => {
   it("cadastro e troca copiam o total do programa", async () => {
     const c = await buscarConfig();
-    const bb12 = c.programas.find((p) => p.nome === "Blackbelt 12 meses")!;
-    const prime6 = c.programas.find((p) => p.nome === "Prime 6 meses")!;
+    const bb12 = c.programas.find((p) => p.nome === "Blackbelt Anual")!;
+    const prime6 = c.programas.find((p) => p.nome === "Prime Semestral")!;
     expect([bb12.total_aulas, prime6.total_aulas]).toEqual([53, 12]);
     const novo = await criarAluno({ ...CONTATO, nome: "Ana", programa_id: bb12.id, data_entrada: HOJE, nivel_inicial: "iniciante", etapa_id: c.etapas[0].id });
     expect([novo.total_aulas, novo.aulas_aplicadas, novo.saldo_aulas, novo.aulas]).toEqual([53, 0, 53, []]);

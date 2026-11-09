@@ -6,7 +6,7 @@ import { marcoENome, marcoVisivel, programaDoAluno, programasPorMentoria, sugeri
 
 const programa = (id: string, mentoria: string, meses: number, ativo = true) => ({
   id,
-  nome: `${mentoria} ${meses} meses`,
+  nome: `${mentoria} ${({ 6: "Semestral", 12: "Anual" } as Record<number, string>)[meses] ?? `${meses} meses`}`,
   mentoria,
   duracao_meses: meses,
   observacao: null,
@@ -48,7 +48,7 @@ describe("apoio de programas na tela", () => {
     const config = { programas: [programa("b6", "Blackbelt", 6), programa("b12", "Blackbelt", 12), programa("p6", "Prime", 6)] } as unknown as Config;
     const grupos = programasPorMentoria(config);
     expect(resumoDosProgramas(grupos, [])).toBe("Todos");
-    expect(resumoDosProgramas(grupos, ["b12"])).toBe("Blackbelt 12 meses");
+    expect(resumoDosProgramas(grupos, ["b12"])).toBe("Blackbelt Anual");
     expect(resumoDosProgramas(grupos, ["b6", "b12"])).toBe("Blackbelt (todos)");
     expect(resumoDosProgramas(grupos, ["b6", "p6"])).toBe("2 programas");
   });
@@ -67,7 +67,7 @@ describe("marco ao lado do nome", () => {
 
 describe("programaDoAluno", () => {
   it("a API manda só `programa` aninhado: sem `programa_id`, o aluno continua com programa", () => {
-    const aluno = { programa_id: null, programa: { id: "p1", nome: "Blackbelt 6 meses" } };
+    const aluno = { programa_id: null, programa: { id: "p1", nome: "Blackbelt Semestral" } };
     expect(programaDoAluno(aluno, undefined)?.id).toBe("p1");
     expect(programaDoAluno({ programa_id: null, programa: null }, undefined)).toBeNull();
   });

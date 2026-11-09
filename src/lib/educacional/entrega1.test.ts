@@ -97,7 +97,7 @@ describe("contato", () => {
 describe("Ninja (sem acompanhamento individual)", () => {
   it("aluno novo na Ninja não tem checkpoints; o programa aninhado diz isso", async () => {
     const c = await buscarConfig();
-    const ninja = c.programas.find((p) => p.nome === "Ninja 6 meses")!;
+    const ninja = c.programas.find((p) => p.nome === "Ninja Semestral")!;
     expect(ninja.acompanhamento_individual).toBe(false);
     const novo = await criarAluno({
       ...CONTATO,
@@ -117,7 +117,7 @@ describe("Ninja (sem acompanhamento individual)", () => {
     const c = await buscarConfig();
     const { itens } = await buscarAlunos({ por_pagina: "todos" });
     const a = await buscarAluno(itens.find((x) => x.mentoria === "Prime")!.id);
-    const ninja = c.programas.find((p) => p.nome === "Ninja 12 meses")!;
+    const ninja = c.programas.find((p) => p.nome === "Ninja Anual")!;
     const previa = await previaTrocaPrograma(a.id, null, { programa_id: ninja.id, data_inicio: HOJE });
     expect(previa.criados).toEqual([]);
     expect(previa.saem.length + previa.ficam.length).toBe(a.checkpoints.length);
@@ -128,7 +128,7 @@ describe("Ninja (sem acompanhamento individual)", () => {
   it("a Ninja fica por último nas listas, mesmo vindo antes na configuração", () => {
     const programa = (id: string, mentoria: string, ordem: number) => ({
       id,
-      nome: `${mentoria} 6 meses`,
+      nome: `${mentoria} Semestral`,
       mentoria,
       duracao_meses: 6,
       observacoes: null,

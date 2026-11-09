@@ -206,8 +206,9 @@ export function montarAluno(banco: Banco, a: AlunoBanco, hoje: string): AlunoDet
   const checkpoints = checkpointsDoAluno(banco, a.id);
   const intervencoes = intervencoesDoAluno(banco, a.id);
   const aulas = aulasDoAluno(banco, a.id);
-  // Regra do backend (imitada): aplicadas = aulas "Feito"; saldo = total − aplicadas.
-  const aplicadas = aulas.filter((x) => x.status === "feito").length;
+  // Regra do backend (imitada, 09/11/2026): aplicadas = "Feito" + "NoShow" (Agendada,
+  // Remarcada e Cancelada não contam); saldo = total − aplicadas.
+  const aplicadas = aulas.filter((x) => x.status === "feito" || x.status === "noshow").length;
   const totalAulas = a.total_aulas ?? null;
   const c = <T,>(nome: CampoAjustavel, auto: T | null) => campo<T>(banco, a.id, nome, auto);
   // Fase 3: análises confirmadas (todas para a lista e a última atividade; as da

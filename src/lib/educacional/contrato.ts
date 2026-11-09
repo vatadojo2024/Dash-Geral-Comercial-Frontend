@@ -43,7 +43,7 @@ export type TipoResponsavel = z.infer<typeof TipoResponsavelSchema>;
 
 export const STATUS_INTERVENCAO = ["aberta", "concluida"] as const;
 
-// Entrega 2 (M1): status da aula. Só "feito" conta como aula aplicada (o backend conta).
+// Entrega 2 (M1): status da aula. "feito" e "noshow" contam como aula aplicada (o backend conta).
 export const STATUS_AULA = ["agendada", "feito", "noshow", "remarcada", "cancelada"] as const;
 export const StatusAulaSchema = z.enum(STATUS_AULA);
 export type StatusAula = z.infer<typeof StatusAulaSchema>;
@@ -83,7 +83,7 @@ export const MENTORIAS = ["Blackbelt", "Prime", "Private", "Ninja"] as const;
 export const MENTORIA_POR_ULTIMO = "Ninja";
 export const ProgramaSchema = z.object({
   id: z.string(),
-  nome: z.string(), // "Blackbelt 6 meses"
+  nome: z.string(), // "Blackbelt Semestral"
   mentoria: z.string(), // Blackbelt, Prime ou Private — é o que a tela mostra como mentoria
   duracao_meses: z.number().int().positive(),
   observacoes: z.string().nullable().default(null),

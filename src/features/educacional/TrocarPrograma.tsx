@@ -212,7 +212,7 @@ export function TrocarPrograma({ aluno: a, aberto, onFechar }: { aluno: AlunoDet
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               className={cn(CAMPO, "h-auto py-2")}
-              placeholder="Ex.: renovou para o Blackbelt 12 meses"
+              placeholder="Ex.: renovou para o Blackbelt Anual"
             />
           </Campo>
           <ErroDoEnvio texto={erros.envio} />
