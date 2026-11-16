@@ -4,6 +4,7 @@ import type {
   Config,
   EntidadeHistorico,
   NivelInicial,
+  PropostaAnalise,
   ResultadoAnalise,
   StatusAluno,
   StatusAula,
@@ -175,6 +176,21 @@ export type Banco = {
   ajustes: AjusteBanco[];
   historico: HistoricoBanco[];
   analises: AnaliseBanco[];
+  // Análise de aula com IA (16/11/2026). Sem a transcrição: ela nunca volta da API.
+  analises_aula?: AnaliseAulaBanco[];
+};
+
+export type AnaliseAulaBanco = {
+  id: string;
+  aula_id: string;
+  aluno_id: string;
+  criada_em: string;
+  pronta_em: string; // demonstração: fica "pronta" (ou "erro") a partir daqui
+  falhar: boolean;
+  analise: PropostaAnalise | null;
+  decisao: unknown;
+  decidida_em: string | null;
+  decidida_por: Usuario | null;
 };
 
 // Erro com o mesmo corpo que a API devolve (seção 4 do backend + definições Q4).

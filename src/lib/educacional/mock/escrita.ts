@@ -34,7 +34,6 @@ import {
   type Usuario,
 } from "../contrato";
 import { marcoDe } from "../contrato";
-import { limparTranscricao, MARCA_DE_ERRO, resultadoDeExemplo, statusDe, TEXTO_DOCX_EXEMPLO } from "./analises";
 import { dataPrevistaDoModelo, montarAluno, naJornada, numeroDaAula, somarMeses } from "./motor";
 import {
   ErroDaApi,
@@ -953,90 +952,6 @@ export function salvarLote(banco: Banco, corpo: Record<string, unknown>, ctx: Co
     }
   });
   return { lote_id: loteId, resultados };
-}
-
-// ---------------------------------------------------------------------------
-// Fase 3 — análise de aula (seção 5.2 do backend)
-// ---------------------------------------------------------------------------
-
-function analiseOu404(banco: Banco, id: string): AnaliseBanco {
-  const an = (banco.analises ?? []).find((x) => x.id === id);
-  if (!an) throw new ErroDaApi(404, { error: "nao_encontrado", mensagem: "Análise não encontrada." });
-  return an;
-}
-
-export function criarAnalise(banco: Banco, corpo: Record<string, unknown>, ctx: Contexto): { id: string } {
-  const a = alunoOu404(banco, texto("aluno_id", corpo.aluno_id, true) as string);
-  if (a.arquivado_em) erro400("aluno_id", "Aluno arquivado.");
-  const dataAula = data("data_aula", corpo.data_aula, true) as string;
-  let etapaId = a.etapa_id;
-  if (corpo.etapa_id) {
-    if (!banco.config.etapas.some((e) => e.id === corpo.etapa_id)) erro400("etapa_id", "Etapa inexistente.");
-    etapaId = corpo.etapa_id as string;
-  }
-  const arquivo = typeof corpo.arquivo_nome === "string" ? corpo.arquivo_nome : null;
-  let bruto = typeof corpo.texto === "string" ? corpo.texto : "";
-  if (arquivo) {
-    if (/\.docx$/i.test(arquivo)) bruto = TEXTO_DOCX_EXEMPLO;
-    else if (/\.(txt|vtt|srt)$/i.test(arquivo)) bruto = typeof corpo.arquivo_texto === "string" ? corpo.arquivo_texto : "";
-    else erro400("arquivo", "Formato não aceito. Envie .txt, .vtt, .srt ou .docx.");
-  }
-  const transcricao = limparTranscricao(bruto, arquivo);
-  if (!transcricao) erro400(arquivo ? "arquivo" : "texto", "A transcrição está vazia.");
-  const id = novoId("an");
-  banco.analises = banco.analises ?? [];
-  banco.analises.push({
-    id,
-    aluno_id: a.id,
-    data_aula: dataAula,
-    etapa_id: etapaId,
-    arquivo_nome: arquivo,
-    transcricao,
-    estado: "processamento",
-    inicio: ctx.agora,
-    falhar: transcricao.includes(MARCA_DE_ERRO) || corpo.simular_erro === "1",
-    resultado_ia: resultadoDeExemplo(transcricao),
-    resultado_confirmado: null,
-    criada_por: ctx.usuario,
-    criada_em: ctx.agora,
-    confirmada_por: null,
-    confirmada_em: null,
-  });
-  return { id };
-}
-
-export function confirmarAnalise(banco: Banco, id: string, resultado: unknown, versao: number, ctx: Contexto) {
-  const an = analiseOu404(banco, id);
-  if (statusDe(an, ctx.agora) !== "pronta") erro400("status", "Só uma análise pronta pode ser confirmada.");
-  const a = alunoOu404(banco, an.aluno_id);
-  conferirVersao(banco, a, versao, ctx);
-  const r = ResultadoAnaliseSchema.safeParse(resultado);
-  if (!r.success) erro400("resultado", "Resultado fora do formato (resumo, 4 notas de 0 a 100 e highlights).");
-  an.estado = "confirmada";
-  an.resultado_confirmado = r.data;
-  an.confirmada_por = ctx.usuario;
-  an.confirmada_em = ctx.agora;
-  registrar(banco, ctx, a, "aluno", a.id, "analise_aula", null, an.data_aula);
-  return fim(banco, a, ctx);
-}
-
-export function descartarAnalise(banco: Banco, id: string, ctx: Contexto): AnaliseBanco {
-  const an = analiseOu404(banco, id);
-  if (statusDe(an, ctx.agora) === "confirmada") erro400("status", "Análise confirmada não pode ser descartada.");
-  an.estado = "descartada";
-  return an;
-}
-
-export function reprocessarAnalise(banco: Banco, id: string, ctx: Contexto): AnaliseBanco {
-  const an = analiseOu404(banco, id);
-  const status = statusDe(an, ctx.agora);
-  if (status !== "erro" && status !== "pronta" && status !== "descartada") {
-    erro400("status", "Só dá para reprocessar uma análise com erro, pronta ou descartada.");
-  }
-  an.estado = "processamento";
-  an.inicio = ctx.agora;
-  an.resultado_ia = resultadoDeExemplo(an.transcricao);
-  return an;
 }
 
 // ---------------------------------------------------------------------------

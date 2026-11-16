@@ -17,6 +17,9 @@ export const CHAVES = {
   historico: (id: string) => ["edu", "historico", id] as const,
   calendario: ["edu", "calendario"] as const,
   config: ["edu", "config"] as const,
+  // Análise de aula com IA: a lista de uma aula e uma análise (consultada a cada 5 s enquanto processa).
+  analisesDaAula: (aulaId: string) => ["edu", "analises-aula", aulaId] as const,
+  analise: (id: string) => ["edu", "analise", id] as const,
 };
 
 export function useConfig() {

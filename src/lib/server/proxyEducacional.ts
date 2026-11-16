@@ -8,7 +8,7 @@ import { exigirAreaNaApi } from "./acessoApi";
 //     "..", barra dupla, barra invertida, barra ou ponto codificados que saiam do
 //     prefixo e codificação dupla → 400, antes de qualquer chamada.
 //   - Trava pela área `educacional` (401/403).
-//   - Repassa o Bearer da sessão; devolve 400/401/403/404/409 como vieram (o
+//   - Repassa o Bearer da sessão; devolve 400/401/403/404/409/413/503 como vieram (o
 //     409 traz o aluno atual ou a contagem de alunos); o resto vira 502.
 //   - Resposta de arquivo (CSV da exportação) passa em bytes, com o nome.
 // ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ const METODOS = ["GET", "POST", "PATCH", "PUT", "DELETE"] as const;
 type Metodo = (typeof METODOS)[number];
 // Segmento já decodificado: ids (uuid), nomes de rota e de campo. Nada além disso.
 const SEGMENTO_OK = /^[A-Za-z0-9_-][A-Za-z0-9_.-]*$/;
-const REPASSA = [400, 401, 403, 404, 409];
+const REPASSA = [400, 401, 403, 404, 409, 413, 503];
 
 const caminhoInvalido = () =>
   NextResponse.json({ error: "validacao", campo: "caminho", mensagem: "Caminho inválido." }, { status: 400 });

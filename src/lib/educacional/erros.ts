@@ -59,6 +59,7 @@ const ROTULOS: Record<string, Rotulo> = {
   estrategia_monetizacao: f("Estratégia de monetização"),
   busca: f("Busca"),
   arquivo: m("Arquivo"),
+  aula_id: f("Aula"),
   transcricao: f("Transcrição"),
   cor: f("Cor"),
   email: m("E-mail"),

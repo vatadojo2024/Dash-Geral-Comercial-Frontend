@@ -1,7 +1,6 @@
 import {
   AlunoLinhaSchema,
-  AnaliseDetalheSchema,
-  AnaliseItemListaSchema,
+  AnaliseAulaSchema,
   CheckpointModeloSchema,
   EventoCalendarioSchema,
   ImagemMuralSchema,
@@ -22,8 +21,7 @@ import {
   type AlunoDetalhe,
   type AlunoLinha,
   type AlunoNoLote,
-  type AnaliseDetalhe,
-  type AnaliseItemLista,
+  type AnaliseAula,
   type CampoAjustavel,
   type CamposAula,
   type CamposCheckpoint,
@@ -41,16 +39,15 @@ import {
   type NovoComentario,
   type NovoAluno,
   type OpcaoAluno,
+  type PedidoDecisao,
   type PedidoLote,
   type PedidoTroca,
   type PreviaTroca,
   type RespostaLote,
-  type ResultadoAnalise,
   type ResultadoLoteAluno,
   type ResumoEducacional,
   type Sinal,
   type StatusAluno,
-  type StatusAnalise,
   type StatusCheckpoint,
   type Usuario,
 } from "./contrato";
@@ -298,10 +295,6 @@ async function transporteMock(p: Pedido): Promise<unknown> {
 async function corpoDoMock(corpo: unknown): Promise<unknown> {
   if (typeof FormData === "undefined" || !(corpo instanceof FormData)) return corpo;
   const o: Record<string, unknown> = {};
-  // ?simular_analise=erro: a análise termina em erro (ver o caminho de erro na tela).
-  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("simular_analise") === "erro") {
-    o.simular_erro = "1";
-  }
   for (const [k, v] of corpo.entries()) {
     if (typeof v === "string") o[k] = v;
     else if (v.type.startsWith("image/")) {
@@ -717,78 +710,82 @@ export async function buscarOpcoesAlunos(busca?: string): Promise<OpcaoAluno[]> 
   return validarLista(itens, OpcaoAlunoSchema, "opção de aluno").validos;
 }
 
-export const TAMANHO_PAGINA_ANALISES = 20;
-export type FiltrosAnalises = { aluno_id?: string | null; status?: StatusAnalise[]; pagina?: number };
-export type PaginaAnalises = { itens: AnaliseItemLista[]; total: number };
+// ---------------------------------------------------------------------------
+// Análise de aula com IA (16/11/2026, backend 0fec174): a transcrição de uma
+// aula vai para a IA, que PROPÕE as notas de Entendeu, Aplicou e Validou; nada
+// entra na ficha sem "decidir". A transcrição nunca volta da API.
+//   POST analises { aula_id, transcricao } ou multipart (aula_id + arquivo) → 202 { id }
+//   GET analises/:id · GET aulas/:id/analises (mais nova primeiro)
+//   POST analises/:id/decidir { versao (do aluno), pilares, checkpoints, motivo? }
+// ---------------------------------------------------------------------------
 
-export async function listarAnalises(f: FiltrosAnalises = {}): Promise<PaginaAnalises> {
-  const qs = new URLSearchParams({ por_pagina: String(TAMANHO_PAGINA_ANALISES) });
-  if (f.aluno_id) qs.set("aluno_id", f.aluno_id);
-  if (f.status?.length) qs.set("status", f.status.join(","));
-  if (f.pagina && f.pagina > 1) qs.set("pagina", String(f.pagina));
-  const corpo = (await chamar({ metodo: "GET", caminho: "analises", query: qs.toString() })) as {
-    itens?: unknown;
-    total?: unknown;
-  } | null;
-  const { validos } = validarLista(corpo?.itens, AnaliseItemListaSchema, "análise");
-  return { itens: validos, total: typeof corpo?.total === "number" ? corpo.total : validos.length };
-}
-
-export async function buscarAnalise(analiseId: string): Promise<AnaliseDetalhe> {
-  const r = AnaliseDetalheSchema.safeParse(await chamar({ metodo: "GET", caminho: `analises/${id(analiseId)}` }));
-  if (!r.success) throw new EducacionalError("Análise fora do contrato.", 502);
-  return r.data;
-}
-
-// D1: 4 MB (o corpo de uma função da Vercel para em 4,5 MB; o backend aceita 5).
+// 4 MB: o corpo de uma função da Vercel para em 4,5 MB (o backend aceita 8 MB).
 export const LIMITE_ARQUIVO_ANALISE = 4 * 1024 * 1024;
-export const FORMATOS_ANALISE = [".txt", ".vtt", ".srt", ".docx"] as const;
+export const FORMATOS_ANALISE = [".txt", ".docx"] as const;
+export const ANALISE_NAO_CONFIGURADA = "Análise com IA não configurada";
 
-export type NovaAnalise = { aluno_id: string; data_aula: string; etapa_id?: string | null } & (
-  | { arquivo: File; texto?: undefined }
-  | { texto: string; arquivo?: undefined }
-);
+export type EntradaAnalise = { transcricao: string; arquivo?: undefined } | { arquivo: File; transcricao?: undefined };
 
-// Envia a transcrição (arquivo ou texto colado). Responde 202 com o id; a IA
-// processa em segundo plano.
-export async function enviarAnalise(n: NovaAnalise): Promise<{ id: string }> {
-  const fd = new FormData();
-  fd.set("aluno_id", n.aluno_id);
-  fd.set("data_aula", n.data_aula);
-  if (n.etapa_id) fd.set("etapa_id", n.etapa_id);
-  if (n.arquivo) {
-    const nome = n.arquivo.name.toLowerCase();
+// ?simular_analise=erro|config (só no modo demonstração): a análise termina em
+// erro, ou a criação responde 503 config_ausente.
+function simularAnalise(): string | null {
+  if (FONTE_EDUCACIONAL !== "mock" || typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("simular_analise");
+}
+
+export const configAusente = (e: unknown) =>
+  e instanceof EducacionalError && (e.status === 503 || e.corpo.error === "config_ausente");
+
+export async function criarAnaliseAula(aulaId: string, entrada: EntradaAnalise): Promise<{ id: string }> {
+  const simular = simularAnalise();
+  if (simular === "config") throw new EducacionalError(ANALISE_NAO_CONFIGURADA, 503, { error: "config_ausente" });
+  let corpo: FormData | Record<string, unknown>;
+  if (entrada.arquivo) {
+    const nome = entrada.arquivo.name.toLowerCase();
     if (!FORMATOS_ANALISE.some((f) => nome.endsWith(f))) {
-      throw erroDeValidacao("arquivo", `Formato não aceito. Envie ${FORMATOS_ANALISE.join(", ")} ou cole o texto.`);
+      throw erroDeValidacao("arquivo", "Formato não aceito. Envie um arquivo .txt ou .docx, ou cole o texto.");
     }
-    if (n.arquivo.size > LIMITE_ARQUIVO_ANALISE) {
-      const mb = (n.arquivo.size / 1024 / 1024).toFixed(1).replace(".", ",");
+    if (entrada.arquivo.size > LIMITE_ARQUIVO_ANALISE) {
+      const mb = (entrada.arquivo.size / 1024 / 1024).toFixed(1).replace(".", ",");
       throw erroDeValidacao("arquivo", `O arquivo tem ${mb} MB e o limite é 4 MB. Envie um arquivo menor ou cole o texto.`);
     }
-    fd.set("arquivo", n.arquivo);
+    corpo = new FormData();
+    corpo.set("aula_id", aulaId);
+    corpo.set("arquivo", entrada.arquivo);
+    if (simular === "erro") corpo.set("simular_erro", "1");
   } else {
-    if (!n.texto?.trim()) throw erroDeValidacao("texto", "Cole o texto da transcrição ou envie um arquivo.");
-    if (new Blob([n.texto]).size > LIMITE_ARQUIVO_ANALISE) {
-      throw erroDeValidacao("texto", "O texto passa de 4 MB. Envie só a transcrição desta aula.");
-    }
-    fd.set("texto", n.texto);
+    if (!entrada.transcricao.trim()) throw erroDeValidacao("transcricao", "Cole o texto da transcrição ou envie um arquivo.");
+    corpo = { aula_id: aulaId, transcricao: entrada.transcricao, ...(simular === "erro" ? { simular_erro: "1" } : {}) };
   }
-  const r = (await chamar({ metodo: "POST", caminho: "analises", corpo: fd })) as { id?: unknown } | null;
+  const r = (await chamar({ metodo: "POST", caminho: "analises", corpo })) as { id?: unknown } | null;
   if (typeof r?.id !== "string") throw new EducacionalError("Enviado, mas a resposta veio sem o id da análise.", 502);
   return { id: r.id };
 }
 
-// Confirma o resultado revisado: grava na ficha (versão do aluno, como toda escrita).
-export function confirmarAnalise(analiseId: string, versao: number, resultado: ResultadoAnalise): Promise<AlunoDetalhe> {
-  return escreverAluno({ metodo: "POST", caminho: `analises/${id(analiseId)}/confirmar`, corpo: { versao, resultado } });
+function validarAnalise(bruto: unknown): AnaliseAula {
+  const r = AnaliseAulaSchema.safeParse(bruto);
+  if (!r.success) throw new EducacionalError("A análise veio fora do contrato.", 502);
+  return r.data;
 }
 
-export async function descartarAnalise(analiseId: string): Promise<void> {
-  await chamar({ metodo: "POST", caminho: `analises/${id(analiseId)}/descartar`, corpo: {} });
+export async function buscarAnaliseAula(analiseId: string): Promise<AnaliseAula> {
+  return validarAnalise(await chamar({ metodo: "GET", caminho: `analises/${id(analiseId)}` }));
 }
 
-export async function reprocessarAnalise(analiseId: string): Promise<void> {
-  await chamar({ metodo: "POST", caminho: `analises/${id(analiseId)}/reprocessar`, corpo: {} });
+export async function listarAnalisesDaAula(aulaId: string): Promise<AnaliseAula[]> {
+  const corpo = (await chamar({ metodo: "GET", caminho: `aulas/${id(aulaId)}/analises` })) as { analises?: unknown } | null;
+  return validarLista(corpo?.analises, AnaliseAulaSchema, "análise").validos;
+}
+
+// Decide e devolve o aluno recalculado (a resposta traz só a versão nova; a ficha
+// relê o aluno para mostrar as notas novas) e a análise decidida.
+export async function decidirAnalise(analiseId: string, pedido: PedidoDecisao): Promise<{ aluno: AlunoDetalhe; analise: AnaliseAula }> {
+  const r = (await chamar({ metodo: "POST", caminho: `analises/${id(analiseId)}/decidir`, corpo: pedido })) as {
+    analise?: unknown;
+  } | null;
+  const lida = AnaliseAulaSchema.safeParse(r?.analise);
+  const analise = lida.success ? lida.data : await buscarAnaliseAula(analiseId);
+  return { aluno: await buscarAluno(analise.aluno_id), analise };
 }
 
 // ---------------------------------------------------------------------------

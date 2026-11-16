@@ -142,6 +142,15 @@ describe("rota /api/educacional/[...caminho]", () => {
     expect(texto(init.body)).toBe('{"ids":["a"]}');
   });
 
+  it("503 config_ausente (análise com IA) e 413 passam com o corpo", async () => {
+    como("educacional");
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "config_ausente" }), { status: 503 }));
+    const r503 = await chamar("/api/educacional/analises", { method: "POST", body: '{"aula_id":"a","transcricao":"x"}' });
+    expect([r503.status, await r503.json()]).toEqual([503, { error: "config_ausente" }]);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "arquivo_grande" }), { status: 413 }));
+    expect((await chamar("/api/educacional/analises", { method: "POST", body: "{}" })).status).toBe(413);
+  });
+
   it("409 passa com o corpo (aluno atual); 500 do backend vira 502", async () => {
     como("admin");
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "versao", aluno: { id: "a" } }), { status: 409 }));

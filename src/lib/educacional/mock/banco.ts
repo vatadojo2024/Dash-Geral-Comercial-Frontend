@@ -1,5 +1,6 @@
 import semente from "@/lib/mock/data_educacional.json";
 import { diasEntre } from "./motor";
+import { semearAnaliseDeExemplo } from "./analiseAula";
 import { semearEntrega1, semearEntrega2, semearMural, semearProgramas, semearVencimentos } from "./programas";
 import type { AnaliseBanco, Banco } from "./tipos";
 
@@ -22,7 +23,8 @@ export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // 8 = aula com número, hora e observação. 9 = status "noshow".
 // 10 = dois contratos ativos já vencidos (calendário).
 // 11 = programas renomeados ("Blackbelt Semestral", "Blackbelt Anual"…).
-export const VERSAO_DADOS = 11;
+// 12 = análise de aula com IA: uma análise de exemplo pronta para revisar.
+export const VERSAO_DADOS = 12;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };
@@ -66,6 +68,7 @@ export function bancoDaSemente(hoje: string): Banco {
   semearMural(banco, hoje);
   semearVencimentos(banco, hoje);
   importarDaFase1(banco);
+  semearAnaliseDeExemplo(banco, hoje);
   return banco;
 }
 

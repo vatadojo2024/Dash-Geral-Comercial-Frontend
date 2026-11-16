@@ -4,20 +4,14 @@ import {
   arquivarAluno,
   buscarAluno,
   buscarAlunos,
-  buscarAnalise,
   buscarConfig,
   buscarHistorico,
   buscarOpcoesAlunos,
-  confirmarAnalise,
   criarItemConfig,
   definirUsuarioDaSessao,
-  descartarAnalise,
   EducacionalError,
-  enviarAnalise,
   LIMITE_ARQUIVO_ANALISE,
-  listarAnalises,
   queryDaApi,
-  reprocessarAnalise,
   RESPONSAVEL_NENHUM,
   salvarLote,
 } from "./apiEducacional";
@@ -200,76 +194,6 @@ describe("salvar em lote (seção 3 do backend)", () => {
   });
 });
 
-describe("análise de aula (seção 5)", () => {
-  it("texto colado: na fila → processando → pronta; confirmar grava progresso, origem, highlights, atividade e a lista", async () => {
-    const [a] = await todos();
-    const texto =
-      "Começamos revisando a tarefa. O aluno trouxe a planilha de custos completa e organizada. " +
-      "Explicou a diferença entre margem e markup sem ajuda. Aplicou o preço novo em dois clientes. Falta validar com uma venda.";
-    const { id } = await enviarAnalise({ aluno_id: a.id, data_aula: "2026-10-26", texto });
-    expect((await buscarAnalise(id)).status).toBe("na_fila");
-    andar(4000);
-    expect((await buscarAnalise(id)).status).toBe("processando");
-    andar(5000);
-    const pronta = await buscarAnalise(id);
-    expect(pronta.status).toBe("pronta");
-    expect(pronta.resultado_ia?.progresso.consumiu.nota).toBe(70);
-    expect(pronta.resultado_ia?.resumo.startsWith("Começamos revisando a tarefa.")).toBe(true);
-    expect(pronta.resultado_ia?.highlights.length).toBeLessThanOrEqual(5);
-    expect((await listarAnalises({ aluno_id: a.id, status: ["pronta"] })).itens.map((x) => x.id)).toContain(id);
-
-    const d = await buscarAluno(a.id);
-    const revisado = { ...pronta.resultado_ia!, progresso: { ...pronta.resultado_ia!.progresso, validou: { nota: 33, justificativa: "Revisado", evidencias: [] } } };
-    const depois = await confirmarAnalise(id, d.versao, revisado);
-    expect(depois.versao).toBe(d.versao + 1);
-    expect(depois.progresso.validou.automatico).toBe(33);
-    expect(depois.progresso_origem.validou).toEqual({ tipo: "analise", analise_id: id, data_aula: "2026-10-26" });
-    expect(depois.analises[0]).toMatchObject({ id, data_aula: "2026-10-26", notas: { validou: 33 } });
-    expect(depois.highlights[0]).toEqual({ data_aula: "2026-10-26", texto: revisado.highlights[0] });
-    expect(depois.ultima_atividade.automatico! >= "2026-10-26").toBe(true);
-    expect((await buscarAnalise(id)).status).toBe("confirmada");
-
-    // Ajuste manual continua prevalecendo e muda a origem.
-    const aj = await ajustarCampo(a.id, depois.versao, "progresso_validou", 90, "Validou em reunião");
-    expect(aj.progresso.validou.valor).toBe(90);
-    expect(aj.progresso_origem.validou).toEqual({ tipo: "ajuste" });
-  });
-
-  it("#erro termina em erro; reprocessar volta para a fila; descartar não mexe na ficha", async () => {
-    const [a] = await todos();
-    const { id } = await enviarAnalise({ aluno_id: a.id, data_aula: "2026-10-20", texto: "Aula curta. #erro" });
-    andar(9000);
-    const comErro = await buscarAnalise(id);
-    expect(comErro.status).toBe("erro");
-    expect(comErro.erro).toBeTruthy();
-    expect(comErro.resultado_ia).toBeNull();
-    const d = await buscarAluno(a.id);
-    expect((await erroDe(confirmarAnalise(id, d.versao, { resumo: "x", progresso: {} as never, highlights: [] }))).status).toBe(400);
-    await reprocessarAnalise(id);
-    expect((await buscarAnalise(id)).status).toBe("na_fila");
-    andar(9000);
-    await descartarAnalise(id);
-    expect((await buscarAnalise(id)).status).toBe("descartada");
-    expect((await buscarAluno(a.id)).versao).toBe(d.versao);
-  });
-
-  it("arquivo .srt é limpo; formato e tamanho (4 MB, D1) barrados antes de enviar", async () => {
-    const [a] = await todos();
-    const srt = "1\n00:00:01,000 --> 00:00:03,000\nBom dia, vamos começar.\n\n2\n00:00:04,000 --> 00:00:06,500\nHoje é a aula de oferta.\n";
-    const { id } = await enviarAnalise({ aluno_id: a.id, data_aula: "2026-10-21", arquivo: new File([srt], "aula.srt") });
-    const an = await buscarAnalise(id);
-    expect(an.transcricao).toBe("Bom dia, vamos começar. Hoje é a aula de oferta.");
-    expect(an.arquivo_nome).toBe("aula.srt");
-
-    const pdf = await erroDe(enviarAnalise({ aluno_id: a.id, data_aula: "2026-10-21", arquivo: new File(["x"], "aula.pdf") }));
-    expect(pdf.corpo).toMatchObject({ error: "validacao", campo: "arquivo" });
-    const grande = new File([new Uint8Array(LIMITE_ARQUIVO_ANALISE + 1)], "aula.txt");
-    const e = await erroDe(enviarAnalise({ aluno_id: a.id, data_aula: "2026-10-21", arquivo: grande }));
-    expect(e.corpo.campo).toBe("arquivo");
-    expect(e.message).toMatch(/limite é 4 MB/);
-  });
-});
-
 describe("semente D4 (só demonstração)", () => {
   it("o progresso da Fase 1 vira uma análise confirmada importada; os ajustes de progresso saem", async () => {
     const lista = await todos();
@@ -281,8 +205,6 @@ describe("semente D4 (só demonstração)", () => {
       expect(d.progresso.consumiu.automatico).toBe(d.analises[0].notas.consumiu);
       expect(d.progresso_origem.consumiu).toMatchObject({ tipo: "analise", analise_id: d.analises[0].id });
     }
-    const analises = await listarAnalises({ status: ["confirmada"] });
-    expect(analises.total).toBe(importados.length);
     // A importação não inventa atividade: sem highlight, a aula fica na data de entrada.
     for (const d of importados) {
       if (!d.highlights.length) expect(d.analises[0].data_aula).toBe(d.data_entrada);

@@ -11,7 +11,7 @@ import {
   type FaixaSaude,
   type StatusCheckpoint,
 } from "../contrato";
-import { detalheDaAnalise, itemDaLista, statusDe } from "./analises";
+import { analisesDaAula, buscarAnaliseAula, criarAnaliseAula, decidirAnalise } from "./analiseAula";
 import * as escrita from "./escrita";
 import { exportarAlunos } from "./exportacao";
 import { montarAluno, montarComentario, montarResumo, numeroDaAula } from "./motor";
@@ -180,18 +180,6 @@ function opcoesDeAlunos(banco: Banco, q: URLSearchParams, hoje: string) {
       return { id: d.id, nome: d.nome, mentoria: d.mentoria, etapa: d.etapa };
     });
   return { itens };
-}
-
-function listarAnalises(banco: Banco, q: URLSearchParams, agora: string) {
-  const alunoId = q.get("aluno_id");
-  const status = listaDaQuery(q, "status");
-  const itens = (banco.analises ?? [])
-    .filter((x) => (!alunoId || x.aluno_id === alunoId) && (!status.length || status.includes(statusDe(x, agora))))
-    .sort((a, b) => b.criada_em.localeCompare(a.criada_em))
-    .map((x) => itemDaLista(banco, x, agora));
-  const tamanho = Math.max(1, Number(q.get("por_pagina")) || TAMANHO_PAGINA_ANALISES);
-  const pagina = Math.max(1, Number(q.get("pagina")) || 1);
-  return { itens: itens.slice((pagina - 1) * tamanho, pagina * tamanho), total: itens.length };
 }
 
 function historico(banco: Banco, alunoId: string, q: URLSearchParams) {
@@ -364,12 +352,8 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
     if (s.length === 1 && s[0] === "calendario") return calendario(banco, q);
     if (s.length === 1 && s[0] === "alunos") return listarAlunos(banco, q, ctx.hoje);
     if (s.length === 2 && s[0] === "alunos" && s[1] === "opcoes") return opcoesDeAlunos(banco, q, ctx.hoje);
-    if (s.length === 1 && s[0] === "analises") return listarAnalises(banco, q, ctx.agora);
-    if (s.length === 2 && s[0] === "analises") {
-      const an = (banco.analises ?? []).find((x) => x.id === s[1]);
-      if (!an) throw new ErroDaApi(404, { error: "nao_encontrado", mensagem: "Análise não encontrada." });
-      return detalheDaAnalise(banco, an, ctx.agora);
-    }
+    if (s.length === 2 && s[0] === "analises") return buscarAnaliseAula(banco, s[1], ctx.agora);
+    if (s.length === 3 && s[0] === "aulas" && s[2] === "analises") return analisesDaAula(banco, s[1], ctx.agora);
     if (s.length === 2 && s[0] === "alunos") return aluno(s[1]);
     if (s.length === 3 && s[0] === "alunos" && s[2] === "historico") {
       aluno(s[1]);
@@ -385,13 +369,11 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
   // ---- Exportar CSV da aba Alunos (o arquivo; nada é gravado) ----
   if (s.length === 2 && s[0] === "alunos" && s[1] === "exportar" && metodo === "POST") return exportarAlunos(banco, corpo, ctx.hoje);
 
-  // ---- Fase 3: lote e análises ----
+  // ---- Fase 3: lote; análise de aula com IA (16/11/2026) ----
   if (s.length === 1 && s[0] === "lote" && metodo === "POST") return escrita.salvarLote(banco, corpo, ctx);
   if (s[0] === "analises" && metodo === "POST") {
-    if (s.length === 1) return escrita.criarAnalise(banco, corpo, ctx);
-    if (s.length === 3 && s[2] === "confirmar") return escrita.confirmarAnalise(banco, s[1], corpo.resultado, versaoDo(corpo), ctx);
-    if (s.length === 3 && s[2] === "descartar") return detalheDaAnalise(banco, escrita.descartarAnalise(banco, s[1], ctx), ctx.agora);
-    if (s.length === 3 && s[2] === "reprocessar") return detalheDaAnalise(banco, escrita.reprocessarAnalise(banco, s[1], ctx), ctx.agora);
+    if (s.length === 1) return criarAnaliseAula(banco, corpo, ctx);
+    if (s.length === 3 && s[2] === "decidir") return decidirAnalise(banco, s[1], corpo, ctx);
   }
 
   // ---- Entrega 2 (M2): mural ----

@@ -300,11 +300,10 @@ export type Aula = z.infer<typeof AulaSchema>;
 
 export const HighlightSchema = z.object({ data_aula: z.string(), texto: z.string() });
 
-// ---------- análise de aula (Fase 3, seção 7) ----------
+// ---------- análise de aula da Fase 3 (seção 7): as importadas do progresso da Fase 1 ----------
 export const STATUS_ANALISE = ["na_fila", "processando", "pronta", "erro", "confirmada", "descartada"] as const;
 export const StatusAnaliseSchema = z.enum(STATUS_ANALISE);
 export type StatusAnalise = z.infer<typeof StatusAnaliseSchema>;
-export const STATUS_ANALISE_PENDENTE: readonly StatusAnalise[] = ["na_fila", "processando"];
 
 export const PASSOS_PROGRESSO = ["consumiu", "entendeu", "aplicou", "validou"] as const;
 export type PassoProgresso = (typeof PASSOS_PROGRESSO)[number];
@@ -335,27 +334,6 @@ export const AnaliseResumoSchema = z.object({
 });
 export type AnaliseResumo = z.infer<typeof AnaliseResumoSchema>;
 
-export const AnaliseItemListaSchema = z.object({
-  id: z.string(),
-  aluno: z.object({ id: z.string(), nome: z.string() }),
-  data_aula: Data,
-  etapa: EtapaRef,
-  status: StatusAnaliseSchema,
-  criada_por: Usuario,
-  criada_em: z.string(),
-});
-export type AnaliseItemLista = z.infer<typeof AnaliseItemListaSchema>;
-
-export const AnaliseDetalheSchema = AnaliseItemListaSchema.extend({
-  arquivo_nome: z.string().nullable(),
-  transcricao: z.string(),
-  resultado_ia: ResultadoAnaliseSchema.nullable(),
-  resultado_confirmado: ResultadoAnaliseSchema.nullable(),
-  erro: z.string().nullable(),
-  confirmada_por: Usuario.nullable(),
-  confirmada_em: z.string().nullable(),
-});
-export type AnaliseDetalhe = z.infer<typeof AnaliseDetalheSchema>;
 
 export const OrigemProgressoSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("analise"), analise_id: z.string(), data_aula: Data }),
@@ -718,3 +696,81 @@ export function validarAlunoDetalhe(bruto: unknown): AlunoDetalhe | null {
 export function linhaDoDetalhe(a: AlunoDetalhe): AlunoLinha {
   return AlunoLinhaSchema.parse(a);
 }
+
+// ---------- análise de aula com IA (16/11/2026, backend 0fec174) ----------
+// A IA PROPÕE as notas de Entendeu, Aplicou e Validou e os checkpoints que
+// parecem cumpridos; nada entra na ficha sem uma pessoa decidir. A transcrição
+// nunca volta da API. Consumiu não é avaliado aqui.
+export const PILARES_ANALISE = ["entendeu", "aplicou", "validou"] as const;
+export type PilarAnalise = (typeof PILARES_ANALISE)[number];
+export const STATUS_ANALISE_AULA = ["processando", "pronta", "erro"] as const;
+export type StatusAnaliseAula = (typeof STATUS_ANALISE_AULA)[number];
+export const CHECKPOINT_PARECE_CUMPRIDO = "parece_cumprido";
+
+const EvidenciaSchema = z.object({ trecho: z.string(), momento: z.string().nullable().default(null) });
+export type Evidencia = z.infer<typeof EvidenciaSchema>;
+
+export const PilarSugeridoSchema = z.object({
+  pilar: z.string(),
+  notaAtual: Nota.nullable().default(null), // do banco, nunca do modelo
+  notaSugerida: z.number().int().min(0).max(100).nullable().default(null), // null = sem evidência
+  faixa: z.string().nullable().default(null),
+  confianca: z.enum(["alta", "media", "baixa"]).nullable().catch(null).default(null),
+  justificativa: z.string().default(""),
+  evidencias: z.array(EvidenciaSchema).catch([]).default([]),
+  avisos: z.array(z.string()).catch([]).default([]),
+});
+export type PilarSugerido = z.infer<typeof PilarSugeridoSchema>;
+
+export const CheckpointSugeridoSchema = z.object({
+  id: z.string(),
+  situacao: z.string(),
+  justificativa: z.string().default(""),
+  evidencias: z.array(EvidenciaSchema).catch([]).default([]),
+});
+export type CheckpointSugerido = z.infer<typeof CheckpointSugeridoSchema>;
+
+export const AlertaAnaliseSchema = z.object({
+  tipo: z.string(),
+  descricao: z.string(),
+  evidencia: EvidenciaSchema.nullable().catch(null).default(null),
+});
+export type AlertaAnalise = z.infer<typeof AlertaAnaliseSchema>;
+
+export const PropostaAnaliseSchema = z.object({
+  qualidade: z.enum(["boa", "parcial", "insuficiente"]).nullable().catch(null).default(null),
+  aviso: z.string().nullable().default(null),
+  resumo: z.string().default(""),
+  highlights: z.array(z.string()).catch([]).default([]),
+  pilares: z.array(PilarSugeridoSchema).default([]),
+  checkpoints: z.array(CheckpointSugeridoSchema).default([]),
+  alertas: z.array(AlertaAnaliseSchema).catch([]).default([]),
+  reforcar: z.array(z.string()).catch([]).default([]),
+  descartes: z.array(z.string()).catch([]).default([]),
+});
+export type PropostaAnalise = z.infer<typeof PropostaAnaliseSchema>;
+
+export const AnaliseAulaSchema = z.object({
+  id: z.string(),
+  aula_id: z.string(),
+  aluno_id: z.string(),
+  status: z.enum(STATUS_ANALISE_AULA),
+  prompt_versao: z.string().nullable().default(null),
+  modelo: z.string().nullable().default(null),
+  analise: PropostaAnaliseSchema.nullable().default(null), // null enquanto processa
+  descartes: z.array(z.string()).catch([]).default([]),
+  decisao: z.unknown().optional(),
+  decidida_em: z.string().nullable().default(null),
+  // O backend manda o id de quem decidiu; aceita também { id, nome }.
+  decidida_por: z.union([z.string(), z.object({ id: z.string(), nome: z.string() })]).nullable().default(null),
+  erro: z.string().nullable().default(null),
+  criada_em: z.string().nullable().default(null),
+  concluida_em: z.string().nullable().default(null),
+});
+export type AnaliseAula = z.infer<typeof AnaliseAulaSchema>;
+
+export type DecisaoPilar =
+  | { pilar: PilarAnalise; decisao: "aprovar" | "rejeitar" }
+  | { pilar: PilarAnalise; decisao: "editar"; nota: number };
+export type DecisaoCheckpoint = { id: string; decisao: "aprovar" | "rejeitar" };
+export type PedidoDecisao = { versao: number; pilares: DecisaoPilar[]; checkpoints: DecisaoCheckpoint[]; motivo?: string };

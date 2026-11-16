@@ -19,6 +19,7 @@ import { CAMPO, Campo, Dialogo, ErroDoEnvio } from "./Dialogo";
 import { ativos } from "./dados";
 import { CampoTexto, useFicha, useMarca } from "./Ficha";
 import { alteracaoDaAula, alteracaoDeCampo, aulaArquivada, aulaNova, ID_NOVO, type AulaNaTela } from "./lote/alteracoes";
+import { BotaoAnalisarAula, SituacaoDaAnalise } from "./AnaliseAula";
 import { MenuDesfazer } from "./lote/MarcaPendente";
 
 // ---------------------------------------------------------------------------
@@ -92,6 +93,7 @@ export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
                   {a.aulas.map((x) => (
                     <LinhaDaAula
                       key={x.id}
+                      aluno={a}
                       aula={x}
                       onStatus={(s) => mudarStatus(x, s)}
                       onEditar={() => setEditando(x)}
@@ -121,11 +123,13 @@ export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
 // Linha com a marca de alteração pendente (fundo amarelo, "Antes: …" e
 // "Desfazer" no botão direito) e o erro de validação embaixo.
 function LinhaDaAula({
+  aluno,
   aula: x,
   onStatus,
   onEditar,
   onArquivar,
 }: {
+  aluno: AlunoDetalhe;
   aula: Aula;
   onStatus: (s: StatusAula) => void;
   onEditar: () => void;
@@ -159,6 +163,7 @@ function LinhaDaAula({
               {x.observacao}
             </span>
           )}
+          {!nova(x) && <SituacaoDaAnalise aulaId={x.id} />}
         </td>
         <td className="whitespace-nowrap px-3 py-2 tabular-nums text-texto">{quandoDaAula(x)}</td>
         <td className="px-3 py-2 text-texto">{x.mentor?.nome ?? <span className="text-texto-sec">Sem mentor</span>}</td>
@@ -183,6 +188,7 @@ function LinhaDaAula({
         </td>
         <td className="px-2 py-1 text-right">
           <span className="inline-flex gap-0.5">
+            {!nova(x) && <BotaoAnalisarAula aluno={aluno} aula={x} />}
             <Button variant="ghost" size="sm" disabled={f.bloqueada} onClick={onEditar} aria-label={`Editar ${rotulo}`} title="Editar">
               <PencilLine className="h-3.5 w-3.5" aria-hidden />
             </Button>
