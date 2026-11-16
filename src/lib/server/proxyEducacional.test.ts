@@ -123,6 +123,25 @@ describe("rota /api/educacional/[...caminho]", () => {
     expect(texto(init.body)).toBe(texto(bytes));
   });
 
+  it("CSV da exportação passa em bytes (BOM e CRLF intactos), com o nome do arquivo", async () => {
+    como("educacional");
+    const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode("Nome;Ação\r\nJoão;Sim\r\n")]);
+    fetchMock.mockResolvedValue(
+      new Response(bytes, {
+        status: 200,
+        headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="alunos-educacional-2026-11-16.csv"' },
+      }),
+    );
+    const res = await chamar("/api/educacional/alunos/exportar", { method: "POST", body: '{"ids":["a"]}' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(res.headers.get("content-disposition")).toBe('attachment; filename="alunos-educacional-2026-11-16.csv"');
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytes);
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${BASE}/api/educacional/alunos/exportar`);
+    expect(texto(init.body)).toBe('{"ids":["a"]}');
+  });
+
   it("409 passa com o corpo (aluno atual); 500 do backend vira 502", async () => {
     como("admin");
     fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "versao", aluno: { id: "a" } }), { status: 409 }));

@@ -10,6 +10,7 @@ import { exigirAreaNaApi } from "./acessoApi";
 //   - Trava pela área `educacional` (401/403).
 //   - Repassa o Bearer da sessão; devolve 400/401/403/404/409 como vieram (o
 //     409 traz o aluno atual ou a contagem de alunos); o resto vira 502.
+//   - Resposta de arquivo (CSV da exportação) passa em bytes, com o nome.
 // ---------------------------------------------------------------------------
 
 const PREFIXO = "/api/educacional/";
@@ -71,6 +72,16 @@ export async function proxyEducacional(req: NextRequest): Promise<NextResponse> 
       body: temCorpo ? await req.arrayBuffer() : undefined,
       cache: "no-store",
     });
+    // Arquivo (CSV da exportação de alunos): os bytes como vieram, sem ler como
+    // texto (o BOM e o CRLF são do arquivo), com o nome do Content-Disposition.
+    const tipoResposta = res.headers.get("content-type") ?? "";
+    const disposicao = res.headers.get("content-disposition");
+    if (res.ok && (disposicao || /^text\/csv/i.test(tipoResposta))) {
+      const headers = new Headers({ "Content-Type": tipoResposta || "application/octet-stream", "Cache-Control": "no-store" });
+      if (disposicao) headers.set("Content-Disposition", disposicao);
+      headers.set("X-Content-Type-Options", "nosniff");
+      return new NextResponse(res.body, { status: res.status, headers });
+    }
     const corpo = (await res.json().catch(() => null)) as unknown;
     if (!res.ok) {
       return NextResponse.json(corpo ?? { error: `O serviço educacional respondeu ${res.status}.` }, {

@@ -13,6 +13,7 @@ import {
 } from "../contrato";
 import { detalheDaAnalise, itemDaLista, statusDe } from "./analises";
 import * as escrita from "./escrita";
+import { exportarAlunos } from "./exportacao";
 import { montarAluno, montarComentario, montarResumo, numeroDaAula } from "./motor";
 import { ErroDaApi, type Banco, type HistoricoBanco } from "./tipos";
 
@@ -380,6 +381,9 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
     }
     naoEncontrado();
   }
+
+  // ---- Exportar CSV da aba Alunos (o arquivo; nada é gravado) ----
+  if (s.length === 2 && s[0] === "alunos" && s[1] === "exportar" && metodo === "POST") return exportarAlunos(banco, corpo, ctx.hoje);
 
   // ---- Fase 3: lote e análises ----
   if (s.length === 1 && s[0] === "lote" && metodo === "POST") return escrita.salvarLote(banco, corpo, ctx);

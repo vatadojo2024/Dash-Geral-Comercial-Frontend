@@ -386,19 +386,21 @@ async function transporteApi(p: Pedido): Promise<unknown> {
     throw new EducacionalError(ERRO_DE_REDE, 0, { error: "rede", mensagem: ERRO_DE_REDE });
   }
   const corpo = (await res.json().catch(() => null)) as CorpoDoErro | null;
-  if (!res.ok) {
-    // 401 → login (limpa o cookie antes, para não cair em loop com o middleware).
-    if (res.status === 401 && typeof window !== "undefined") {
-      const { limparCookieSessao } = await import("@/lib/auth/clientSession");
-      limparCookieSessao();
-      window.location.href = "/login";
-    }
-    // Em português, com o campo e o que fazer: a validação do backend às vezes
-    // manda a mensagem crua, em inglês; sem mensagem (404), o texto vem do status.
-    const { texto, corpo: traduzido } = traduzirCorpo(res.status, corpo);
-    throw new EducacionalError(texto, res.status, traduzido ?? { error: texto });
-  }
+  if (!res.ok) throw await erroDaResposta(res.status, corpo);
   return corpo;
+}
+
+async function erroDaResposta(status: number, corpo: CorpoDoErro | null): Promise<EducacionalError> {
+  // 401 → login (limpa o cookie antes, para não cair em loop com o middleware).
+  if (status === 401 && typeof window !== "undefined") {
+    const { limparCookieSessao } = await import("@/lib/auth/clientSession");
+    limparCookieSessao();
+    window.location.href = "/login";
+  }
+  // Em português, com o campo e o que fazer: a validação do backend às vezes
+  // manda a mensagem crua, em inglês; sem mensagem (404), o texto vem do status.
+  const { texto, corpo: traduzido } = traduzirCorpo(status, corpo);
+  return new EducacionalError(texto, status, traduzido ?? { error: texto });
 }
 
 function chamar(p: Pedido): Promise<unknown> {
@@ -451,6 +453,58 @@ export async function buscarAlunos(f: FiltrosAlunos, simular?: Simular): Promise
   const { validos, descartados } = validarLista(corpo?.itens, AlunoLinhaSchema, "aluno");
   const total = typeof corpo?.total === "number" ? corpo.total : validos.length;
   return { itens: validos, total, descartados };
+}
+
+// ---------------------------------------------------------------------------
+// Exportar CSV da aba Alunos (16/11/2026): a tela manda os ids de TODOS os
+// alunos que passam nos filtros, na ordem da tela (sem paginação), e o backend
+// devolve o arquivo pronto (BOM, ";" e CRLF). O corpo vai para blob() direto:
+// ler como texto e reescrever quebra o acento no Excel.
+// ---------------------------------------------------------------------------
+
+export const LIMITE_EXPORTACAO = 2000;
+export type ArquivoExportado = { blob: Blob; nome: string };
+
+// Os ids da lista filtrada inteira, na ordem da tela (mesmos filtros, busca e ordem).
+export async function idsDosAlunos(f: FiltrosAlunos): Promise<string[]> {
+  return (await buscarAlunos({ ...f, pagina: 1, por_pagina: "todos" })).itens.map((a) => a.id);
+}
+
+// Nome do arquivo no Content-Disposition (filename* ou filename); sem ele, o
+// mesmo padrão do backend, com a data de hoje em Brasília.
+export function nomeDoArquivo(disposicao: string | null): string {
+  const estrela = disposicao && /filename\*\s*=\s*(?:UTF-8'[^']*')?"?([^";]+)"?/i.exec(disposicao);
+  if (estrela) {
+    try {
+      return decodeURIComponent(estrela[1].trim());
+    } catch {
+      // segue para o filename simples
+    }
+  }
+  const simples = disposicao && /filename\s*=\s*(?:"([^"]+)"|([^;]+))/i.exec(disposicao);
+  if (simples) return (simples[1] ?? simples[2]).trim();
+  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  return `alunos-educacional-${hoje}.csv`;
+}
+
+export async function exportarAlunos(ids: string[]): Promise<ArquivoExportado> {
+  const pedido: Pedido = { metodo: "POST", caminho: "alunos/exportar", corpo: { ids } };
+  if (FONTE_EDUCACIONAL === "mock") {
+    const r = (await transporteMock(pedido)) as { conteudo: string; nome: string };
+    return { blob: new Blob([r.conteudo], { type: "text/csv;charset=utf-8" }), nome: r.nome };
+  }
+  let res: Response;
+  try {
+    res = await fetch(`/api/educacional/${pedido.caminho}`, {
+      method: "POST",
+      headers: { ...(await headersComToken()), "Content-Type": "application/json" },
+      body: JSON.stringify(pedido.corpo),
+    });
+  } catch {
+    throw new EducacionalError(ERRO_DE_REDE, 0, { error: "rede", mensagem: ERRO_DE_REDE });
+  }
+  if (!res.ok) throw await erroDaResposta(res.status, (await res.json().catch(() => null)) as CorpoDoErro | null);
+  return { blob: await res.blob(), nome: nomeDoArquivo(res.headers.get("content-disposition")) };
 }
 
 export async function buscarAluno(alunoId: string, simular?: Simular): Promise<AlunoDetalhe> {

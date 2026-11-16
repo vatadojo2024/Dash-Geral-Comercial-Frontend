@@ -56,6 +56,7 @@ import {
   type EstadoTabela,
   type Visao,
 } from "./estado";
+import { ExportarCsv } from "./ExportarCsv";
 import { FiltroProgramas } from "./FiltroProgramas";
 import { programasPorMentoria, temProgramas } from "./programas";
 import { FormAjuste } from "./FormAjuste";
@@ -177,6 +178,9 @@ export function TabelaTatica({ estado, simular, onMudar }: Props) {
               Mostrar arquivados
             </label>
           )}
+          <div className="ml-auto">
+            <ExportarCsv filtros={filtros} total={total} desabilitado={!lista.data || lista.isError || total === 0} />
+          </div>
         </div>
         <div
           className={cn("grid grid-cols-2 gap-2 sm:grid-cols-4", comProgramas ? "xl:grid-cols-7" : "xl:grid-cols-6")}
