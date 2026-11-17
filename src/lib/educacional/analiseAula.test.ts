@@ -10,7 +10,7 @@ import {
   EducacionalError,
   listarAnalisesDaAula,
 } from "./apiEducacional";
-import type { AlunoDetalhe, PedidoDecisao } from "./contrato";
+import { AulaSchema, type AlunoDetalhe, type PedidoDecisao } from "./contrato";
 import { _zerarMemoria, carregarBanco } from "./mock/banco";
 import { hojeBR } from "./mock/motor";
 import { atender } from "./mock/servidor";
@@ -95,6 +95,26 @@ describe("leitura e criação", () => {
   });
 });
 
+describe("situação na lista de aulas (backend f4154a5)", () => {
+  it("toda aula da ficha traz a chave: o resumo da última análise ou null", async () => {
+    const { aulaId, aluno } = await exemplo();
+    expect(aluno.aulas.every((x) => "analise" in x)).toBe(true);
+    expect(aluno.aulas.find((x) => x.id === aulaId)?.analise).toEqual({ id: "ana-exemplo", status: "pronta", decidida: false });
+    const outra = aluno.aulas.find((x) => x.id !== aulaId)!;
+    expect(outra.analise).toBeNull();
+    await criarAnaliseAula(outra.id, { transcricao: TEXTO });
+    const depois = await buscarAluno(aluno.id);
+    expect(depois.aulas.find((x) => x.id === outra.id)?.analise).toMatchObject({ status: "processando", decidida: false });
+  });
+
+  it("o contrato separa chave ausente (undefined) de null", () => {
+    const aula = { id: "a", numero: 1, data: "2026-11-14", hora: null, mentor: null, status: "feito", observacao: null };
+    expect(AulaSchema.parse(aula).analise).toBeUndefined();
+    expect(AulaSchema.parse({ ...aula, analise: null }).analise).toBeNull();
+    expect(AulaSchema.parse({ ...aula, analise: { id: "x", status: "pronta", decidida: false } }).analise).toEqual({ id: "x", status: "pronta", decidida: false });
+  });
+});
+
 describe("decidir", () => {
   function pedido(aluno: AlunoDetalhe, cpId: string): PedidoDecisao {
     return {
@@ -122,7 +142,9 @@ describe("decidir", () => {
     );
     expect(r.aluno.checkpoints.find((c) => c.id === cp)?.status).toBe("realizado");
     expect(r.analise.decidida_em).toBeTruthy();
-    expect(r.analise.decidida_por).toEqual({ id: "u-edu", nome: "Equipe Teste" });
+    expect([r.analise.decidida_por, r.analise.decidida_por_nome]).toEqual(["u-edu", "Equipe Teste"]);
+    // A aula, na ficha relida, já diz que a análise foi decidida.
+    expect(r.aluno.aulas.find((x) => x.id === analise.aula_id)?.analise).toEqual({ id: analise.id, status: "pronta", decidida: true });
     // Validou (sem nota sugerida) não muda.
     expect(r.aluno.progresso.validou.valor).toBe(aluno.progresso.validou.valor);
     // Decidir de novo: 409 ja_decidida.

@@ -1,6 +1,7 @@
 import { CHECKPOINT_PARECE_CUMPRIDO, PILARES_ANALISE, type PilarAnalise, type PropostaAnalise } from "../contrato";
 import { novoId, salvarLote, type Contexto } from "./escrita";
 import { montarAluno } from "./motor";
+import { statusDe } from "./estadoAnalise";
 import { ErroDaApi, type AnaliseAulaBanco, type Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -118,11 +119,6 @@ export function propostaDeExemplo(banco: Banco, alunoId: string, hoje: string): 
   };
 }
 
-function statusDe(an: AnaliseAulaBanco, agora: string) {
-  if (agora < an.pronta_em) return "processando" as const;
-  return an.falhar ? ("erro" as const) : ("pronta" as const);
-}
-
 export function respostaDaAnalise(an: AnaliseAulaBanco, agora: string) {
   const status = statusDe(an, agora);
   const pronta = status === "pronta";
@@ -137,7 +133,9 @@ export function respostaDaAnalise(an: AnaliseAulaBanco, agora: string) {
     descartes: pronta ? (an.analise?.descartes ?? []) : [],
     decisao: an.decisao,
     decidida_em: an.decidida_em,
-    decidida_por: an.decidida_por,
+    // O id e, ao lado, o nome (backend f4154a5).
+    decidida_por: an.decidida_por?.id ?? null,
+    decidida_por_nome: an.decidida_por?.nome ?? null,
     custo: { tokens_entrada: 0, tokens_saida: 0, chamadas: 0 },
     erro: status === "erro" ? ERRO_SIMULADO : null,
     criada_em: an.criada_em,

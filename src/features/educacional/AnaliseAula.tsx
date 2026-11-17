@@ -17,7 +17,6 @@ import type { AlunoDetalhe, AnaliseAula, Aula, CheckpointSugerido, Evidencia, Pr
 import { dataCurta, rotuloDaAula, ROTULO_PASSO } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
-import { useSession } from "@/features/session/SessionProvider";
 import {
   checkpointsInformativos,
   checkpointsParaDecidir,
@@ -30,7 +29,12 @@ import {
   rotuloDoAlerta,
   ROTULO_CONFIANCA,
   SEM_DECISOES,
-  situacaoDaAnalise,
+  resumoNaTela,
+  ROTULO_SITUACAO_ANALISE,
+  situacaoDoResumo,
+  textoDaDecisao,
+  type ResumoConhecido,
+  type SituacaoAnalise,
   temAlgoParaDecidir,
   type Decisoes,
   type EscolhaPilar,
@@ -51,21 +55,28 @@ import { trocarAlunoNoCache } from "./useGravacao";
 
 const CONSULTA_MS = 5000;
 
-// Situação da análise mais recente da aula, na linha da tabela. Lê o que já foi
-// buscado (ao abrir o painel ou ao aplicar): não pede uma lista por aula.
-export function SituacaoDaAnalise({ aulaId }: { aulaId: string }) {
-  const user = useSession();
+// Situação da última análise da aula, na linha da tabela: o resumo que vem em
+// cada aula da ficha (backend f4154a5), sem pedido extra. Se o painel da aula já
+// buscou a lista depois disso, vale a lista (é mais nova).
+const COR_SITUACAO: Record<SituacaoAnalise, string> = {
+  analisando: "text-azul-claro",
+  aguardando: "text-amarelo",
+  decidida: "text-verde",
+  erro: "text-erro",
+};
+
+export function SituacaoDaAnalise({ aulaId, conhecido }: { aulaId: string; conhecido?: ResumoConhecido }) {
   const lista = useQuery({
     queryKey: CHAVES.analisesDaAula(aulaId),
     queryFn: () => listarAnalisesDaAula(aulaId),
     enabled: false,
   });
-  const texto = situacaoDaAnalise(lista.data?.[0], user);
-  if (!texto) return null;
+  const situacao = situacaoDoResumo(resumoNaTela(conhecido, { analises: lista.data, em: lista.dataUpdatedAt }));
+  if (!situacao) return null;
   return (
-    <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-azul-claro">
-      <Sparkles className="h-3 w-3" aria-hidden />
-      {texto}
+    <span className={cn("mt-0.5 flex items-center gap-1 text-[11px]", COR_SITUACAO[situacao])}>
+      {situacao === "analisando" ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Sparkles className="h-3 w-3" aria-hidden />}
+      Análise com IA: {ROTULO_SITUACAO_ANALISE[situacao]}
     </span>
   );
 }
@@ -74,7 +85,7 @@ export function BotaoAnalisarAula({ aluno, aula }: { aluno: AlunoDetalhe; aula: 
   const [aberto, setAberto] = useState(false);
   return (
     <>
-      <Button variant="ghost" size="sm" onClick={() => setAberto(true)} aria-label={`Analisar a ${rotuloDaAula(aula)} com IA`} title="Analisar com IA">
+      <Button variant="ghost" size="sm" className="whitespace-nowrap" onClick={() => setAberto(true)} aria-label={`Analisar a ${rotuloDaAula(aula)} com IA`} title="Analisar com IA">
         <Sparkles className="h-3.5 w-3.5" aria-hidden />
         <span className="hidden xl:inline">Analisar com IA</span>
       </Button>
@@ -662,12 +673,11 @@ function Escolha({ marcada, onClick, icone, children }: { marcada: boolean; onCl
 }
 
 function AnaliseDecidida({ analise: a }: { analise: AnaliseAula }) {
-  const user = useSession();
   return (
     <div className="space-y-3">
       {decidida(a) ? (
         <p className="rounded-xl border border-verde/40 bg-verde/10 px-3 py-2 text-sm text-texto" role="status">
-          {situacaoDaAnalise(a, user)}.
+          {textoDaDecisao(a)}.
         </p>
       ) : (
         <p className="text-sm text-texto-sec">Esta análise não tem proposta para revisar.</p>

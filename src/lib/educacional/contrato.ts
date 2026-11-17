@@ -287,6 +287,12 @@ export type Intervencao = z.infer<typeof IntervencaoSchema>;
 // aula nova, ainda não salva, não tem). `hora` é opcional ("HH:MM"). `mentor`
 // vem resolvido. PATCH /aulas/:id e POST /aulas/:id/arquivar existem, mas a
 // ficha edita pelo lote.
+// Resumo da ÚLTIMA análise com IA da aula (backend f4154a5, 17/11/2026). Três
+// estados: chave AUSENTE = não carregado (não aja: a tela mantém o que já tem);
+// null = a aula não tem análise; objeto = a análise mais nova.
+export const ResumoAnaliseDaAulaSchema = z.object({ id: z.string(), status: z.string(), decidida: z.boolean() });
+export type ResumoAnaliseDaAula = z.infer<typeof ResumoAnaliseDaAulaSchema>;
+
 export const AulaSchema = z.object({
   id: z.string(),
   numero: z.number().int().nullable().default(null),
@@ -295,6 +301,8 @@ export const AulaSchema = z.object({
   mentor: ResponsavelDoAluno.nullable(),
   status: StatusAulaSchema,
   observacao: z.string().nullable().default(null),
+  // Sem .default: ausente tem de continuar ausente (undefined), diferente de null.
+  analise: ResumoAnaliseDaAulaSchema.nullable().optional(),
 });
 export type Aula = z.infer<typeof AulaSchema>;
 
@@ -761,8 +769,10 @@ export const AnaliseAulaSchema = z.object({
   descartes: z.array(z.string()).catch([]).default([]),
   decisao: z.unknown().optional(),
   decidida_em: z.string().nullable().default(null),
-  // O backend manda o id de quem decidiu; aceita também { id, nome }.
-  decidida_por: z.union([z.string(), z.object({ id: z.string(), nome: z.string() })]).nullable().default(null),
+  // O id de quem decidiu e, ao lado, o nome (backend f4154a5). O nome pode vir
+  // null mesmo decidida (usuário sem nome ou removido).
+  decidida_por: z.string().nullable().default(null),
+  decidida_por_nome: z.string().nullable().default(null),
   erro: z.string().nullable().default(null),
   criada_em: z.string().nullable().default(null),
   concluida_em: z.string().nullable().default(null),

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EducacionalError } from "@/lib/educacional/apiEducacional";
-import type { AnaliseAula, PropostaAnalise } from "@/lib/educacional/contrato";
+import type { PropostaAnalise } from "@/lib/educacional/contrato";
 import { mensagemDoEnvio } from "./AnaliseAula";
 import {
   checkpointsInformativos,
@@ -8,9 +8,12 @@ import {
   pendenciasDaRevisao,
   pilaresDaProposta,
   podeAplicar,
-  quemDecidiu,
-  situacaoDaAnalise,
+  lembrarResumos,
+  resumoNaTela,
+  ROTULO_SITUACAO_ANALISE,
   SEM_DECISOES,
+  situacaoDoResumo,
+  textoDaDecisao,
   type Decisoes,
 } from "./revisaoAnalise";
 
@@ -74,17 +77,40 @@ describe("revisão da análise", () => {
     expect(podeAplicar(p, SEM_DECISOES)).toBe(false);
   });
 
-  it("quem decidiu: nome, 'você' ou 'alguém da equipe' (nunca o id cru); situação da aula", () => {
-    const eu = { id: "u-1" };
-    expect(quemDecidiu({ id: "u-2", nome: "Mari" }, eu)).toBe("Mari");
-    expect(quemDecidiu("u-1", eu)).toBe("você");
-    expect(quemDecidiu("3f1c0d2e-1111-4a2b-9c3d-123456789abc", eu)).toBe("alguém da equipe");
-    const base = { id: "a", aula_id: "x", aluno_id: "y", analise: null, descartes: [], prompt_versao: null, modelo: null, erro: null, criada_em: null, concluida_em: null, decidida_por: null, decidida_em: null };
-    expect(situacaoDaAnalise({ ...base, status: "processando" } as AnaliseAula, eu)).toBe("Analisando a aula…");
-    expect(situacaoDaAnalise({ ...base, status: "pronta" } as AnaliseAula, eu)).toBe("Análise pronta para revisar");
-    expect(situacaoDaAnalise({ ...base, status: "pronta", decidida_em: "2026-11-16T15:30:00Z", decidida_por: { id: "u-2", nome: "Mari" } } as AnaliseAula, eu)).toBe(
-      "Análise decidida por Mari em 16/11/2026, 12:30",
-    );
+  it("quem decidiu: o nome que vem ao lado do id; sem nome, 'alguém da equipe' (o id nunca aparece)", () => {
+    const base = { id: "a", aula_id: "x", aluno_id: "y", analise: null, descartes: [], prompt_versao: null, modelo: null, erro: null, criada_em: null, concluida_em: null };
+    const decidida = { ...base, status: "pronta" as const, decidida_em: "2026-11-16T15:30:00Z", decidida_por: "3f1c0d2e-1111-4a2b-9c3d-123456789abc" };
+    expect(textoDaDecisao({ ...decidida, decidida_por_nome: "Mari" })).toBe("Análise decidida por Mari em 16/11/2026, 12:30");
+    expect(textoDaDecisao({ ...decidida, decidida_por_nome: null })).toBe("Análise decidida por alguém da equipe em 16/11/2026, 12:30");
+    expect(textoDaDecisao({ ...decidida, decidida_por_nome: "  " })).not.toMatch(/3f1c0d2e/);
+  });
+
+  it("situação na linha da aula: Analisando, Aguardando decisão, Decidida ou Erro", () => {
+    const r = (status: string, decidida = false) => ROTULO_SITUACAO_ANALISE[situacaoDoResumo({ id: "a", status, decidida })!];
+    expect([r("processando"), r("pronta"), r("pronta", true), r("erro")]).toEqual(["Analisando", "Aguardando decisão", "Decidida", "Erro"]);
+    expect(situacaoDoResumo(null)).toBeNull();
+    expect(situacaoDoResumo(undefined)).toBeNull();
+  });
+
+  it("chave ausente não mexe no que a tela tem; null diz que a aula não tem análise", () => {
+    const pronta = { id: "an-1", status: "pronta", decidida: false };
+    let m = lembrarResumos(new Map(), [{ id: "x", analise: pronta }, { id: "y", analise: null }], 1);
+    expect([m.get("x")?.resumo, m.get("y")?.resumo, m.has("z")]).toEqual([pronta, null, false]);
+    // Resposta sem a chave (calendário, planilha): nada muda.
+    m = lembrarResumos(m, [{ id: "x" }, { id: "y" }], 2);
+    expect([m.get("x"), m.get("y")]).toEqual([{ resumo: pronta, em: 1 }, { resumo: null, em: 1 }]);
+    // Com a chave, vale o novo, inclusive o null.
+    m = lembrarResumos(m, [{ id: "x", analise: null }], 3);
+    expect(m.get("x")).toEqual({ resumo: null, em: 3 });
+  });
+
+  it("vale o mais novo entre o resumo da ficha e a lista da aula já buscada", () => {
+    const ficha = { resumo: { id: "an-1", status: "pronta", decidida: false }, em: 10 };
+    const analise = { id: "an-2", aula_id: "x", aluno_id: "y", status: "processando" as const, analise: null, descartes: [], prompt_versao: null, modelo: null, erro: null, criada_em: null, concluida_em: null, decidida_em: null, decidida_por: null, decidida_por_nome: null };
+    expect(resumoNaTela(ficha, { analises: undefined, em: 0 })).toEqual(ficha.resumo);
+    expect(resumoNaTela(ficha, { analises: [analise], em: 20 })).toEqual({ id: "an-2", status: "processando", decidida: false });
+    expect(resumoNaTela(ficha, { analises: [analise], em: 5 })).toEqual(ficha.resumo);
+    expect(resumoNaTela(undefined, { analises: undefined, em: 0 })).toBeNull();
   });
 
   it("mensagens do envio: 503 config_ausente, 413, rede e o texto do 400", () => {

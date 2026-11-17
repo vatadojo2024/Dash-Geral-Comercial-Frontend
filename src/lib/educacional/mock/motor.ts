@@ -15,6 +15,7 @@ import type {
 } from "../contrato";
 import { AVISO_CONTATO_INCOMPLETO, AVISO_SEM_PROGRAMA, marcoDe, RE_MARCO, type Contagem } from "../contrato";
 import { confirmadasDoAluno } from "./analises";
+import { resumoDaUltimaAnalise } from "./estadoAnalise";
 import type { AlunoBanco, AulaBanco, Banco, ComentarioBanco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -173,6 +174,8 @@ function aulasDoAluno(banco: Banco, alunoId: string): Aula[] {
     mentor: responsavelDe(banco, x.mentor_id),
     status: x.status,
     observacao: x.observacao,
+    // A ficha manda a chave SEMPRE (null = sem análise), como o backend f4154a5.
+    analise: resumoDaUltimaAnalise(banco, x.id, new Date().toISOString()),
   }));
 }
 

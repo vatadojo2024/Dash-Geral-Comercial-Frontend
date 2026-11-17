@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type MouseEvent } from "react";
+import { useId, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Archive, PencilLine, Plus } from "lucide-react";
 import { STATUS_AULA, type AlunoDetalhe, type Aula, type CamposAula, type Config, type StatusAula } from "@/lib/educacional/contrato";
 import {
@@ -20,6 +20,7 @@ import { ativos } from "./dados";
 import { CampoTexto, useFicha, useMarca } from "./Ficha";
 import { alteracaoDaAula, alteracaoDeCampo, aulaArquivada, aulaNova, ID_NOVO, type AulaNaTela } from "./lote/alteracoes";
 import { BotaoAnalisarAula, SituacaoDaAnalise } from "./AnaliseAula";
+import { lembrarResumos, type ResumoConhecido } from "./revisaoAnalise";
 import { MenuDesfazer } from "./lote/MarcaPendente";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,10 @@ export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
   const [editando, setEditando] = useState<Aula | "nova" | null>(null);
   const [arquivar, setArquivar] = useState<Aula | null>(null);
   const pendentes = Object.keys(f.entrada?.alteracoes ?? {}).some((k) => k.startsWith("aula:") || k === "campo:total_aulas");
+  // Situação da análise com IA de cada aula. Aula sem a chave `analise` (não
+  // carregado) mantém o que a tela já sabia; `null` = sem análise.
+  const memoria = useRef<Map<string, ResumoConhecido>>(new Map());
+  const resumos = useMemo(() => (memoria.current = lembrarResumos(memoria.current, a.aulas, Date.now())), [a.aulas]);
 
   // Status direto na linha (ficha em edição).
   function mudarStatus(x: Aula, status: StatusAula) {
@@ -95,6 +100,7 @@ export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
                       key={x.id}
                       aluno={a}
                       aula={x}
+                      analise={resumos.get(x.id)}
                       onStatus={(s) => mudarStatus(x, s)}
                       onEditar={() => setEditando(x)}
                       onArquivar={() => setArquivar(x)}
@@ -125,12 +131,14 @@ export function Aulas({ a, config }: { a: AlunoDetalhe; config?: Config }) {
 function LinhaDaAula({
   aluno,
   aula: x,
+  analise,
   onStatus,
   onEditar,
   onArquivar,
 }: {
   aluno: AlunoDetalhe;
   aula: Aula;
+  analise?: ResumoConhecido;
   onStatus: (s: StatusAula) => void;
   onEditar: () => void;
   onArquivar: () => void;
@@ -163,7 +171,7 @@ function LinhaDaAula({
               {x.observacao}
             </span>
           )}
-          {!nova(x) && <SituacaoDaAnalise aulaId={x.id} />}
+          {!nova(x) && <SituacaoDaAnalise aulaId={x.id} conhecido={analise} />}
         </td>
         <td className="whitespace-nowrap px-3 py-2 tabular-nums text-texto">{quandoDaAula(x)}</td>
         <td className="px-3 py-2 text-texto">{x.mentor?.nome ?? <span className="text-texto-sec">Sem mentor</span>}</td>

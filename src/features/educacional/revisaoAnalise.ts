@@ -2,12 +2,14 @@ import {
   CHECKPOINT_PARECE_CUMPRIDO,
   PILARES_ANALISE,
   type AnaliseAula,
+  type Aula,
   type CheckpointSugerido,
   type DecisaoPilar,
   type PedidoDecisao,
   type PilarAnalise,
   type PilarSugerido,
   type PropostaAnalise,
+  type ResumoAnaliseDaAula,
 } from "@/lib/educacional/contrato";
 import { dataHoraBr } from "@/lib/educacional/rotulos";
 
@@ -91,25 +93,55 @@ export function corpoDaDecisao(p: PropostaAnalise, d: Decisoes, versao: number, 
   return { versao, pilares, checkpoints, ...(m ? { motivo: m } : {}) };
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// Quem decidiu, sem nunca mostrar um id cru: o nome quando vem, "você" quando é
-// a sessão atual; senão, "alguém da equipe".
-export function quemDecidiu(por: AnaliseAula["decidida_por"], usuario: { id: string; nome?: string } | null): string {
-  if (!por) return "alguém da equipe";
-  const id = typeof por === "string" ? por : por.id;
-  if (usuario && id === usuario.id) return "você";
-  if (typeof por !== "string") return por.nome;
-  return UUID.test(por) ? "alguém da equipe" : por;
-}
-
 export const decidida = (a: AnaliseAula) => a.decidida_em != null;
 
-// Situação da análise mais recente de uma aula, para a linha da tabela.
-export function situacaoDaAnalise(a: AnaliseAula | undefined, usuario: { id: string } | null): string | null {
-  if (!a) return null;
-  if (decidida(a)) return `Análise decidida por ${quemDecidiu(a.decidida_por, usuario)} em ${dataHoraBr(a.decidida_em)}`;
-  if (a.status === "processando") return "Analisando a aula…";
-  if (a.status === "erro") return "Análise com erro";
-  return "Análise pronta para revisar";
+// Quem decidiu: o nome que o backend manda ao lado do id; sem nome (usuário sem
+// nome gravado ou removido), "alguém da equipe". O id nunca aparece.
+export const quemDecidiu = (a: Pick<AnaliseAula, "decidida_por_nome">) => a.decidida_por_nome?.trim() || "alguém da equipe";
+export const textoDaDecisao = (a: AnaliseAula) => `Análise decidida por ${quemDecidiu(a)} em ${dataHoraBr(a.decidida_em)}`;
+
+// ---------------------------------------------------------------------------
+// Situação da última análise de cada aula, na linha da tabela (backend f4154a5).
+// ---------------------------------------------------------------------------
+
+export type SituacaoAnalise = "analisando" | "aguardando" | "decidida" | "erro";
+export const ROTULO_SITUACAO_ANALISE: Record<SituacaoAnalise, string> = {
+  analisando: "Analisando",
+  aguardando: "Aguardando decisão",
+  decidida: "Decidida",
+  erro: "Erro",
+};
+
+export function situacaoDoResumo(r: ResumoAnaliseDaAula | null | undefined): SituacaoAnalise | null {
+  if (!r) return null;
+  if (r.decidida) return "decidida";
+  if (r.status === "processando") return "analisando";
+  if (r.status === "erro") return "erro";
+  return r.status === "pronta" ? "aguardando" : null;
+}
+
+export const resumoDaAnalise = (a: AnaliseAula): ResumoAnaliseDaAula => ({ id: a.id, status: a.status, decidida: decidida(a) });
+
+// O que a tela sabe da análise de cada aula, e desde quando. Chave `analise`
+// AUSENTE = não carregado: fica o que a tela já tinha. `null` = sem análise.
+export type ResumoConhecido = { resumo: ResumoAnaliseDaAula | null; em: number };
+export function lembrarResumos(
+  anterior: ReadonlyMap<string, ResumoConhecido>,
+  aulas: Pick<Aula, "id" | "analise">[],
+  em: number,
+): Map<string, ResumoConhecido> {
+  const m = new Map(anterior);
+  for (const x of aulas) if (x.analise !== undefined) m.set(x.id, { resumo: x.analise, em });
+  return m;
+}
+
+// Vale o mais novo: o resumo da ficha ou a lista da aula já buscada (painel aberto).
+export function resumoNaTela(
+  conhecido: ResumoConhecido | undefined,
+  lista: { analises: AnaliseAula[] | undefined; em: number },
+): ResumoAnaliseDaAula | null {
+  const daLista = lista.analises ? (lista.analises[0] ? resumoDaAnalise(lista.analises[0]) : null) : undefined;
+  if (daLista === undefined) return conhecido?.resumo ?? null;
+  if (!conhecido) return daLista;
+  return lista.em >= conhecido.em ? daLista : conhecido.resumo;
 }
