@@ -187,6 +187,8 @@ export type AnaliseAulaBanco = {
   criada_em: string;
   pronta_em: string; // demonstração: fica "pronta" (ou "erro") a partir daqui
   falhar: boolean;
+  travada?: boolean; // demonstração: nunca termina (vira "interrompida" depois de 30 min)
+  criada_por?: Usuario | null;
   analise: PropostaAnalise | null;
   decisao: unknown;
   decidida_em: string | null;

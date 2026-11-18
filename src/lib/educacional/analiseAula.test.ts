@@ -8,11 +8,14 @@ import {
   decidirAnalise,
   definirUsuarioDaSessao,
   EducacionalError,
+  listarAnalises,
   listarAnalisesDaAula,
+  queryDaCentral,
 } from "./apiEducacional";
 import { AulaSchema, type AlunoDetalhe, type PedidoDecisao } from "./contrato";
 import { _zerarMemoria, carregarBanco } from "./mock/banco";
 import { hojeBR } from "./mock/motor";
+import { centralDeAnalises } from "./mock/analiseAula";
 import { atender } from "./mock/servidor";
 
 // Análise de aula com IA (16/11/2026, backend 0fec174), no modo demonstração:
@@ -99,7 +102,7 @@ describe("situação na lista de aulas (backend f4154a5)", () => {
   it("toda aula da ficha traz a chave: o resumo da última análise ou null", async () => {
     const { aulaId, aluno } = await exemplo();
     expect(aluno.aulas.every((x) => "analise" in x)).toBe(true);
-    expect(aluno.aulas.find((x) => x.id === aulaId)?.analise).toEqual({ id: "ana-exemplo", status: "pronta", decidida: false });
+    expect(aluno.aulas.find((x) => x.id === aulaId)?.analise).toEqual({ id: "ana-exemplo", status: "pronta", decidida: false, situacao: null });
     const outra = aluno.aulas.find((x) => x.id !== aulaId)!;
     expect(outra.analise).toBeNull();
     await criarAnaliseAula(outra.id, { transcricao: TEXTO });
@@ -111,7 +114,68 @@ describe("situação na lista de aulas (backend f4154a5)", () => {
     const aula = { id: "a", numero: 1, data: "2026-11-14", hora: null, mentor: null, status: "feito", observacao: null };
     expect(AulaSchema.parse(aula).analise).toBeUndefined();
     expect(AulaSchema.parse({ ...aula, analise: null }).analise).toBeNull();
-    expect(AulaSchema.parse({ ...aula, analise: { id: "x", status: "pronta", decidida: false } }).analise).toEqual({ id: "x", status: "pronta", decidida: false });
+    expect(AulaSchema.parse({ ...aula, analise: { id: "x", status: "pronta", decidida: false } }).analise).toEqual({ id: "x", status: "pronta", decidida: false, situacao: null });
+  });
+});
+
+describe("central de análises (backend 40d18c8)", () => {
+  it("todas as análises, mais nova primeiro, com os totais das cinco situações; a lista não traz conteúdo", async () => {
+    const r = await listarAnalises();
+    expect(r.totais).toEqual({ analisando: 0, interrompida: 1, aguardando_decisao: 1, decidida: 1, erro: 1 });
+    expect(r.total).toBe(4);
+    const datas = r.itens.map((x) => x.criada_em ?? "");
+    expect(datas).toEqual([...datas].sort().reverse());
+    expect(r.itens.find((x) => x.id === "ana-exemplo")).toMatchObject({ situacao: "aguardando_decisao", alertas: 1, descartes: 1, criada_por_nome: "Mariana (exemplo)" });
+    expect(r.itens.find((x) => x.id === "ana-decidida")).toMatchObject({ situacao: "decidida", decidida: true, decidida_por_nome: "Mariana (exemplo)" });
+    const corpo = JSON.stringify(r);
+    expect(corpo).not.toMatch(/transcricao|resumo|justificativa|trecho/);
+  });
+
+  it("filtro por situação não muda os totais; aluno e período recortam os dois", async () => {
+    const tudo = await listarAnalises();
+    const erro = await listarAnalises({ situacao: "erro" });
+    expect(erro.itens.map((x) => x.situacao)).toEqual(["erro"]);
+    expect(erro.totais).toEqual(tudo.totais);
+    const ex = tudo.itens.find((x) => x.id === "ana-exemplo")!;
+    const doAluno = await listarAnalises({ aluno_id: ex.aluno.id });
+    expect(doAluno.itens.every((x) => x.aluno.id === ex.aluno.id)).toBe(true);
+    expect(doAluno.totais.aguardando_decisao).toBe(1);
+    const futuro = await listarAnalises({ de: "2099-01-01" });
+    expect([futuro.total, Object.values(futuro.totais).every((n) => n === 0)]).toEqual([0, true]);
+  });
+
+  it("interrompida (processando há mais de 30 min) vem com a situação também na leitura individual; refazer cria outra na mesma aula", async () => {
+    const travada = await buscarAnaliseAula("ana-interrompida");
+    expect([travada.status, travada.situacao]).toEqual(["processando", "interrompida"]);
+    const { id } = await criarAnaliseAula(travada.aula_id, { transcricao: TEXTO });
+    const nova = await buscarAnaliseAula(id);
+    expect([nova.aula_id, nova.situacao]).toEqual([travada.aula_id, "analisando"]);
+    expect((await listarAnalisesDaAula(travada.aula_id))[0].id).toBe(id);
+    expect((await listarAnalises()).totais.analisando).toBe(1);
+  });
+
+  it("query estrita: página de 20; situação inválida e período invertido são 400; aula arquivada vem sem número", async () => {
+    expect(queryDaCentral({ pagina: 2, situacao: "erro", de: "2026-11-01", ate: "2026-11-17" })).toBe(
+      "pagina=2&por_pagina=20&situacao=erro&de=2026-11-01&ate=2026-11-17",
+    );
+    const hoje = hojeBR();
+    const banco = carregarBanco(hoje);
+    const agora = new Date().toISOString();
+    const pedir = (qs: string) => {
+      try {
+        return centralDeAnalises(banco, new URLSearchParams(qs), agora);
+      } catch (e) {
+        return (e as { status: number }).status;
+      }
+    };
+    expect(pedir("situacao=talvez")).toBe(400);
+    expect(pedir("de=2026-11-10&ate=2026-11-01")).toBe(400);
+    expect(pedir("ordem=nome")).toBe(400);
+    const ex = banco.analises_aula!.find((x) => x.id === "ana-exemplo")!;
+    banco.aulas.find((x) => x.id === ex.aula_id)!.arquivado_em = agora;
+    const r = pedir("") as ReturnType<typeof centralDeAnalises>;
+    expect(r.itens.find((x) => x.id === "ana-exemplo")?.aula.numero).toBeNull();
+    expect(r.itens.find((x) => x.id === "ana-exemplo")?.aula.data).toBeTruthy();
   });
 });
 
@@ -144,7 +208,7 @@ describe("decidir", () => {
     expect(r.analise.decidida_em).toBeTruthy();
     expect([r.analise.decidida_por, r.analise.decidida_por_nome]).toEqual(["u-edu", "Equipe Teste"]);
     // A aula, na ficha relida, já diz que a análise foi decidida.
-    expect(r.aluno.aulas.find((x) => x.id === analise.aula_id)?.analise).toEqual({ id: analise.id, status: "pronta", decidida: true });
+    expect(r.aluno.aulas.find((x) => x.id === analise.aula_id)?.analise).toEqual({ id: analise.id, status: "pronta", decidida: true, situacao: null });
     // Validou (sem nota sugerida) não muda.
     expect(r.aluno.progresso.validou.valor).toBe(aluno.progresso.validou.valor);
     // Decidir de novo: 409 ja_decidida.

@@ -20,6 +20,8 @@ export const CHAVES = {
   // Análise de aula com IA: a lista de uma aula e uma análise (consultada a cada 5 s enquanto processa).
   analisesDaAula: (aulaId: string) => ["edu", "analises-aula", aulaId] as const,
   analise: (id: string) => ["edu", "analise", id] as const,
+  // Central de análises (GET /analises): a lista com filtros e os totais.
+  central: ["edu", "analises"] as const,
 };
 
 export function useConfig() {

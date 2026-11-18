@@ -10,8 +10,9 @@ import {
   type PilarSugerido,
   type PropostaAnalise,
   type ResumoAnaliseDaAula,
+  type SituacaoAnalise,
 } from "@/lib/educacional/contrato";
-import { dataHoraBr } from "@/lib/educacional/rotulos";
+import { dataCurta, dataHoraBr } from "@/lib/educacional/rotulos";
 
 // ---------------------------------------------------------------------------
 // Apoio da tela de revisão da análise de aula com IA (16/11/2026). Nada aqui é
@@ -104,23 +105,28 @@ export const textoDaDecisao = (a: AnaliseAula) => `Análise decidida por ${quemD
 // Situação da última análise de cada aula, na linha da tabela (backend f4154a5).
 // ---------------------------------------------------------------------------
 
-export type SituacaoAnalise = "analisando" | "aguardando" | "decidida" | "erro";
 export const ROTULO_SITUACAO_ANALISE: Record<SituacaoAnalise, string> = {
   analisando: "Analisando",
-  aguardando: "Aguardando decisão",
+  interrompida: "Interrompida",
+  aguardando_decisao: "Aguardando decisão",
   decidida: "Decidida",
   erro: "Erro",
 };
 
-export function situacaoDoResumo(r: ResumoAnaliseDaAula | null | undefined): SituacaoAnalise | null {
+// A situação que o backend manda (40d18c8). Sem ela (o resumo da aula na ficha
+// ainda não a traz), só a leitura direta do status: "interrompida" depende do
+// backend, que é quem sabe há quanto tempo a análise está processando.
+export function situacaoDe(
+  r: { situacao?: SituacaoAnalise | null; status: string; decidida: boolean } | null | undefined,
+): SituacaoAnalise | null {
   if (!r) return null;
+  if (r.situacao) return r.situacao;
   if (r.decidida) return "decidida";
   if (r.status === "processando") return "analisando";
-  if (r.status === "erro") return "erro";
-  return r.status === "pronta" ? "aguardando" : null;
+  return r.status === "pronta" ? "aguardando_decisao" : "erro";
 }
 
-export const resumoDaAnalise = (a: AnaliseAula): ResumoAnaliseDaAula => ({ id: a.id, status: a.status, decidida: decidida(a) });
+export const resumoDaAnalise = (a: AnaliseAula): ResumoAnaliseDaAula => ({ id: a.id, status: a.status, decidida: decidida(a), situacao: a.situacao });
 
 // O que a tela sabe da análise de cada aula, e desde quando. Chave `analise`
 // AUSENTE = não carregado: fica o que a tela já tinha. `null` = sem análise.
@@ -145,3 +151,20 @@ export function resumoNaTela(
   if (!conhecido) return daLista;
   return lista.em >= conhecido.em ? daLista : conhecido.resumo;
 }
+
+// ---------------------------------------------------------------------------
+// Central de análises (backend 40d18c8).
+// ---------------------------------------------------------------------------
+
+// "Aula 7 · 14/11/2026"; sem número (aula arquivada depois da análise), só a data.
+export function rotuloDaAulaDaAnalise(aula: { numero: number | null; data: string | null }): string {
+  const data = aula.data ? dataCurta(aula.data) : null;
+  if (aula.numero == null) return data ?? "Aula sem data";
+  return data ? `Aula ${aula.numero} · ${data}` : `Aula ${aula.numero}`;
+}
+
+// Quem e quando, para as colunas "Enviada" e "Decidida" (o id nunca aparece).
+export const quemEQuando = (nome: string | null, em: string | null) => `${nome?.trim() || "alguém da equipe"} · ${dataHoraBr(em)}`;
+
+// Pode refazer: a análise travou (interrompida) ou terminou em erro.
+export const podeRefazer = (s: SituacaoAnalise | null) => s === "interrompida" || s === "erro";

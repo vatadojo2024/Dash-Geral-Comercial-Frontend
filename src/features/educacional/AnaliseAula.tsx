@@ -13,7 +13,7 @@ import {
   FORMATOS_ANALISE,
   listarAnalisesDaAula,
 } from "@/lib/educacional/apiEducacional";
-import type { AlunoDetalhe, AnaliseAula, Aula, CheckpointSugerido, Evidencia, PropostaAnalise } from "@/lib/educacional/contrato";
+import type { AlunoDetalhe, AnaliseAula, Aula, CheckpointSugerido, Evidencia, PropostaAnalise, SituacaoAnalise } from "@/lib/educacional/contrato";
 import { dataCurta, rotuloDaAula, ROTULO_PASSO } from "@/lib/educacional/rotulos";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
@@ -31,10 +31,9 @@ import {
   SEM_DECISOES,
   resumoNaTela,
   ROTULO_SITUACAO_ANALISE,
-  situacaoDoResumo,
+  situacaoDe,
   textoDaDecisao,
   type ResumoConhecido,
-  type SituacaoAnalise,
   temAlgoParaDecidir,
   type Decisoes,
   type EscolhaPilar,
@@ -54,13 +53,15 @@ import { trocarAlunoNoCache } from "./useGravacao";
 // ---------------------------------------------------------------------------
 
 const CONSULTA_MS = 5000;
+const situacaoDaAnalise = (a: AnaliseAula) => situacaoDe({ situacao: a.situacao, status: a.status, decidida: decidida(a) });
 
 // Situação da última análise da aula, na linha da tabela: o resumo que vem em
 // cada aula da ficha (backend f4154a5), sem pedido extra. Se o painel da aula já
 // buscou a lista depois disso, vale a lista (é mais nova).
-const COR_SITUACAO: Record<SituacaoAnalise, string> = {
+export const COR_SITUACAO: Record<SituacaoAnalise, string> = {
   analisando: "text-azul-claro",
-  aguardando: "text-amarelo",
+  interrompida: "text-laranja",
+  aguardando_decisao: "text-amarelo",
   decidida: "text-verde",
   erro: "text-erro",
 };
@@ -71,7 +72,7 @@ export function SituacaoDaAnalise({ aulaId, conhecido }: { aulaId: string; conhe
     queryFn: () => listarAnalisesDaAula(aulaId),
     enabled: false,
   });
-  const situacao = situacaoDoResumo(resumoNaTela(conhecido, { analises: lista.data, em: lista.dataUpdatedAt }));
+  const situacao = situacaoDe(resumoNaTela(conhecido, { analises: lista.data, em: lista.dataUpdatedAt }));
   if (!situacao) return null;
   return (
     <span className={cn("mt-0.5 flex items-center gap-1 text-[11px]", COR_SITUACAO[situacao])}>
@@ -94,7 +95,21 @@ export function BotaoAnalisarAula({ aluno, aula }: { aluno: AlunoDetalhe; aula: 
   );
 }
 
-function PainelAnaliseAula({ aluno, aula, onFechar }: { aluno: AlunoDetalhe; aula: Aula; onFechar: () => void }) {
+// O painel da análise de uma aula: na ficha (a mais recente da aula) e na
+// central (`analiseId`: a análise clicada; `refazer`: abre direto no envio).
+export function PainelAnaliseAula({
+  aluno,
+  aula,
+  analiseId,
+  refazer = false,
+  onFechar,
+}: {
+  aluno: AlunoDetalhe;
+  aula: Aula;
+  analiseId?: string;
+  refazer?: boolean;
+  onFechar: () => void;
+}) {
   const qc = useQueryClient();
   const lista = useQuery({
     queryKey: CHAVES.analisesDaAula(aula.id),
@@ -102,21 +117,24 @@ function PainelAnaliseAula({ aluno, aula, onFechar }: { aluno: AlunoDetalhe; aul
     retry: false,
   });
   // A que acabou de ser criada aqui, ou a mais recente da aula.
-  const [criada, setCriada] = useState<string | null>(null);
-  const [novaAnalise, setNovaAnalise] = useState(false);
+  const [criada, setCriada] = useState<string | null>(analiseId ?? null);
+  const [novaAnalise, setNovaAnalise] = useState(refazer);
   const atualId = criada ?? lista.data?.[0]?.id ?? null;
   const analise = useQuery({
     queryKey: CHAVES.analise(atualId ?? ""),
     queryFn: () => buscarAnaliseAula(atualId!),
     enabled: Boolean(atualId) && !novaAnalise,
     retry: false,
-    refetchInterval: (q) => (q.state.data?.status === "processando" ? CONSULTA_MS : false),
+    // Consulta enquanto analisa; "interrompida" (mais de 30 min) para de consultar.
+    refetchInterval: (q) => (q.state.data && situacaoDaAnalise(q.state.data) === "analisando" ? CONSULTA_MS : false),
   });
-  const status = analise.data?.status;
-  // Terminou de processar: a lista (e a linha da aula) passa a mostrar o estado novo.
+  const situacao = analise.data ? situacaoDaAnalise(analise.data) : null;
+  // Terminou de analisar: a lista da aula, a linha e a central mostram o estado novo.
   useEffect(() => {
-    if (status && status !== "processando") void qc.invalidateQueries({ queryKey: CHAVES.analisesDaAula(aula.id) });
-  }, [status, qc, aula.id]);
+    if (!situacao || situacao === "analisando") return;
+    void qc.invalidateQueries({ queryKey: CHAVES.analisesDaAula(aula.id) });
+    void qc.invalidateQueries({ queryKey: CHAVES.central });
+  }, [situacao, qc, aula.id]);
 
   const titulo = `Análise com IA · ${rotuloDaAula(aula)}`;
   const subtitulo = `${aluno.nome} · aula de ${dataCurta(aula.data)}`;
@@ -148,26 +166,35 @@ function PainelAnaliseAula({ aluno, aula, onFechar }: { aluno: AlunoDetalhe; aul
           setCriada(id);
           setNovaAnalise(false);
           void qc.invalidateQueries({ queryKey: CHAVES.analisesDaAula(aula.id) });
+          void qc.invalidateQueries({ queryKey: CHAVES.central });
         }}
       />
     );
-  } else if (analise.data.status === "processando") {
+  } else if (situacao === "analisando") {
     corpo = (
       <Espera texto="Analisando a aula…">
         Pode levar alguns minutos. Pode fechar: a análise continua e aparece aqui quando ficar pronta.
       </Espera>
     );
-  } else if (analise.data.status === "erro") {
-    corpo = <ErroDoEnvio texto={`A análise não terminou. ${analise.data.erro ?? "Motivo não informado."}`} />;
+  } else if (situacao === "erro" || situacao === "interrompida" || (situacao === "aguardando_decisao" && !analise.data.analise)) {
+    corpo = (
+      <ErroDoEnvio
+        texto={
+          situacao === "interrompida"
+            ? "A análise foi interrompida: ficou mais de 30 minutos sem terminar. Envie a transcrição de novo para refazer."
+            : `A análise não terminou. ${analise.data.erro ?? "Motivo não informado."}`
+        }
+      />
+    );
     rodape = (
       <>
         {fechar}
         <Button type="button" onClick={() => setNovaAnalise(true)}>
-          Tentar de novo
+          Refazer
         </Button>
       </>
     );
-  } else if (decidida(analise.data) || !analise.data.analise) {
+  } else if (situacao === "decidida" || !analise.data.analise) {
     corpo = <AnaliseDecidida analise={analise.data} />;
     rodape = (
       <>
@@ -371,6 +398,7 @@ function Revisao({
       avisarGravacao({ aluno: r.aluno, versaoEnviada: aluno.versao });
       qc.setQueryData(CHAVES.analise(analise.id), r.analise);
       void qc.invalidateQueries({ queryKey: CHAVES.analisesDaAula(analise.aula_id) });
+      void qc.invalidateQueries({ queryKey: CHAVES.central });
       void qc.invalidateQueries({ queryKey: CHAVES.alunos });
       void qc.invalidateQueries({ queryKey: CHAVES.historico(aluno.id) });
       void qc.invalidateQueries({ queryKey: CHAVES.resumo });
@@ -379,6 +407,7 @@ function Revisao({
       if (e instanceof EducacionalError && e.status === 409 && e.corpo.error === "ja_decidida") {
         void qc.invalidateQueries({ queryKey: CHAVES.analise(analise.id) });
         void qc.invalidateQueries({ queryKey: CHAVES.analisesDaAula(analise.aula_id) });
+        void qc.invalidateQueries({ queryKey: CHAVES.central });
         setErro("Esta análise já foi decidida por outra pessoa.");
       } else if (e instanceof EducacionalError && e.status === 409) {
         const atual = e.alunoAtual;

@@ -290,7 +290,18 @@ export type Intervencao = z.infer<typeof IntervencaoSchema>;
 // Resumo da ÚLTIMA análise com IA da aula (backend f4154a5, 17/11/2026). Três
 // estados: chave AUSENTE = não carregado (não aja: a tela mantém o que já tem);
 // null = a aula não tem análise; objeto = a análise mais nova.
-export const ResumoAnaliseDaAulaSchema = z.object({ id: z.string(), status: z.string(), decidida: z.boolean() });
+// Situação da análise, DERIVADA pelo backend (40d18c8): "interrompida" é
+// processando há mais de 30 min. A tela usa a que vem; sem ela, lê o status.
+export const SITUACOES_ANALISE = ["analisando", "interrompida", "aguardando_decisao", "decidida", "erro"] as const;
+export type SituacaoAnalise = (typeof SITUACOES_ANALISE)[number];
+const SituacaoAnaliseSchema = z.enum(SITUACOES_ANALISE).nullable().catch(null).default(null);
+
+export const ResumoAnaliseDaAulaSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  decidida: z.boolean(),
+  situacao: SituacaoAnaliseSchema,
+});
 export type ResumoAnaliseDaAula = z.infer<typeof ResumoAnaliseDaAulaSchema>;
 
 export const AulaSchema = z.object({
@@ -763,6 +774,7 @@ export const AnaliseAulaSchema = z.object({
   aula_id: z.string(),
   aluno_id: z.string(),
   status: z.enum(STATUS_ANALISE_AULA),
+  situacao: SituacaoAnaliseSchema,
   prompt_versao: z.string().nullable().default(null),
   modelo: z.string().nullable().default(null),
   analise: PropostaAnaliseSchema.nullable().default(null), // null enquanto processa
@@ -784,3 +796,26 @@ export type DecisaoPilar =
   | { pilar: PilarAnalise; decisao: "editar"; nota: number };
 export type DecisaoCheckpoint = { id: string; decisao: "aprovar" | "rejeitar" };
 export type PedidoDecisao = { versao: number; pilares: DecisaoPilar[]; checkpoints: DecisaoCheckpoint[]; motivo?: string };
+
+// ---------- central de análises (GET /analises, backend 40d18c8) ----------
+// Só números de alertas e de descartes: nem o conteúdo da análise nem a
+// transcrição vêm na lista. `aula.numero` vem null quando a aula foi arquivada.
+export const ItemAnaliseSchema = z.object({
+  id: z.string(),
+  situacao: SituacaoAnaliseSchema,
+  status: z.string(),
+  decidida: z.boolean(),
+  criada_em: z.string().nullable().default(null),
+  criada_por: z.string().nullable().default(null),
+  criada_por_nome: z.string().nullable().default(null),
+  decidida_em: z.string().nullable().default(null),
+  decidida_por: z.string().nullable().default(null),
+  decidida_por_nome: z.string().nullable().default(null),
+  aluno: z.object({ id: z.string(), nome: z.string().nullable().default(null) }),
+  aula: z.object({ id: z.string(), numero: z.number().int().nullable().default(null), data: z.string().nullable().default(null) }),
+  alertas: z.number().int().min(0).catch(0).default(0),
+  descartes: z.number().int().min(0).catch(0).default(0),
+});
+export type ItemAnalise = z.infer<typeof ItemAnaliseSchema>;
+export type TotaisAnalises = Record<SituacaoAnalise, number>;
+export type FiltrosAnalises = { pagina?: number; situacao?: SituacaoAnalise | null; aluno_id?: string | null; de?: string | null; ate?: string | null };

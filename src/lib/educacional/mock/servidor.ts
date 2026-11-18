@@ -11,7 +11,7 @@ import {
   type FaixaSaude,
   type StatusCheckpoint,
 } from "../contrato";
-import { analisesDaAula, buscarAnaliseAula, criarAnaliseAula, decidirAnalise } from "./analiseAula";
+import { analisesDaAula, buscarAnaliseAula, centralDeAnalises, criarAnaliseAula, decidirAnalise } from "./analiseAula";
 import * as escrita from "./escrita";
 import { exportarAlunos } from "./exportacao";
 import { montarAluno, montarComentario, montarResumo, numeroDaAula } from "./motor";
@@ -352,6 +352,7 @@ export function atender(banco: Banco, req: Requisicao, ctx: escrita.Contexto): u
     if (s.length === 1 && s[0] === "calendario") return calendario(banco, q);
     if (s.length === 1 && s[0] === "alunos") return listarAlunos(banco, q, ctx.hoje);
     if (s.length === 2 && s[0] === "alunos" && s[1] === "opcoes") return opcoesDeAlunos(banco, q, ctx.hoje);
+    if (s.length === 1 && s[0] === "analises") return centralDeAnalises(banco, q, ctx.agora);
     if (s.length === 2 && s[0] === "analises") return buscarAnaliseAula(banco, s[1], ctx.agora);
     if (s.length === 3 && s[0] === "aulas" && s[2] === "analises") return analisesDaAula(banco, s[1], ctx.agora);
     if (s.length === 2 && s[0] === "alunos") return aluno(s[1]);

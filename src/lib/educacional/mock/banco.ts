@@ -24,7 +24,8 @@ export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // 10 = dois contratos ativos já vencidos (calendário).
 // 11 = programas renomeados ("Blackbelt Semestral", "Blackbelt Anual"…).
 // 12 = análise de aula com IA: uma análise de exemplo pronta para revisar.
-export const VERSAO_DADOS = 12;
+// 13 = central de análises: exemplos interrompida, erro e decidida.
+export const VERSAO_DADOS = 13;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };

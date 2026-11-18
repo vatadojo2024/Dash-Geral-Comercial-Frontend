@@ -1,7 +1,14 @@
-import { CHECKPOINT_PARECE_CUMPRIDO, PILARES_ANALISE, type PilarAnalise, type PropostaAnalise } from "../contrato";
+import {
+  CHECKPOINT_PARECE_CUMPRIDO,
+  PILARES_ANALISE,
+  SITUACOES_ANALISE,
+  type PilarAnalise,
+  type PropostaAnalise,
+  type SituacaoAnalise,
+} from "../contrato";
 import { novoId, salvarLote, type Contexto } from "./escrita";
-import { montarAluno } from "./motor";
-import { statusDe } from "./estadoAnalise";
+import { montarAluno, numeroDaAula } from "./motor";
+import { situacaoDe, statusDe } from "./estadoAnalise";
 import { ErroDaApi, type AnaliseAulaBanco, type Banco } from "./tipos";
 
 // ---------------------------------------------------------------------------
@@ -127,6 +134,7 @@ export function respostaDaAnalise(an: AnaliseAulaBanco, agora: string) {
     aula_id: an.aula_id,
     aluno_id: an.aluno_id,
     status,
+    situacao: situacaoDe(an, agora),
     prompt_versao: "v3",
     modelo: "demonstração",
     analise: pronta ? an.analise : null,
@@ -167,6 +175,7 @@ export function criarAnaliseAula(banco: Banco, corpo: Record<string, unknown>, c
     criada_em: ctx.agora,
     pronta_em: new Date(Date.parse(ctx.agora) + PROCESSANDO_MS).toISOString(),
     falhar,
+    criada_por: ctx.usuario,
     analise: falhar ? null : propostaDeExemplo(banco, aula.aluno_id, ctx.hoje),
     decisao: null,
     decidida_em: null,
@@ -257,6 +266,59 @@ export function decidirAnalise(banco: Banco, id: string, corpo: Record<string, u
   return { versao, analise: respostaDaAnalise(alvo, ctx.agora) };
 }
 
+// GET /analises: a central. Mesma query do backend (estrita): pagina,
+// por_pagina (até 100), situacao, aluno_id, de/ate (pela data de ENVIO, em
+// Brasília). Os totais ignoram a situação escolhida.
+const CHAVES_DA_CENTRAL = ["pagina", "por_pagina", "situacao", "aluno_id", "de", "ate"];
+const DATA = /^\d{4}-\d{2}-\d{2}$/;
+const diaEmBrasilia = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date(iso));
+
+export function centralDeAnalises(banco: Banco, q: URLSearchParams, agora: string) {
+  const extra = [...q.keys()].find((k) => !CHAVES_DA_CENTRAL.includes(k));
+  if (extra) throw erro400(extra, "Parâmetro não permitido.");
+  const situacao = q.get("situacao");
+  if (situacao && !(SITUACOES_ANALISE as readonly string[]).includes(situacao)) throw erro400("situacao", "Situação inválida.");
+  const de = q.get("de");
+  const ate = q.get("ate");
+  if (de && !DATA.test(de)) throw erro400("de", "Use a data no formato AAAA-MM-DD.");
+  if (ate && !DATA.test(ate)) throw erro400("ate", "Use a data no formato AAAA-MM-DD.");
+  if (de && ate && ate < de) throw erro400("ate", "O fim do período é antes do início.");
+  const pagina = Math.max(1, Number(q.get("pagina")) || 1);
+  const porPagina = Math.min(100, Math.max(1, Number(q.get("por_pagina")) || 20));
+  const alunoId = q.get("aluno_id");
+
+  const doRecorte = lista(banco)
+    .filter((x) => !alunoId || x.aluno_id === alunoId)
+    .filter((x) => (!de || diaEmBrasilia(x.criada_em) >= de) && (!ate || diaEmBrasilia(x.criada_em) <= ate))
+    .sort((x, y) => y.criada_em.localeCompare(x.criada_em));
+  const totais = Object.fromEntries(SITUACOES_ANALISE.map((k) => [k, 0])) as Record<SituacaoAnalise, number>;
+  for (const x of doRecorte) totais[situacaoDe(x, agora)] += 1;
+  const filtradas = situacao ? doRecorte.filter((x) => situacaoDe(x, agora) === situacao) : doRecorte;
+  const itens = filtradas.slice((pagina - 1) * porPagina, pagina * porPagina).map((x) => {
+    const aula = (banco.aulas ?? []).find((y) => y.id === x.aula_id);
+    const aluno = banco.alunos.find((y) => y.id === x.aluno_id);
+    const pronta = statusDe(x, agora) === "pronta";
+    return {
+      id: x.id,
+      situacao: situacaoDe(x, agora),
+      status: statusDe(x, agora),
+      decidida: x.decidida_em != null,
+      criada_em: x.criada_em,
+      criada_por: x.criada_por?.id ?? null,
+      criada_por_nome: x.criada_por?.nome ?? null,
+      decidida_em: x.decidida_em,
+      decidida_por: x.decidida_por?.id ?? null,
+      decidida_por_nome: x.decidida_por?.nome ?? null,
+      aluno: { id: x.aluno_id, nome: aluno?.nome ?? null },
+      // Aula arquivada depois da análise: sem número (a numeração conta só as ativas).
+      aula: { id: x.aula_id, numero: aula && !aula.arquivado_em ? numeroDaAula(banco, aula) : null, data: aula?.data ?? null },
+      alertas: pronta ? (x.analise?.alertas.length ?? 0) : 0,
+      descartes: pronta ? (x.analise?.descartes.length ?? 0) : 0,
+    };
+  });
+  return { itens, total: filtradas.length, pagina, por_pagina: porPagina, totais };
+}
+
 // Semente: uma análise PRONTA, ainda sem decisão, na aula feita mais recente do
 // primeiro aluno ativo com checkpoint pendente (para a tela de revisão abrir).
 export function semearAnaliseDeExemplo(banco: Banco, hoje: string) {
@@ -268,8 +330,10 @@ export function semearAnaliseDeExemplo(banco: Banco, hoje: string) {
       .filter((x) => x.aluno_id === a.id && x.status === "feito" && !x.arquivado_em)
       .sort((x, y) => y.data.localeCompare(x.data))[0];
     if (!aula) continue;
+    const equipe = { id: "u-exemplo", nome: "Mariana (exemplo)" };
     lista(banco).push({
       id: "ana-exemplo",
+      criada_por: equipe,
       aula_id: aula.id,
       aluno_id: a.id,
       criada_em: ontem,
@@ -280,6 +344,41 @@ export function semearAnaliseDeExemplo(banco: Banco, hoje: string) {
       decidida_em: null,
       decidida_por: null,
     });
+    semearOutrasSituacoes(banco, hoje, a.id, equipe);
     return;
   }
+}
+
+// Mais três exemplos para a central, em outros alunos: interrompida (enviada há
+// 2 h e nunca terminou), erro e decidida.
+function semearOutrasSituacoes(banco: Banco, hoje: string, jaUsado: string, equipe: { id: string; nome: string }) {
+  const horasAtras = (h: number) => new Date(Date.parse(`${hoje}T15:00:00Z`) - h * 3_600_000).toISOString();
+  const exemplos: { id: string; criada: string; extra: Partial<AnaliseAulaBanco> }[] = [
+    { id: "ana-interrompida", criada: horasAtras(2), extra: { travada: true } },
+    { id: "ana-erro", criada: horasAtras(26), extra: { falhar: true } },
+    { id: "ana-decidida", criada: horasAtras(50), extra: { decidida_em: horasAtras(48), decidida_por: equipe } },
+  ];
+  const alunos = banco.alunos.filter((a) => a.id !== jaUsado && !a.arquivado_em && a.status_aluno === "ativo");
+  exemplos.forEach((e, i) => {
+    const a = alunos[i];
+    if (!a) return;
+    const aula = (banco.aulas ?? [])
+      .filter((x) => x.aluno_id === a.id && x.status === "feito" && !x.arquivado_em)
+      .sort((x, y) => y.data.localeCompare(x.data))[0];
+    if (!aula) return;
+    lista(banco).push({
+      id: e.id,
+      aula_id: aula.id,
+      aluno_id: a.id,
+      criada_em: e.criada,
+      pronta_em: e.criada,
+      falhar: false,
+      criada_por: equipe,
+      analise: e.extra.falhar ? null : propostaDeExemplo(banco, a.id, hoje),
+      decisao: null,
+      decidida_em: null,
+      decidida_por: null,
+      ...e.extra,
+    });
+  });
 }

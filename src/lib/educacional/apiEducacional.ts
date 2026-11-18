@@ -1,6 +1,8 @@
 import {
   AlunoLinhaSchema,
   AnaliseAulaSchema,
+  ItemAnaliseSchema,
+  SITUACOES_ANALISE,
   CheckpointModeloSchema,
   EventoCalendarioSchema,
   ImagemMuralSchema,
@@ -22,6 +24,9 @@ import {
   type AlunoLinha,
   type AlunoNoLote,
   type AnaliseAula,
+  type FiltrosAnalises,
+  type ItemAnalise,
+  type TotaisAnalises,
   type CampoAjustavel,
   type CamposAula,
   type CamposCheckpoint,
@@ -775,6 +780,32 @@ export async function buscarAnaliseAula(analiseId: string): Promise<AnaliseAula>
 export async function listarAnalisesDaAula(aulaId: string): Promise<AnaliseAula[]> {
   const corpo = (await chamar({ metodo: "GET", caminho: `aulas/${id(aulaId)}/analises` })) as { analises?: unknown } | null;
   return validarLista(corpo?.analises, AnaliseAulaSchema, "análise").validos;
+}
+
+// Central de análises: todos os alunos, mais nova primeiro, paginada. Os totais
+// por situação ignoram o filtro de situação (de propósito, no backend).
+export const TAMANHO_PAGINA_ANALISES = 20;
+export type PaginaAnalises = { itens: ItemAnalise[]; total: number; totais: TotaisAnalises };
+
+export function queryDaCentral(f: FiltrosAnalises): string {
+  const qs = new URLSearchParams({ pagina: String(Math.max(1, f.pagina ?? 1)), por_pagina: String(TAMANHO_PAGINA_ANALISES) });
+  if (f.situacao) qs.set("situacao", f.situacao);
+  if (f.aluno_id) qs.set("aluno_id", f.aluno_id);
+  if (f.de) qs.set("de", f.de);
+  if (f.ate) qs.set("ate", f.ate);
+  return qs.toString();
+}
+
+export async function listarAnalises(f: FiltrosAnalises = {}): Promise<PaginaAnalises> {
+  const corpo = (await chamar({ metodo: "GET", caminho: "analises", query: queryDaCentral(f) })) as {
+    itens?: unknown;
+    total?: unknown;
+    totais?: Record<string, unknown>;
+  } | null;
+  const { validos } = validarLista(corpo?.itens, ItemAnaliseSchema, "análise");
+  const numero = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const totais = Object.fromEntries(SITUACOES_ANALISE.map((s) => [s, numero(corpo?.totais?.[s])])) as TotaisAnalises;
+  return { itens: validos, total: typeof corpo?.total === "number" ? corpo.total : validos.length, totais };
 }
 
 // Decide e devolve o aluno recalculado (a resposta traz só a versão nova; a ficha
