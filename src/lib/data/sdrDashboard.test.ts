@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   agregarDashboard,
+  contarNaoIdentificadas,
   INICIO_REGRA_NINJA_QC,
   detalheDosQualificados,
   metasDoSdr,
+  nomeDoOperador,
+  nomeDoSdr,
   normalizarSdr,
   qualificadosDoCard,
   SDRS_DASHBOARD,
@@ -191,5 +194,47 @@ describe("Total \"Leads qualificados\" do topo (pedido de 03/11/2026)", () => {
     const t = totalDosQualificados(time(d));
     expect(t.total).toBe(11 + 3); // Glaucio 8 + ⌊9/3⌋; Arthur 2 + ⌊3/3⌋
     expect(t.detalhe).toBe("10 qualificados · 4 bônus QC · regra antiga (antes de out/2026)");
+  });
+});
+
+describe("SDR por nome completo (18/11/2026, temporário até a rota de SDRs)", () => {
+  it("aceita o nome curto, o do cadastro e o antigo da Clint, sem acento e sem maiúsculas", () => {
+    for (const n of ["Glaucio", "Glaucio Portela", "GLÁUCIO  portela", "Lúcio Borges", "lucio borges"]) expect(normalizarSdr(n)).toBe("Glaucio");
+    for (const n of ["Benhur", "Benhur Ramos", "João Filipe", "joao filipe"]) expect(normalizarSdr(n)).toBe("Benhur");
+    for (const n of ["Delrue", "Guilherme Delrue", "Guilherme Alves"]) expect(normalizarSdr(n)).toBe("Delrue");
+    for (const n of ["Arthur", "Artur", "Artur Souza"]) expect(normalizarSdr(n)).toBe("Arthur");
+  });
+
+  it("pedaço de nome não casa mais ('ben', 'Ruben', 'Bento', 'Glaucio Silva', 'Guilherme')", () => {
+    for (const n of ["ben", "Ruben", "Bento", "Glaucio Silva", "Guilherme", "Lúcio", "", "Fátima Consuelo"]) expect(normalizarSdr(n)).toBeNull();
+  });
+
+  it("nome exibido é sempre o verdadeiro; o nome cru de quem mudou na Clint vira o verdadeiro", () => {
+    expect([nomeDoSdr("Glaucio"), nomeDoSdr("Benhur")]).toEqual(["Glaucio Portela", "Benhur Ramos"]);
+    expect([nomeDoOperador("Lúcio Borges"), nomeDoOperador("João Filipe"), nomeDoOperador("Glaucio")]).toEqual([
+      "Glaucio Portela",
+      "Benhur Ramos",
+      "Glaucio Portela",
+    ]);
+    // Os outros seguem como a API manda (closer, desconhecido, Delrue).
+    expect([nomeDoOperador("Marcio"), nomeDoOperador("Guilherme Alves"), nomeDoOperador(null)]).toEqual(["Marcio", "Guilherme Alves", null]);
+  });
+
+  it("nomes curtos (hoje) e completos (depois do backend) somam no mesmo card; o não reconhecido é contado, não some calado", () => {
+    const d = agregarDashboard(
+      payload([
+        linha("Glaucio", "2026-11-02", "Black", 2),
+        linha("Glaucio Portela", "2026-11-03", "Black", 3),
+        linha("Lúcio Borges", "2026-11-04", "Black", 4),
+        linha("Benhur Ramos", "2026-11-04", "Prime", 1),
+        linha("Fátima Consuelo", "2026-11-05", "Black", 7),
+        linha("Outra Pessoa", "2026-10-30", "Black", 9), // outro mês: não conta
+      ]),
+      "2026-11",
+    );
+    expect(d.sdrs.find((s) => s.sdr === "Glaucio")?.produtos.black).toBe(9);
+    expect(d.sdrs.find((s) => s.sdr === "Benhur")?.produtos.prime).toBe(1);
+    expect(d.naoIdentificadas).toBe(1);
+    expect(contarNaoIdentificadas([{ sdr: "Glaucio" }, { sdr: "x" }, { sdr: "" }])).toBe(2);
   });
 });

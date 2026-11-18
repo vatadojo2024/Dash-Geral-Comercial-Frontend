@@ -1,3 +1,4 @@
+import { nomeDoOperador } from "@/lib/data/sdrDashboard";
 import { z } from "zod";
 import { PRODUTOS_OFICIAIS, chaveDoProduto } from "@/lib/formatters/score";
 
@@ -47,7 +48,7 @@ const CHAVES_OFICIAIS = new Set<string>(PRODUTOS_OFICIAIS.map((p) => p.chave));
 
 // Nome do SDR: nome legível → id (fallback) → "Sem SDR". (Hana já vem "Hana".)
 export function nomeSdr(a: Agendamento): string {
-  return a.sdr_nome?.trim() || a.sdr_id?.trim() || SEM_SDR;
+  return nomeDoOperador(a.sdr_nome?.trim() || null) || a.sdr_id?.trim() || SEM_SDR;
 }
 
 // Nome do closer: nome legível → id (fallback) → "Sem closer".

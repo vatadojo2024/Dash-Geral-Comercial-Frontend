@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeDoOperador } from "@/lib/data/sdrDashboard";
 import { ArrowRight, Flame, Landmark, Package, Wallet } from "lucide-react";
 import {
   diaDaSemanaCurto,
@@ -71,7 +72,7 @@ export function AgendamentoCard({
               <p className="truncate text-sm font-semibold text-texto">{nome}</p>
               <p className="text-xs text-texto-sec/80">
                 closer {ag.closer_nome ?? "não identificado"}
-                {ag.sdr_nome && <> · SDR {ag.sdr_nome}</>}
+                {ag.sdr_nome && <> · SDR {nomeDoOperador(ag.sdr_nome)}</>}
               </p>
             </div>
             <StatusCallBadge ag={ag} agora={agora} />

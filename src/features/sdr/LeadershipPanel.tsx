@@ -14,6 +14,7 @@ import {
 import {
   mesesDisponiveis,
   mesPadrao,
+  nomeDoSdr,
   rotuloMes,
   type SdrDashboardPayload,
 } from "@/lib/data/sdrDashboard";
@@ -21,6 +22,7 @@ import { agregarLideranca, semanasDoMes, SEM_CLOSER } from "@/lib/sdr/lideranca"
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
+import { AvisoSdrNaoIdentificado } from "./AvisoSdrNaoIdentificado";
 
 // 6.5 — aba "Liderança Pré-venda" (visível só para admin). Filtros próprios
 // de mês e semana; tudo respeita o recorte, EXCETO as métricas da equipe
@@ -133,6 +135,7 @@ export function LeadershipPanel({ payload }: { payload: SdrDashboardPayload }) {
           da equipe sempre do mês inteiro
         </p>
       </div>
+      <AvisoSdrNaoIdentificado quantidade={lideranca.naoIdentificadas} />
 
       {/* b) 6 KPIs da liderança */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -175,7 +178,7 @@ export function LeadershipPanel({ payload }: { payload: SdrDashboardPayload }) {
                 <tbody>
                   {lideranca.comparecimentoPorSdr.map((c) => (
                     <tr key={c.sdr} className="border-b border-borda/30 last:border-0">
-                      <td className="px-3 py-2 font-medium text-texto">{c.sdr}</td>
+                      <td className="px-3 py-2 font-medium text-texto">{nomeDoSdr(c.sdr)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-texto">{c.agendadasAteHoje}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-texto">{c.ocorridas}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-rosa">{c.noShow}</td>
@@ -259,7 +262,7 @@ export function LeadershipPanel({ payload }: { payload: SdrDashboardPayload }) {
               <tbody>
                 {lideranca.matriz.linhas.map((linha) => (
                   <tr key={linha.sdr} className="border-b border-borda/30 last:border-0">
-                    <td className="px-3 py-2 font-medium text-texto">{linha.sdr}</td>
+                    <td className="px-3 py-2 font-medium text-texto">{nomeDoSdr(linha.sdr)}</td>
                     {lideranca.matriz.closers.map((c) => (
                       <td key={c} className="px-3 py-2 text-right tabular-nums text-texto-sec">
                         {linha.valores[c] ?? 0}

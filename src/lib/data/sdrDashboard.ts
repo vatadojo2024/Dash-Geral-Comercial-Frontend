@@ -85,21 +85,60 @@ export const SdrDashboardPayloadSchema = z.object({
 });
 export type SdrDashboardPayload = z.infer<typeof SdrDashboardPayloadSchema>;
 
-// 5.1 — aliases canônicos; nomes que não casam são descartados.
+// 5.1 — SDRs do dashboard. TEMPORÁRIO (18/11/2026): a lista, as metas e as SDRs
+// novas vão passar a vir de uma rota do backend; até lá, esta tabela.
 export const SDRS_DASHBOARD = ["Glaucio", "Delrue", "Benhur", "Arthur", "Hana"] as const;
 export type SdrCanonico = (typeof SDRS_DASHBOARD)[number];
 
-export function normalizarSdr(nome: string): SdrCanonico | null {
-  const n = nome
-    .toLowerCase()
+// Nomes ACEITOS de cada SDR, comparados INTEIROS, sem acento e sem maiúsculas:
+// o nome curto de hoje, o nome do cadastro (que o backend passa a mandar) e o
+// nome antigo da Clint. Nada de pedaço curto ("ben" casava com outros nomes).
+// `exibir` é o nome verdadeiro, o único que aparece na tela: o nome da Clint
+// ("Lúcio Borges", "João Filipe") nunca aparece. `nomeCru`: nas telas que mostram
+// o nome como a API manda, o de quem mudou de nome na Clint vira o verdadeiro.
+// Arthur e Hana seguem aceitos como antes (o primeiro nome basta: "Artur Souza").
+const SDRS_ACEITOS: Record<SdrCanonico, { exibir: string; nomes: string[]; primeiroNome?: string[]; nomeCru?: true }> = {
+  Glaucio: { exibir: "Glaucio Portela", nomes: ["Glaucio", "Glaucio Portela", "Lúcio Borges"], nomeCru: true },
+  Benhur: { exibir: "Benhur Ramos", nomes: ["Benhur", "Benhur Ramos", "João Filipe"], nomeCru: true },
+  Delrue: { exibir: "Delrue", nomes: ["Delrue", "Guilherme Delrue", "Guilherme Alves"] },
+  Arthur: { exibir: "Arthur", nomes: ["Arthur", "Artur"], primeiroNome: ["arthur", "artur"] },
+  Hana: { exibir: "Hana", nomes: ["Hana"], primeiroNome: ["hana"] },
+};
+
+const comparavel = (nome: string) =>
+  nome
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
-  if (n.includes("glaucio")) return "Glaucio";
-  if (n.includes("delrue")) return "Delrue";
-  if (n.includes("arthur") || n.includes("artur")) return "Arthur";
-  if (n.includes("ben")) return "Benhur";
-  if (n.includes("hana")) return "Hana";
-  return null;
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const ACEITOS = new Map<string, SdrCanonico>(
+  SDRS_DASHBOARD.flatMap((k) => SDRS_ACEITOS[k].nomes.map((n) => [comparavel(n), k] as [string, SdrCanonico])),
+);
+
+// Nome que chega da API → SDR do dashboard; não reconhecido → null (quem chama
+// conta e AVISA, não descarta calado).
+export function normalizarSdr(nome: string | null | undefined): SdrCanonico | null {
+  if (!nome) return null;
+  const n = comparavel(nome);
+  const exato = ACEITOS.get(n);
+  if (exato) return exato;
+  const primeiro = n.split(" ")[0];
+  return SDRS_DASHBOARD.find((k) => SDRS_ACEITOS[k].primeiroNome?.includes(primeiro)) ?? null;
+}
+
+// O nome que a tela mostra para um SDR do dashboard.
+export const nomeDoSdr = (sdr: SdrCanonico) => SDRS_ACEITOS[sdr].exibir;
+
+// Nome de operador vindo cru da API (agendamentos, eventos, descartes): o de
+// quem mudou de nome na Clint vira o verdadeiro; o resto, como veio.
+export function nomeDoOperador(nome: string): string;
+export function nomeDoOperador(nome: string | null | undefined): string | null;
+export function nomeDoOperador(nome: string | null | undefined): string | null {
+  if (!nome?.trim()) return nome ?? null;
+  const sdr = normalizarSdr(nome);
+  return sdr && SDRS_ACEITOS[sdr].nomeCru ? nomeDoSdr(sdr) : nome;
 }
 
 // 5.2 — produtos canônicos por substring (sem acento, case-insensitive)
@@ -181,6 +220,8 @@ export type SdrDashboard = {
   mes: string;
   periodoLabel: string;
   sdrs: SdrMetrics[];
+  /** Linhas do mês com um SDR que a dash não reconhece: ficam fora, e a tela avisa. */
+  naoIdentificadas: number;
 };
 
 // --- Meses disponíveis (derivados das datas do payload) ---------------------
@@ -218,6 +259,13 @@ export function periodoDoMes(mes: string): string {
 }
 
 // --- Agregação da aba "Dashboard SDR" ---------------------------------------
+
+// Quantas linhas vieram com um nome de SDR que a tabela não reconhece. Elas não
+// entram nos números, mas não somem caladas: a tela mostra a quantidade (nunca
+// o nome, que pode ser o da Clint).
+export function contarNaoIdentificadas<T extends { sdr: string }>(linhas: readonly T[], dentro: (l: T) => boolean = () => true): number {
+  return linhas.filter((l) => dentro(l) && !normalizarSdr(l.sdr)).length;
+}
 
 function somaPorSdr(
   linhas: { sdr: string; data_referencia: string; total: number }[],
@@ -337,8 +385,17 @@ export function agregarDashboard(
     };
   });
 
-  return { mes, periodoLabel: periodoDoMes(mes), sdrs };
+  const doMes = (l: { data_referencia: string }) => l.data_referencia.startsWith(mes);
+  const naoIdentificadas = [payload.agendadas, payload.realizadas, payload.no_show, payload.remarcadas, payload.por_produto].reduce(
+    (a, linhas) => a + contarNaoIdentificadas(linhas, doMes),
+    0,
+  );
+  return { mes, periodoLabel: periodoDoMes(mes), sdrs, naoIdentificadas };
 }
+
+// Vendas do mês com SDR não reconhecido (aba Comissões avisa).
+export const vendasNaoIdentificadas = (payload: SdrDashboardPayload, mes: string) =>
+  contarNaoIdentificadas(payload.vendas_por_sdr ?? [], (v) => v.data_referencia.startsWith(mes));
 
 // 7.1.4 — vendas do mês agrupadas por SDR canônico (aba Comissões)
 export function vendasDoMesPorSdr(

@@ -1,3 +1,4 @@
+import { nomeDoOperador } from "@/lib/data/sdrDashboard";
 import type { LeadListItem } from "@/lib/api/contracts";
 import { nomeDoUsuario } from "@/lib/mock/users";
 
@@ -55,7 +56,7 @@ export function opcoesDeDono(
   closers: OpcaoDono[];
   sdrs: OpcaoDono[];
 } {
-  const sdrs = opcoesDe(leads, (l) => l.sdr_id, (l) => l.sdr_nome, mapa);
+  const sdrs = opcoesDe(leads, (l) => l.sdr_id, (l) => nomeDoOperador(l.sdr_nome), mapa);
   const sem = opcaoSemSdr(leads);
   return {
     closers: opcoesDe(leads, (l) => l.closer_id, (l) => l.closer_nome, mapa),
@@ -85,5 +86,5 @@ export function nomeDoSdr(
   lead: LeadListItem,
   mapa?: ReadonlyMap<string, string> | null,
 ): string {
-  return lead.sdr_nome?.trim() || nomeDoUsuario(lead.sdr_id, mapa);
+  return nomeDoOperador(lead.sdr_nome?.trim() || null) || nomeDoUsuario(lead.sdr_id, mapa);
 }

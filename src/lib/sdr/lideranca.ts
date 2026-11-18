@@ -1,5 +1,6 @@
 import {
   agregarDashboard,
+  contarNaoIdentificadas,
   normalizarSdr,
   SDRS_DASHBOARD,
   type SdrCanonico,
@@ -118,6 +119,8 @@ export type Lideranca = {
     metasBatidas: number;
     progresso: { meta: number; pct: number; batida: boolean; faltam: number }[];
   };
+  /** Linhas do recorte (agendadas, realizadas, no-show) com SDR que a dash não reconhece. */
+  naoIdentificadas: number;
 };
 
 type Recorte = { mes: string; semana: number | null };
@@ -285,6 +288,10 @@ export function agregarLideranca(
     comparecimentoPorSdr,
     produtosNoRecorte,
     matriz: { closers: colunas, linhas: linhasMatriz },
+    naoIdentificadas: [payload.agendadas, payload.realizadas, payload.no_show].reduce(
+      (a, linhas) => a + contarNaoIdentificadas(linhas, (l) => noRecorte(l.data_referencia, r)),
+      0,
+    ),
     equipe: {
       qualificadosMes,
       metas: METAS_EQUIPE,

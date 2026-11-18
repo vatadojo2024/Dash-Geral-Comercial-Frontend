@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeDoOperador } from "@/lib/data/sdrDashboard";
 import { VALIDADE } from "@/lib/data/validade";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -4622,7 +4623,7 @@ function DetalhePendente({
                 <LinkClint url={lead.url_clint} destaque />
                 <span className="text-texto-sec">
                   {lead.etapa ? `Etapa: ${lead.etapa}` : "Etapa não informada"}
-                  {lead.dono ? ` · Dono: ${lead.dono.nome}` : " · Sem dono"}
+                  {lead.dono ? ` · Dono: ${nomeDoOperador(lead.dono.nome)}` : " · Sem dono"}
                 </span>
               </span>
             ) : (

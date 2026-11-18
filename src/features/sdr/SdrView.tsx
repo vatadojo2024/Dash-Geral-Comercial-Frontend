@@ -23,6 +23,7 @@ import {
   fetchSdrPayload,
   mesesDisponiveis,
   mesPadrao,
+  nomeDoSdr,
   normalizarSdr,
   periodoDoMes,
   PRODUTO_ROTULO,
@@ -42,6 +43,7 @@ import { ABAS_SDR, hrefDaAba, type AbaSdr } from "./abas";
 import type { RecorteLevantou } from "@/lib/sdr/oportunidades";
 import { AgendamentosPanel } from "./AgendamentosPanel";
 import { ChartsPanel } from "./ChartsPanel";
+import { AvisoSdrNaoIdentificado } from "./AvisoSdrNaoIdentificado";
 import { ComissoesPanel } from "./ComissoesPanel";
 import { InsightsPanel } from "./InsightsPanel";
 import { KpiChip } from "./KpiChip";
@@ -90,7 +92,7 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-base font-semibold text-texto">
-              {m.sdr}
+              {nomeDoSdr(m.sdr)}
               {destaque && (
                 <span className="rounded-full border border-azul/30 bg-azul/15 px-2 py-px text-[10px] font-medium text-azul-claro">
                   você
@@ -326,6 +328,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
             desde out/2026, Ninja e QC contam 1 cada só para o Arthur; para os demais, Ninja
             não conta e cada 3 QC valem +1
           </p>
+          <AvisoSdrNaoIdentificado quantidade={dashboard.naoIdentificadas} />
 
           {/* 6.3 — os 9 KPIs agregados do original */}
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9">

@@ -1,4 +1,4 @@
-import { corDoGap, corDoNoShow, type SdrMetrics } from "@/lib/data/sdrDashboard";
+import { corDoGap, corDoNoShow, nomeDoSdr, type SdrMetrics } from "@/lib/data/sdrDashboard";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { cn } from "@/lib/utils/cn";
 
@@ -64,7 +64,7 @@ export function PerformanceTable({
                 )}
               >
                 <td className="whitespace-nowrap px-3 py-2 font-medium text-texto">
-                  {m.sdr}
+                  {nomeDoSdr(m.sdr)}
                   {destaqueSdr === m.sdr && (
                     <span className="ml-2 rounded-full border border-azul/30 bg-azul/15 px-1.5 py-px text-[10px] text-azul-claro">
                       você

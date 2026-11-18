@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeDoOperador } from "@/lib/data/sdrDashboard";
 import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { CalendarClock, ExternalLink, FileText, MessageCircle, X } from "lucide-react";
@@ -90,7 +91,7 @@ export function DetalheAgendamento({
           </Linha>
 
           <Linha rotulo="Closer">{ag.closer_nome ?? vazio}</Linha>
-          <Linha rotulo="SDR">{ag.sdr_nome ?? vazio}</Linha>
+          <Linha rotulo="SDR">{nomeDoOperador(ag.sdr_nome) ?? vazio}</Linha>
           <Linha rotulo="Produto indicado">{produto ?? vazio}</Linha>
           <Linha rotulo="Patrimônio (faixa)">{ag.patrimonio ?? vazio}</Linha>
           <Linha rotulo="Renda (faixa)">{ag.renda ?? vazio}</Linha>

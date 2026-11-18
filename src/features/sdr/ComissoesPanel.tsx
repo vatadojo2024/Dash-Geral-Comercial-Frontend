@@ -5,7 +5,9 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bot, Banknote, Info, TrendingUp, Wallet } from "lucide-react";
 import {
+  nomeDoSdr,
   vendasDoMesPorSdr,
+  vendasNaoIdentificadas,
   type SdrDashboardPayload,
   type SdrMetrics,
   type SdrCanonico,
@@ -16,6 +18,7 @@ import {
 } from "@/lib/salesops/comissaoSdr";
 import { fetchComissoesSdr } from "@/lib/data/dataClient";
 import {
+  comissoesNaoIdentificadas,
   comissoesPorSdr,
   numerosDoCard,
   totalDoTime,
@@ -28,6 +31,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
+import { AvisoSdrNaoIdentificado } from "./AvisoSdrNaoIdentificado";
 
 const ROTULO_PATAMAR = ["Abaixo da M1", "M1 batida", "M2 batida", "M3 batida"] as const;
 
@@ -72,7 +76,7 @@ function CardComissaoSdr({
         <CardContent>
           <p className="flex items-center gap-2 text-base font-semibold text-texto">
             <Bot className="h-4 w-4 text-violeta" aria-hidden />
-            {m.sdr}
+            {nomeDoSdr(m.sdr)}
           </p>
           <p className="mt-2 flex items-start gap-2 text-sm text-texto-sec">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -95,7 +99,7 @@ function CardComissaoSdr({
       <CardContent>
         <div className="flex items-start justify-between gap-3">
           <p className="flex items-center gap-2 text-base font-semibold text-texto">
-            {m.sdr}
+            {nomeDoSdr(m.sdr)}
             {destaque && (
               <span className="rounded-full border border-azul/30 bg-azul/15 px-2 py-px text-[10px] font-medium text-azul-claro">
                 você
@@ -202,6 +206,8 @@ export function ComissoesPanel({
     () => (financeiro.data ? comissoesPorSdr(financeiro.data) : null),
     [financeiro.data],
   );
+  // Linhas de vendas e do Financeiro com SDR não reconhecido: a aba avisa.
+  const naoIdentificadas = vendasNaoIdentificadas(payload, mes) + (financeiro.data ? comissoesNaoIdentificadas(financeiro.data) : 0);
 
   const calculados = sdrs.map((m) => {
     const vendas = vendasPorSdr.get(m.sdr) ?? [];
@@ -243,6 +249,7 @@ export function ComissoesPanel({
           </span>
         )}
       </p>
+      <AvisoSdrNaoIdentificado quantidade={naoIdentificadas} />
 
       {financeiro.isLoading ? (
         <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4" aria-label="Carregando comissões" aria-busy>
@@ -304,7 +311,7 @@ export function ComissoesPanel({
                       key={`${m.sdr}-${v.data_referencia}-${i}`}
                       className="border-b border-borda/40 last:border-0"
                     >
-                      <td className="py-2 pr-3 text-texto">{m.sdr}</td>
+                      <td className="py-2 pr-3 text-texto">{nomeDoSdr(m.sdr)}</td>
                       <td className="py-2 pr-3 text-texto">{rotuloProduto(v.produto)}</td>
                       <td className="py-2 pr-3 text-texto-sec">
                         {new Date(`${v.data_referencia}T12:00:00`).toLocaleDateString("pt-BR")}

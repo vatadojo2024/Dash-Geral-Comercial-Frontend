@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { SdrMetrics } from "@/lib/data/sdrDashboard";
+import { nomeDoSdr, type SdrMetrics } from "@/lib/data/sdrDashboard";
 import { rgb, useThemeColors } from "@/features/theme/useThemeColors";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 
@@ -71,14 +71,14 @@ export function ChartsPanel({ sdrs }: { sdrs: SdrMetrics[] }) {
   const corBorda = rgb(cores.borda);
   const cursorGrid = { fill: rgb(cores.borda, 0.2) };
   const funil = sdrs.map((s) => ({
-    sdr: s.sdr,
+    sdr: nomeDoSdr(s.sdr),
     Agendadas: s.callsAgendadas,
     Realizadas: s.callsRealizadas,
     Qualificadas: s.qualificados,
   }));
 
   const noShow: LinhaNoShow[] = sdrs.map((s) => ({
-    sdr: s.sdr,
+    sdr: nomeDoSdr(s.sdr),
     pct: s.noShowPct,
     count: s.noShowCount,
   }));
@@ -87,7 +87,7 @@ export function ChartsPanel({ sdrs }: { sdrs: SdrMetrics[] }) {
   const metaGap = sdrs
     .filter((s) => s.metas !== null)
     .map((s) => ({
-      sdr: s.sdr,
+      sdr: nomeDoSdr(s.sdr),
       Meta: s.metaAtual ?? 0,
       // A barra compara com a meta: usa o número que conta para ela.
       Qualificadas: s.qualificadosMeta,
