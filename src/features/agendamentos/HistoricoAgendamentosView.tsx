@@ -1,6 +1,5 @@
 "use client";
 
-import { nomeDoOperador } from "@/lib/data/sdrDashboard";
 import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
 import { VALIDADE } from "@/lib/data/validade";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -337,7 +336,7 @@ function LinhaHistorico({
           </span>
           <span className="block text-xs text-texto-sec/80 sm:truncate">
             closer {item.closer_nome ?? "não identificado"}
-            {item.sdr_nome && <> · SDR {nomeDoOperador(item.sdr_nome)}</>}
+            {item.sdr_nome && <> · SDR {item.sdr_nome}</>}
           </span>
           <span className="mt-1 block sm:hidden">
             <CallDaLinha item={item} hoje={hoje} compacta />

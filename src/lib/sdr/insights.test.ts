@@ -6,6 +6,8 @@ function sdr(parcial: Partial<SdrMetrics> & { sdr: SdrMetrics["sdr"] }): SdrMetr
   const produtos = { qc: 0, ninja: 0, black: 0, prime: 0, private: 0, ...parcial.produtos };
   const base: SdrMetrics = {
     sdr: parcial.sdr,
+    nome: parcial.sdr,
+    pool: false,
     callsAgendadas: 40,
     callsRealizadas: 32,
     callsRemarcadas: 0,

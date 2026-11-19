@@ -1,3 +1,5 @@
+import { operadoresDoMes } from "@/lib/mock/operadores_sdr";
+import { montarTime } from "@/lib/data/sdrDashboard";
 import { describe, expect, it } from "vitest";
 import type { SdrDashboardPayload } from "@/lib/data/sdrDashboard";
 import {
@@ -9,6 +11,9 @@ import {
   traduzirQualificacao,
   weekOfMonth,
 } from "./lideranca";
+
+// O time do mês como a rota de operadores manda (no modo demonstração).
+const timeDe = (mes: string) => montarTime(operadoresDoMes(mes));
 
 describe("weekOfMonth (5.11)", () => {
   // Junho/2026 começa numa segunda (dow=1)
@@ -98,8 +103,8 @@ describe("agregarLideranca", () => {
   const HOJE = "2026-06-11";
 
   it("comparecimento só conta calls até hoje (5.8)", () => {
-    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE);
-    const glaucio = l.comparecimentoPorSdr.find((c) => c.sdr === "Glaucio")!;
+    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE, timeDe("2026-06"));
+    const glaucio = l.comparecimentoPorSdr.find((c) => c.sdr === "glaucio")!;
     expect(glaucio.agendadasAteHoje).toBe(7); // a futura (dia 20) fica fora
     expect(glaucio.ocorridas).toBe(5);
     expect(glaucio.noShow).toBe(1);
@@ -107,33 +112,33 @@ describe("agregarLideranca", () => {
   });
 
   it("funil de marketing: entraram, qualificados e desqualificados (5.9)", () => {
-    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE);
+    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE, timeDe("2026-06"));
     expect(l.kpis.leadsEntraram).toBe(18);
     expect(l.kpis.leadsQualificados).toBe(6);
     expect(l.kpis.leadsDesqualificados).toBe(12);
   });
 
   it("produtos no recorte traduzidos e em ordem decrescente", () => {
-    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE);
+    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE, timeDe("2026-06"));
     expect(l.produtosNoRecorte[0]).toEqual({ produto: "Ninja", total: 3 });
     expect(l.produtosNoRecorte).toContainEqual({ produto: "Masterclass", total: 2 });
     expect(l.produtosNoRecorte).toContainEqual({ produto: "Private", total: 1 });
   });
 
   it("filtro de semana restringe o recorte (5.11), menos as métricas da equipe", () => {
-    const semana2 = agregarLideranca(payloadBase(), "2026-06", 2, HOJE);
+    const semana2 = agregarLideranca(payloadBase(), "2026-06", 2, HOJE, timeDe("2026-06"));
     expect(semana2.kpis.leadsEntraram).toBe(8); // só o dia 09
-    const glaucio = semana2.comparecimentoPorSdr.find((c) => c.sdr === "Glaucio")!;
+    const glaucio = semana2.comparecimentoPorSdr.find((c) => c.sdr === "glaucio")!;
     expect(glaucio.agendadasAteHoje).toBe(3);
     // Equipe ignora a semana: qualificados do mês inteiro (Ninja 2 + ⌊3 QC/3⌋ + Benhur 0)
     expect(semana2.equipe.qualificadosMes).toBe(3);
   });
 
   it("matriz SDR×Closer: proporcional por dia, com Sem Closer e soma exata (5.10)", () => {
-    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE);
+    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE, timeDe("2026-06"));
     expect(l.matriz.closers).toContain("Giba"); // Gilberto normalizado
     expect(l.matriz.closers).toContain(SEM_CLOSER);
-    const glaucio = l.matriz.linhas.find((li) => li.sdr === "Glaucio")!;
+    const glaucio = l.matriz.linhas.find((li) => li.sdr === "glaucio")!;
     // dia 02: 4 calls → Marcio 3, Giba 1 (proporção 3:1); dia 09 e 20 sem closer
     expect(glaucio.valores["Marcio"]).toBe(3);
     expect(glaucio.valores["Giba"]).toBe(1);
@@ -144,7 +149,7 @@ describe("agregarLideranca", () => {
   });
 
   it("métricas da equipe: meta atual 150 e progresso com faltam X (5.5)", () => {
-    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE);
+    const l = agregarLideranca(payloadBase(), "2026-06", null, HOJE, timeDe("2026-06"));
     expect(l.equipe.metas).toEqual([150, 188, 225]);
     expect(l.equipe.metaAtual).toBe(150);
     expect(l.equipe.metasBatidas).toBe(0);

@@ -5,12 +5,11 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bot, Banknote, Info, TrendingUp, Wallet } from "lucide-react";
 import {
-  nomeDoSdr,
   vendasDoMesPorSdr,
   vendasNaoIdentificadas,
   type SdrDashboardPayload,
   type SdrMetrics,
-  type SdrCanonico,
+  type TimeSdr,
 } from "@/lib/data/sdrDashboard";
 import {
   calcularComissaoSdr,
@@ -76,11 +75,13 @@ function CardComissaoSdr({
         <CardContent>
           <p className="flex items-center gap-2 text-base font-semibold text-texto">
             <Bot className="h-4 w-4 text-violeta" aria-hidden />
-            {nomeDoSdr(m.sdr)}
+            {m.nome}
           </p>
           <p className="mt-2 flex items-start gap-2 text-sm text-texto-sec">
             <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            Sem comissão — linha informativa, fora dos totais do time.
+            {m.pool
+              ? "Sem comissão — linha informativa, fora dos totais do time."
+              : "Sem meta definida neste mês — o patamar da comissão depende da meta."}
           </p>
           <div className="mt-3">
             <Linha rotulo="Reuniões qualificadas" valor={String(m.qualificadosBase)} />
@@ -99,7 +100,7 @@ function CardComissaoSdr({
       <CardContent>
         <div className="flex items-start justify-between gap-3">
           <p className="flex items-center gap-2 text-base font-semibold text-texto">
-            {nomeDoSdr(m.sdr)}
+            {m.nome}
             {destaque && (
               <span className="rounded-full border border-azul/30 bg-azul/15 px-2 py-px text-[10px] font-medium text-azul-claro">
                 você
@@ -187,13 +188,15 @@ export function ComissoesPanel({
   sdrs,
   mes,
   destaqueSdr,
+  time,
 }: {
   payload: SdrDashboardPayload;
   sdrs: SdrMetrics[];
   mes: string;
-  destaqueSdr: SdrCanonico | null;
+  destaqueSdr: string | null;
+  time: TimeSdr;
 }) {
-  const vendasPorSdr = useMemo(() => vendasDoMesPorSdr(payload, mes), [payload, mes]);
+  const vendasPorSdr = useMemo(() => vendasDoMesPorSdr(payload, mes, time.reconhecer), [payload, mes]);
 
   // Total oficial do Financeiro. Em erro NÃO há fallback para o cálculo local
   // (seria um número errado com cara de certo): a aba mostra o aviso.
@@ -203,11 +206,11 @@ export function ComissoesPanel({
     staleTime: VALIDADE.vendas,
   });
   const totaisFinanceiro = useMemo(
-    () => (financeiro.data ? comissoesPorSdr(financeiro.data) : null),
+    () => (financeiro.data ? comissoesPorSdr(financeiro.data, time.reconhecer) : null),
     [financeiro.data],
   );
   // Linhas de vendas e do Financeiro com SDR não reconhecido: a aba avisa.
-  const naoIdentificadas = vendasNaoIdentificadas(payload, mes) + (financeiro.data ? comissoesNaoIdentificadas(financeiro.data) : 0);
+  const naoIdentificadas = vendasNaoIdentificadas(payload, mes, time.reconhecer) + (financeiro.data ? comissoesNaoIdentificadas(financeiro.data, time.reconhecer) : 0);
 
   const calculados = sdrs.map((m) => {
     const vendas = vendasPorSdr.get(m.sdr) ?? [];
@@ -311,7 +314,7 @@ export function ComissoesPanel({
                       key={`${m.sdr}-${v.data_referencia}-${i}`}
                       className="border-b border-borda/40 last:border-0"
                     >
-                      <td className="py-2 pr-3 text-texto">{nomeDoSdr(m.sdr)}</td>
+                      <td className="py-2 pr-3 text-texto">{m.nome}</td>
                       <td className="py-2 pr-3 text-texto">{rotuloProduto(v.produto)}</td>
                       <td className="py-2 pr-3 text-texto-sec">
                         {new Date(`${v.data_referencia}T12:00:00`).toLocaleDateString("pt-BR")}

@@ -23,8 +23,8 @@ import {
   fetchSdrPayload,
   mesesDisponiveis,
   mesPadrao,
-  nomeDoSdr,
-  normalizarSdr,
+  POOL,
+  textoDasMetas,
   periodoDoMes,
   PRODUTO_ROTULO,
   qualificadosDoCard,
@@ -44,6 +44,7 @@ import type { RecorteLevantou } from "@/lib/sdr/oportunidades";
 import { AgendamentosPanel } from "./AgendamentosPanel";
 import { ChartsPanel } from "./ChartsPanel";
 import { AvisoSdrNaoIdentificado } from "./AvisoSdrNaoIdentificado";
+import { TimeIndisponivel, useTimeSdr } from "./useTimeSdr";
 import { ComissoesPanel } from "./ComissoesPanel";
 import { InsightsPanel } from "./InsightsPanel";
 import { KpiChip } from "./KpiChip";
@@ -67,7 +68,7 @@ const COR_STATUS = {
 } as const;
 
 function notaDeMetas(m: SdrMetrics): string {
-  if (!m.metas) return "Linha informativa — sem meta";
+  if (!m.metas) return "Sem meta definida neste mês";
   if (m.metasBatidas === 0) return "Nenhuma meta batida ainda";
   return `${["M1", "M1/M2", "M1/M2/M3"][m.metasBatidas - 1]} ${m.metasBatidas === 1 ? "batida" : "batidas"}`;
 }
@@ -92,7 +93,7 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="flex items-center gap-2 text-base font-semibold text-texto">
-              {nomeDoSdr(m.sdr)}
+              {m.nome}
               {destaque && (
                 <span className="rounded-full border border-azul/30 bg-azul/15 px-2 py-px text-[10px] font-medium text-azul-claro">
                   você
@@ -109,7 +110,7 @@ function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
                 : "border-borda bg-painel-claro text-texto-sec",
             )}
           >
-            {m.metas ? `Meta ${m.nivelAtual?.slice(1)}: ${m.metaAtual}` : "Sem meta"}
+            {m.metas ? `Meta ${m.nivelAtual?.slice(1)}: ${m.metaAtual}` : "Sem meta definida"}
           </span>
         </div>
 
@@ -165,19 +166,26 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
   const meses = useMemo(() => (payload ? mesesDisponiveis(payload) : []), [payload]);
   const mes = mesSelecionado ?? (payload ? mesPadrao(payload, hojeISO) : null);
 
+  // O time e as metas DO MÊS mostrado (rota de operadores). A Liderança busca o
+  // dela, porque tem o próprio filtro de mês.
+  const usaTime = aba === "dashboard" || aba === "comissoes";
+  const timeSdr = useTimeSdr(usaTime ? mes : null);
+  const time = timeSdr.time;
+
   const dashboard = useMemo(
-    () => (payload && mes ? agregarDashboard(payload, mes) : null),
-    [payload, mes],
+    () => (payload && mes && time ? agregarDashboard(payload, mes, time) : null),
+    [payload, mes, time],
   );
 
   const insights = useMemo(
-    () => (dashboard ? getInsights(dashboard.sdrs.filter((s) => s.sdr !== "Hana")) : []),
+    () => (dashboard ? getInsights(dashboard.sdrs.filter((s) => !s.pool)) : []),
     [dashboard],
   );
 
   // O SDR logado vê o time inteiro (a tela é comparativa, como no original);
-  // o card/linha dele ganha destaque visual.
-  const meuSdr = user.role === "sdr" ? normalizarSdr(user.nome) : null;
+  // o card/linha dele ganha destaque visual. Casa pelo id; sem ele, pelo nome.
+  const meuId = user.role === "sdr" && time ? (time.operadores.some((o) => o.id === user.id) ? user.id : time.reconhecer(user.nome)) : null;
+  const meuSdr = meuId === POOL ? null : meuId;
 
   // Barra de abas — SEMPRE disponível, para o usuário navegar mesmo que o payload
   // do Dashboard SDR (/api/sdr-dashboard) esteja carregando ou tenha falhado. O
@@ -240,7 +248,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
     );
   }
 
-  if (isLoading) {
+  if (isLoading || (usaTime && timeSdr.isLoading)) {
     return (
       <div className="space-y-4" aria-label="Carregando produtividade SDR">
         {barraAbas}
@@ -258,7 +266,16 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
     );
   }
 
-  if (isError || !payload || !mes || !dashboard) {
+  if (usaTime && timeSdr.isError) {
+    return (
+      <div className="space-y-4">
+        {barraAbas}
+        <TimeIndisponivel erro={timeSdr.error} onRetry={() => void timeSdr.refetch()} />
+      </div>
+    );
+  }
+
+  if (isError || !payload || !mes || (usaTime && !dashboard)) {
     return (
       <div className="space-y-4">
         {barraAbas}
@@ -289,8 +306,8 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
     );
   }
 
-  // A Hana (IA) não é exibida: cards, KPIs, gráficos, tabela e comissões só com o time.
-  const sdrs = dashboard.sdrs.filter((s) => s.sdr !== "Hana");
+  // O pool (Hana, IA) não é exibido: cards, KPIs, gráficos, tabela e comissões só com o time.
+  const sdrs = dashboard?.sdrs.filter((s) => !s.pool) ?? [];
   const comMeta = sdrs.filter((s) => s.metas !== null);
   const totalAgendadas = sdrs.reduce((a, s) => a + s.callsAgendadas, 0);
   const totalRealizadas = sdrs.reduce((a, s) => a + s.callsRealizadas, 0);
@@ -319,16 +336,15 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
           sdrs={sdrs}
           mes={mes}
           destaqueSdr={meuSdr}
+          time={time!}
         />
       ) : (
         <>
           <p className="text-xs text-texto-sec" role="status">
             {periodoDoMes(mes)} · contabilização pelo mês da data da call, não pela data
-            de agendamento · meta escalonada individual 40/50/60 (Arthur 30/40/50) ·
-            desde out/2026, Ninja e QC contam 1 cada só para o Arthur; para os demais, Ninja
-            não conta e cada 3 QC valem +1
+            de agendamento · {time ? textoDasMetas(time, mes) : ""}
           </p>
-          <AvisoSdrNaoIdentificado quantidade={dashboard.naoIdentificadas} />
+          <AvisoSdrNaoIdentificado quantidade={dashboard?.naoIdentificadas ?? 0} />
 
           {/* 6.3 — os 9 KPIs agregados do original */}
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5 2xl:grid-cols-9">

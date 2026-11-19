@@ -102,12 +102,16 @@ describe("situação na lista de aulas (backend f4154a5)", () => {
   it("toda aula da ficha traz a chave: o resumo da última análise ou null", async () => {
     const { aulaId, aluno } = await exemplo();
     expect(aluno.aulas.every((x) => "analise" in x)).toBe(true);
-    expect(aluno.aulas.find((x) => x.id === aulaId)?.analise).toEqual({ id: "ana-exemplo", status: "pronta", decidida: false, situacao: null });
+    expect(aluno.aulas.find((x) => x.id === aulaId)?.analise).toEqual({ id: "ana-exemplo", status: "pronta", decidida: false, situacao: "aguardando_decisao" });
     const outra = aluno.aulas.find((x) => x.id !== aulaId)!;
     expect(outra.analise).toBeNull();
     await criarAnaliseAula(outra.id, { transcricao: TEXTO });
     const depois = await buscarAluno(aluno.id);
-    expect(depois.aulas.find((x) => x.id === outra.id)?.analise).toMatchObject({ status: "processando", decidida: false });
+    expect(depois.aulas.find((x) => x.id === outra.id)?.analise).toMatchObject({ status: "processando", decidida: false, situacao: "analisando" });
+    // A análise travada (mais de 30 min processando) já vem "interrompida" no resumo da aula (backend 4197783).
+    const travada = carregarBanco(hojeBR()).analises_aula!.find((x) => x.id === "ana-interrompida")!;
+    const fichaTravada = await buscarAluno(travada.aluno_id);
+    expect(fichaTravada.aulas.find((x) => x.id === travada.aula_id)?.analise?.situacao).toBe("interrompida");
   });
 
   it("o contrato separa chave ausente (undefined) de null", () => {
@@ -208,7 +212,7 @@ describe("decidir", () => {
     expect(r.analise.decidida_em).toBeTruthy();
     expect([r.analise.decidida_por, r.analise.decidida_por_nome]).toEqual(["u-edu", "Equipe Teste"]);
     // A aula, na ficha relida, já diz que a análise foi decidida.
-    expect(r.aluno.aulas.find((x) => x.id === analise.aula_id)?.analise).toEqual({ id: analise.id, status: "pronta", decidida: true, situacao: null });
+    expect(r.aluno.aulas.find((x) => x.id === analise.aula_id)?.analise).toEqual({ id: analise.id, status: "pronta", decidida: true, situacao: "decidida" });
     // Validou (sem nota sugerida) não muda.
     expect(r.aluno.progresso.validou.valor).toBe(aluno.progresso.validou.valor);
     // Decidir de novo: 409 ja_decidida.

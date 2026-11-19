@@ -45,7 +45,7 @@ describe("opcoesDeDono", () => {
       { id: "c1", nome: "Marcio" },
     ]);
     expect(sdrs).toEqual([
-      { id: "s1", nome: "Benhur Ramos" },
+      { id: "s1", nome: "Benhur" },
       { id: "s2", nome: "Guilherme" },
     ]);
   });
@@ -53,7 +53,7 @@ describe("opcoesDeDono", () => {
   it("value = id REAL (UUID), rótulo = sdr_nome — não exibe UUID havendo nome", () => {
     const uuid = "11111111-1111-1111-1111-111111111111";
     const { sdrs } = opcoesDeDono([lead({ sdr_id: uuid, sdr_nome: "Benhur" })]);
-    expect(sdrs).toEqual([{ id: uuid, nome: "Benhur Ramos" }]);
+    expect(sdrs).toEqual([{ id: uuid, nome: "Benhur" }]);
   });
 
   it("sem nome no lead: cai no diretório (/api/usuarios) e, por fim, no id", () => {
@@ -76,7 +76,7 @@ describe("opcoesDeDono", () => {
       lead({ sdr_id: null, sdr_pool: true }), // Hana
     ]);
     expect(sdrs).toEqual([
-      { id: "s1", nome: "Benhur Ramos" },
+      { id: "s1", nome: "Benhur" },
       { id: SEM_SDR, nome: "Sem SDR" },
     ]);
   });
@@ -88,7 +88,7 @@ describe("opcoesDeDono", () => {
 
   it("todos com sdr_id preenchido → sem a opção 'sem SDR'", () => {
     const { sdrs } = opcoesDeDono([lead({ sdr_id: "s1", sdr_nome: "Benhur" })]);
-    expect(sdrs).toEqual([{ id: "s1", nome: "Benhur Ramos" }]);
+    expect(sdrs).toEqual([{ id: "s1", nome: "Benhur" }]);
   });
 });
 

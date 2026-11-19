@@ -1,4 +1,3 @@
-import { nomeDoOperador } from "@/lib/data/sdrDashboard";
 import { z } from "zod";
 import { diasEntre } from "./ciclo";
 
@@ -639,11 +638,11 @@ export const SEM_DONO_LABEL = "Sem dono";
 // sem dono, "sem".
 export function chaveDono(dono: LeadPendente["dono"]): string {
   if (!dono) return SEM_DONO_CHAVE;
-  return dono.id ?? `nome:${nomeDoOperador(dono.nome)}`;
+  return dono.id ?? `nome:${dono.nome}`;
 }
 
 export function nomeDono(dono: LeadPendente["dono"]): string {
-  return nomeDoOperador(dono?.nome?.trim() || null) || SEM_DONO_LABEL;
+  return dono?.nome?.trim() || SEM_DONO_LABEL;
 }
 
 export type OpcaoDono = { chave: string; nome: string; pendentes: number; altoValor: number };
@@ -663,18 +662,10 @@ export function opcoesDeDono(
       if (ehAltoValor(l)) altoPorDono.set(chaveDono(l.dono), (altoPorDono.get(chaveDono(l.dono)) ?? 0) + 1);
     }
     for (const d of porDono) {
-      const nome = nomeDoOperador(d.dono_nome);
-      const chave = d.dono_id ?? (d.dono_nome === SEM_DONO_LABEL ? SEM_DONO_CHAVE : `nome:${nome}`);
-      // Sem id, o nome antigo e o verdadeiro do mesmo SDR viram um chip só.
-      const mesma = opcoes.find((o) => o.chave === chave);
-      if (mesma) {
-        mesma.pendentes += d.pendentes;
-        if (leads.length === 0) mesma.altoValor += d.alto_valor;
-        continue;
-      }
+      const chave = d.dono_id ?? (d.dono_nome === SEM_DONO_LABEL ? SEM_DONO_CHAVE : `nome:${d.dono_nome}`);
       opcoes.push({
         chave,
-        nome: d.dono_id || d.dono_nome !== SEM_DONO_LABEL ? nome : SEM_DONO_LABEL,
+        nome: d.dono_id || d.dono_nome !== SEM_DONO_LABEL ? d.dono_nome : SEM_DONO_LABEL,
         pendentes: d.pendentes,
         altoValor: leads.length > 0 ? (altoPorDono.get(chave) ?? 0) : d.alto_valor,
       });

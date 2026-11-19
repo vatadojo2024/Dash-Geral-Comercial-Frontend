@@ -1,6 +1,9 @@
+import { operadoresDoMes } from "@/lib/mock/operadores_sdr";
+import { montarTime } from "@/lib/data/sdrDashboard";
 import { describe, expect, it } from "vitest";
 import { calcularComissaoSdr, type EntradaComissaoSdr } from "@/lib/salesops/comissaoSdr";
 import {
+  comissoesNaoIdentificadas,
   comissoesPorSdr,
   ComissoesResponseSchema,
   numerosDoCard,
@@ -54,28 +57,32 @@ describe("ComissoesResponseSchema — contrato de /api/sdr/comissoes", () => {
   });
 });
 
+const { reconhecer } = montarTime(operadoresDoMes("2026-10"));
+
 describe("comissoesPorSdr", () => {
-  it("casa o nome do Financeiro com o SDR do dashboard (normalizarSdr)", () => {
-    const mapa = comissoesPorSdr({
+  it("casa o nome do Financeiro com o operador do mês (nome do cadastro ou nomes externos)", () => {
+    const resposta = {
       ...RESPOSTA,
       comissoes: [
-        { sdr: "Guilherme Delrue", comissao: 100 },
+        { sdr: "Guilherme Alves", comissao: 100 },
         { sdr: "GLÁUCIO Portela", comissao: 200 },
         { sdr: "Fulano", comissao: 999 },
       ],
-    });
-    expect(mapa.get("Delrue")).toBe(100);
-    expect(mapa.get("Glaucio")).toBe(200);
+    };
+    const mapa = comissoesPorSdr(resposta, reconhecer);
+    expect(mapa.get("guilherme")).toBe(100);
+    expect(mapa.get("glaucio")).toBe(200);
     expect(mapa.size).toBe(2);
+    expect(comissoesNaoIdentificadas(resposta, reconhecer)).toBe(1);
   });
 
   it("SDR sem linha não entra no mapa (não vira zero)", () => {
-    const mapa = comissoesPorSdr(RESPOSTA);
-    expect(mapa.has("Arthur")).toBe(false);
+    const mapa = comissoesPorSdr(RESPOSTA, reconhecer);
+    expect(mapa.has("arthur")).toBe(false);
   });
 
   it("ignora linha de outro mês", () => {
-    const mapa = comissoesPorSdr({ ...RESPOSTA, comissoes: [{ mes: "2026-09", sdr: "Delrue", comissao: 1 }] });
+    const mapa = comissoesPorSdr({ ...RESPOSTA, comissoes: [{ mes: "2026-09", sdr: "Delrue", comissao: 1 }] }, reconhecer);
     expect(mapa.size).toBe(0);
   });
 });

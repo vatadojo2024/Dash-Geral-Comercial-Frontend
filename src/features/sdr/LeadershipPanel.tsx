@@ -14,7 +14,6 @@ import {
 import {
   mesesDisponiveis,
   mesPadrao,
-  nomeDoSdr,
   rotuloMes,
   type SdrDashboardPayload,
 } from "@/lib/data/sdrDashboard";
@@ -23,6 +22,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { EmptyState, ErrorState } from "@/components/ui/States";
 import { cn } from "@/lib/utils/cn";
 import { AvisoSdrNaoIdentificado } from "./AvisoSdrNaoIdentificado";
+import { TimeIndisponivel, useTimeSdr } from "./useTimeSdr";
 
 // 6.5 — aba "Liderança Pré-venda" (visível só para admin). Filtros próprios
 // de mês e semana; tudo respeita o recorte, EXCETO as métricas da equipe
@@ -73,10 +73,25 @@ export function LeadershipPanel({ payload }: { payload: SdrDashboardPayload }) {
     (payload.marketing_leads?.length ?? 0) > 0 ||
     (payload.closer_agendadas?.length ?? 0) > 0;
 
+  // O time e a meta da equipe DO MÊS escolhido aqui (rota de operadores).
+  const timeSdr = useTimeSdr(mes);
+  const time = timeSdr.time;
   const lideranca = useMemo(
-    () => (temDadosLideranca ? agregarLideranca(payload, mes, semana, hojeISO) : null),
-    [payload, mes, semana, hojeISO, temDadosLideranca],
+    () => (temDadosLideranca && time ? agregarLideranca(payload, mes, semana, hojeISO, time) : null),
+    [payload, mes, semana, hojeISO, temDadosLideranca, time],
   );
+
+  // Sem a lista de SDRs do mês não há números (503: aviso, não equipe vazia).
+  if (timeSdr.isError) return <TimeIndisponivel erro={timeSdr.error} onRetry={() => void timeSdr.refetch()} />;
+  if (timeSdr.isLoading) {
+    return (
+      <Card>
+        <p className="p-6 text-sm text-texto-sec" role="status">
+          Carregando a equipe do mês…
+        </p>
+      </Card>
+    );
+  }
 
   // 6.5g — erro isolado: só esta aba mostra a falha da carga da liderança.
   if (payload.lideranca_erro || !lideranca) {
@@ -178,7 +193,7 @@ export function LeadershipPanel({ payload }: { payload: SdrDashboardPayload }) {
                 <tbody>
                   {lideranca.comparecimentoPorSdr.map((c) => (
                     <tr key={c.sdr} className="border-b border-borda/30 last:border-0">
-                      <td className="px-3 py-2 font-medium text-texto">{nomeDoSdr(c.sdr)}</td>
+                      <td className="px-3 py-2 font-medium text-texto">{c.nome}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-texto">{c.agendadasAteHoje}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-texto">{c.ocorridas}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-rosa">{c.noShow}</td>
@@ -262,7 +277,7 @@ export function LeadershipPanel({ payload }: { payload: SdrDashboardPayload }) {
               <tbody>
                 {lideranca.matriz.linhas.map((linha) => (
                   <tr key={linha.sdr} className="border-b border-borda/30 last:border-0">
-                    <td className="px-3 py-2 font-medium text-texto">{nomeDoSdr(linha.sdr)}</td>
+                    <td className="px-3 py-2 font-medium text-texto">{linha.nome}</td>
                     {lideranca.matriz.closers.map((c) => (
                       <td key={c} className="px-3 py-2 text-right tabular-nums text-texto-sec">
                         {linha.valores[c] ?? 0}
@@ -294,8 +309,13 @@ export function LeadershipPanel({ payload }: { payload: SdrDashboardPayload }) {
               </span>
             </p>
             <p className="text-sm text-texto-sec">
-              Meta atual da equipe:{" "}
-              <span className="font-semibold text-azul-claro">{lideranca.equipe.metaAtual}</span>
+              {lideranca.equipe.metaAtual === null ? (
+                "Sem meta definida para a equipe neste mês"
+              ) : (
+                <>
+                  Meta atual da equipe: <span className="font-semibold text-azul-claro">{lideranca.equipe.metaAtual}</span>
+                </>
+              )}
             </p>
           </div>
 

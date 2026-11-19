@@ -21,7 +21,7 @@ import {
   fetchSdrPayload,
   mesPadrao,
 } from "@/lib/data/sdrDashboard";
-import { METAS_EQUIPE } from "@/lib/sdr/lideranca";
+import { useTimeSdr } from "@/features/sdr/useTimeSdr";
 import { metasPorCloser } from "@/lib/config/salesops";
 import { formatarBRL, formatarPct } from "@/lib/formatters/moeda";
 import { TEMPERATURA_CONFIG, TEMPERATURAS_ORDENADAS } from "@/lib/formatters/score";
@@ -91,6 +91,8 @@ export function VisaoGeralView() {
     staleTime: VALIDADE.vendas,
   });
   const sdrQuery = useQuery({ queryKey: ["sdr-dashboard"], queryFn: fetchSdrPayload, staleTime: VALIDADE.pacoteSdr });
+  // O time e a meta da equipe do mês mostrado (da rota de operadores).
+  const timeSdr = useTimeSdr(sdrQuery.data ? mesPadrao(sdrQuery.data, new Date().toISOString().slice(0, 10)) : null);
 
   const ativos = useMemo(
     () => (leadsQuery.data ?? []).filter(leadAtivo),
@@ -151,8 +153,9 @@ export function VisaoGeralView() {
   // Equipe SDR: qualificados do mês corrente vs metas 150/188/225 (mês inteiro)
   const hojeISO = new Date().toISOString().slice(0, 10);
   const mes = mesPadrao(payload, hojeISO);
-  const dashboardSdr = agregarDashboard(payload, mes);
-  const qualificadosEquipe = dashboardSdr.sdrs.reduce((a, s) => a + s.qualificados, 0);
+  const dashboardSdr = timeSdr.time ? agregarDashboard(payload, mes, timeSdr.time) : null;
+  const qualificadosEquipe = dashboardSdr?.sdrs.reduce((a, s) => a + s.qualificados, 0) ?? 0;
+  const metasEquipe = timeSdr.time?.equipe ?? null;
 
   const volumeTotal = CLOSERS.reduce(
     (a, c) => a + (vendas.get(c.id)?.volumeVendido ?? 0),
@@ -259,11 +262,11 @@ export function VisaoGeralView() {
           </CardContent>
         </Card>
 
-        {/* SDRs: qualificados da equipe vs metas 150/188/225 */}
+        {/* SDRs: qualificados da equipe vs as metas da equipe no mês (da rota) */}
         <Card>
           <CardHeader
             title="Equipe de pré-venda"
-            subtitle={`${qualificadosEquipe} reuniões qualificadas no mês`}
+            subtitle={dashboardSdr ? `${qualificadosEquipe} reuniões qualificadas no mês` : timeSdr.isError ? "Equipe indisponível" : "Carregando a equipe…"}
             action={
               <Link
                 href="/produtividade-sdr"
@@ -274,7 +277,15 @@ export function VisaoGeralView() {
             }
           />
           <CardContent className="space-y-4">
-            {METAS_EQUIPE.map((meta, i) => {
+            {timeSdr.isError && (
+              <p className="text-sm text-texto-sec" role="status">
+                A lista de SDRs e as metas não carregaram. Tente de novo em alguns minutos.
+              </p>
+            )}
+            {timeSdr.time && !metasEquipe && (
+              <p className="text-sm text-texto-sec">Sem meta definida para a equipe neste mês.</p>
+            )}
+            {(metasEquipe ?? []).map((meta, i) => {
               const pct = qualificadosEquipe / meta;
               const batida = qualificadosEquipe >= meta;
               return (

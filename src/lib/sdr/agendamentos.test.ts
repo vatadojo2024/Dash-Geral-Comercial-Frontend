@@ -31,7 +31,7 @@ function ag(p: Partial<Agendamento>): Agendamento {
 
 describe("helpers de nome/produto", () => {
   it("nomeSdr: nome → id → Sem SDR (Hana já vem como nome)", () => {
-    expect(nomeSdr(ag({ sdr_nome: "Glaucio" }))).toBe("Glaucio Portela");
+    expect(nomeSdr(ag({ sdr_nome: "Glaucio" }))).toBe("Glaucio");
     expect(nomeSdr(ag({ sdr_nome: "Hana" }))).toBe("Hana");
     expect(nomeSdr(ag({ sdr_nome: null, sdr_id: "uuid-x" }))).toBe("uuid-x");
     expect(nomeSdr(ag({ sdr_nome: null, sdr_id: null }))).toBe(SEM_SDR);
@@ -67,22 +67,22 @@ describe("agregarAgendamentos — matrizes e totais", () => {
   const agg = agregarAgendamentos(itens);
 
   it("SDRs e closers em ordem alfabética", () => {
-    expect(agg.sdrs).toEqual(["Benhur Ramos", "Glaucio Portela"]);
+    expect(agg.sdrs).toEqual(["Benhur", "Glaucio"]);
     expect(agg.closers).toEqual(["Giba", "Marcio"]);
   });
 
   it("matriz SDR × Closer com totais de borda", () => {
-    expect(agg.matrizCloser["Glaucio Portela"]).toEqual({ Marcio: 2, Giba: 1 });
-    expect(agg.totalPorSdr["Glaucio Portela"]).toBe(3);
-    expect(agg.totalPorSdr["Benhur Ramos"]).toBe(1);
+    expect(agg.matrizCloser["Glaucio"]).toEqual({ Marcio: 2, Giba: 1 });
+    expect(agg.totalPorSdr["Glaucio"]).toBe(3);
+    expect(agg.totalPorSdr["Benhur"]).toBe(1);
     expect(agg.totalPorCloser["Marcio"]).toBe(3);
     expect(agg.totalPorCloser["Giba"]).toBe(1);
     expect(agg.total).toBe(4);
   });
 
   it("matriz SDR × Produto (com Sem produto)", () => {
-    expect(agg.matrizProduto["Glaucio Portela"]).toEqual({ private: 1, ninja: 1, prime: 1 });
-    expect(agg.matrizProduto["Benhur Ramos"]).toEqual({ [SEM_PRODUTO]: 1 });
+    expect(agg.matrizProduto["Glaucio"]).toEqual({ private: 1, ninja: 1, prime: 1 });
+    expect(agg.matrizProduto["Benhur"]).toEqual({ [SEM_PRODUTO]: 1 });
     expect(agg.totalPorProduto["private"]).toBe(1);
     expect(agg.totalPorProduto[SEM_PRODUTO]).toBe(1);
   });

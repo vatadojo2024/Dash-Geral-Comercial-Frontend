@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { contarNaoIdentificadas, normalizarSdr, type SdrCanonico } from "@/lib/data/sdrDashboard";
+import { contarNaoIdentificadas, type TimeSdr } from "@/lib/data/sdrDashboard";
 import { PATAMARES_SDR, type ResultadoComissaoSdr } from "@/lib/salesops/comissaoSdr";
 
 // ---------------------------------------------------------------------------
@@ -44,14 +44,14 @@ export function mensagemErroFinanceiro(codigo: unknown): string | null {
 // Nome do Financeiro → SDR do dashboard. Linhas de outro mês ou de nome não
 // reconhecido ficam de fora; duas linhas do mesmo SDR somam.
 // Linhas do mês com SDR não reconhecido: ficam de fora, e a aba avisa a quantidade.
-export const comissoesNaoIdentificadas = (resposta: ComissoesResponse) =>
-  contarNaoIdentificadas(resposta.comissoes, (l) => !l.mes || l.mes === resposta.mes);
+export const comissoesNaoIdentificadas = (resposta: ComissoesResponse, reconhecer: TimeSdr["reconhecer"]) =>
+  contarNaoIdentificadas(resposta.comissoes, reconhecer, (l) => !l.mes || l.mes === resposta.mes);
 
-export function comissoesPorSdr(resposta: ComissoesResponse): Map<SdrCanonico, number> {
-  const mapa = new Map<SdrCanonico, number>();
+export function comissoesPorSdr(resposta: ComissoesResponse, reconhecer: TimeSdr["reconhecer"]): Map<string, number> {
+  const mapa = new Map<string, number>();
   for (const linha of resposta.comissoes) {
     if (linha.mes && linha.mes !== resposta.mes) continue;
-    const sdr = normalizarSdr(linha.sdr);
+    const sdr = reconhecer(linha.sdr);
     if (!sdr) continue;
     mapa.set(sdr, (mapa.get(sdr) ?? 0) + linha.comissao);
   }

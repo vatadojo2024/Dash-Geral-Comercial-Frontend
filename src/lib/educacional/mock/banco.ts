@@ -25,7 +25,8 @@ export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // 11 = programas renomeados ("Blackbelt Semestral", "Blackbelt Anual"…).
 // 12 = análise de aula com IA: uma análise de exemplo pronta para revisar.
 // 13 = central de análises: exemplos interrompida, erro e decidida.
-export const VERSAO_DADOS = 13;
+// 14 = sempre um próximo checkpoint em pausa (a semente dependia da data).
+export const VERSAO_DADOS = 14;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };
@@ -69,8 +70,24 @@ export function bancoDaSemente(hoje: string): Banco {
   semearMural(banco, hoje);
   semearVencimentos(banco, hoje);
   importarDaFase1(banco);
+  garantirEmPausa(banco);
   semearAnaliseDeExemplo(banco, hoje);
   return banco;
+}
+
+// Os status da semente saem das datas (meses de calendário), e em alguns dias
+// nenhum próximo checkpoint fica "em pausa". A demonstração precisa de um: o
+// último aluno ativo com o próximo checkpoint pendente passa a tê-lo em pausa.
+function garantirEmPausa(banco: Banco) {
+  const proximo = (alunoId: string) =>
+    banco.checkpoints
+      .filter((c) => c.aluno_id === alunoId && !c.arquivado_em && !c.substituido_em)
+      .sort((x, y) => x.ordem - y.ordem)
+      .find((c) => c.status !== "realizado");
+  const ativos = banco.alunos.filter((a) => !a.arquivado_em && a.status_aluno === "ativo");
+  if (ativos.some((a) => proximo(a.id)?.status === "em_pausa")) return;
+  const alvo = [...ativos].reverse().map((a) => proximo(a.id)).find((c) => c?.status === "pendente");
+  if (alvo) alvo.status = "em_pausa";
 }
 
 const NOTAS_DA_FASE1 = ["consumiu", "entendeu", "aplicou", "validou"] as const;

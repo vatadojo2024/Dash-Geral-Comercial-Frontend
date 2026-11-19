@@ -5,14 +5,14 @@ import { SemPermissaoError } from "@/lib/auth/semPermissao";
 // Adapter ISOLADO do Dashboard de Produtividade SDR (DOCUMENTACAO.md).
 // Consome o route handler /api/sdr-dashboard (server-side; modo mock|api via
 // SDR_DASHBOARD_MODE) e aplica AS MESMAS regras de negócio do dashboard
-// existente: aliases (5.1), produtos por substring (5.2), qualificados +
-// bônus QC (5.3), metas escalonadas 40/50/60 (5.4), mês padrão (5.13) e
-// no-show % (5.7). As regras da aba Liderança vivem em src/lib/sdr/lideranca.ts.
+// existente: produtos por substring (5.2), qualificados + bônus QC (5.3), mês
+// padrão (5.13) e no-show % (5.7). Os SDRs e as metas do mês (5.1, 5.4) vêm da
+// rota de operadores (montarTime). As regras da aba Liderança vivem em src/lib/sdr/lideranca.ts.
 //
 // REGRA DA META INDIVIDUAL (decisões do Vata, 11/10/2026), a partir de
 // INICIO_REGRA_NINJA_QC (calls de 01/10/2026 em diante):
-//   - Ninja e QC são do Arthur. Para ele, TODA reunião vale 1 para a meta —
-//     Ninja e QC inclusive (sem o "3 QC = 1").
+//   - Para quem tem `regra_ninja_qc` no mês (vem da rota), TODA reunião vale 1
+//     para a meta — Ninja e QC inclusive (sem o "3 QC = 1").
 //   - Para os demais SDRs, Ninja não conta para a meta e QC não conta direto:
 //     contam_para_meta = (reuniões de todos os produtos − Ninja − QC) + ⌊QC/3⌋
 //   - Ninja e QC reconhecidos por qualquer nome que os contenha ("Ninja Anual",
@@ -85,25 +85,39 @@ export const SdrDashboardPayloadSchema = z.object({
 });
 export type SdrDashboardPayload = z.infer<typeof SdrDashboardPayloadSchema>;
 
-// 5.1 — SDRs do dashboard. TEMPORÁRIO (18/11/2026): a lista, as metas e as SDRs
-// novas vão passar a vir de uma rota do backend; até lá, esta tabela.
-export const SDRS_DASHBOARD = ["Glaucio", "Delrue", "Benhur", "Arthur", "Hana"] as const;
-export type SdrCanonico = (typeof SDRS_DASHBOARD)[number];
+// 5.1 — Os SDRs vêm da rota GET /api/sdr/operadores?mes=AAAA-MM (backend
+// 4197783, docs/comercial-operadores.md): o nome do cadastro para exibir, os
+// nomes externos para reconhecer o que chega da API externa, e as metas DO MÊS.
+// Nenhum nome de SDR fica no código — salvo o pool (abaixo).
+const FaixasSchema = z.tuple([z.number(), z.number(), z.number()]);
+export type Faixas = z.infer<typeof FaixasSchema>;
 
-// Nomes ACEITOS de cada SDR, comparados INTEIROS, sem acento e sem maiúsculas:
-// o nome curto de hoje, o nome do cadastro (que o backend passa a mandar) e o
-// nome antigo da Clint. Nada de pedaço curto ("ben" casava com outros nomes).
-// `exibir` é o nome verdadeiro, o único que aparece na tela: o nome da Clint
-// ("Lúcio Borges", "João Filipe") nunca aparece. `nomeCru`: nas telas que mostram
-// o nome como a API manda, o de quem mudou de nome na Clint vira o verdadeiro.
-// Arthur e Hana seguem aceitos como antes (o primeiro nome basta: "Artur Souza").
-const SDRS_ACEITOS: Record<SdrCanonico, { exibir: string; nomes: string[]; primeiroNome?: string[]; nomeCru?: true }> = {
-  Glaucio: { exibir: "Glaucio Portela", nomes: ["Glaucio", "Glaucio Portela", "Lúcio Borges"], nomeCru: true },
-  Benhur: { exibir: "Benhur Ramos", nomes: ["Benhur", "Benhur Ramos", "João Filipe"], nomeCru: true },
-  Delrue: { exibir: "Delrue", nomes: ["Delrue", "Guilherme Delrue", "Guilherme Alves"] },
-  Arthur: { exibir: "Arthur", nomes: ["Arthur", "Artur"], primeiroNome: ["arthur", "artur"] },
-  Hana: { exibir: "Hana", nomes: ["Hana"], primeiroNome: ["hana"] },
-};
+export const OperadorSdrSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  nomes_externos: z.array(z.string()).default([]),
+  /** null = não há meta que já valha no mês (NÃO é zero). */
+  faixas: FaixasSchema.nullable(),
+  meta_desde: z.string().nullable().default(null),
+  /** Sinalizador: a regra Ninja/QC vale para a pessoa no mês (o cálculo é do front). */
+  regra_ninja_qc: z.boolean().default(false),
+});
+export type OperadorSdr = z.infer<typeof OperadorSdrSchema>;
+
+export const OperadoresDoMesSchema = z.object({
+  mes: z.string(),
+  metrica: z.string().optional(),
+  equipe: z.object({ faixas: FaixasSchema.nullable(), meta_desde: z.string().nullable().default(null) }),
+  operadores: z.array(OperadorSdrSchema),
+});
+export type OperadoresDoMes = z.infer<typeof OperadoresDoMesSchema>;
+
+// TEMPORÁRIO: a IA de agendamento (Hana) é o "pool" do de-para, e a rota de
+// operadores não o manda. Ela segue como antes: fora dos cards e da tela de SDR,
+// dentro da meta da EQUIPE. Reconhecida pelo primeiro nome até a rota mandá-la.
+export const POOL = "pool";
+const NOMES_DO_POOL = ["hana"];
+const NOME_DO_POOL = "Hana";
 
 const comparavel = (nome: string) =>
   nome
@@ -113,32 +127,46 @@ const comparavel = (nome: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const ACEITOS = new Map<string, SdrCanonico>(
-  SDRS_DASHBOARD.flatMap((k) => SDRS_ACEITOS[k].nomes.map((n) => [comparavel(n), k] as [string, SdrCanonico])),
-);
+// O time do mês: quem é SDR, como reconhecer o nome que vem de fora, o nome a
+// exibir e as metas. `reconhecer` devolve o id do operador, POOL ou null (não
+// identificado: quem chama conta e AVISA).
+export type TimeSdr = {
+  mes: string;
+  operadores: OperadorSdr[];
+  /** Meta da equipe do mês; null = sem meta definida. */
+  equipe: number[] | null;
+  reconhecer: (nome: string | null | undefined) => string | null;
+  nomeDe: (id: string) => string;
+};
 
-// Nome que chega da API → SDR do dashboard; não reconhecido → null (quem chama
-// conta e AVISA, não descarta calado).
-export function normalizarSdr(nome: string | null | undefined): SdrCanonico | null {
-  if (!nome) return null;
-  const n = comparavel(nome);
-  const exato = ACEITOS.get(n);
-  if (exato) return exato;
-  const primeiro = n.split(" ")[0];
-  return SDRS_DASHBOARD.find((k) => SDRS_ACEITOS[k].primeiroNome?.includes(primeiro)) ?? null;
-}
-
-// O nome que a tela mostra para um SDR do dashboard.
-export const nomeDoSdr = (sdr: SdrCanonico) => SDRS_ACEITOS[sdr].exibir;
-
-// Nome de operador vindo cru da API (agendamentos, eventos, descartes): o de
-// quem mudou de nome na Clint vira o verdadeiro; o resto, como veio.
-export function nomeDoOperador(nome: string): string;
-export function nomeDoOperador(nome: string | null | undefined): string | null;
-export function nomeDoOperador(nome: string | null | undefined): string | null {
-  if (!nome?.trim()) return nome ?? null;
-  const sdr = normalizarSdr(nome);
-  return sdr && SDRS_ACEITOS[sdr].nomeCru ? nomeDoSdr(sdr) : nome;
+// Reconhecimento: sem acento e sem maiúsculas, contra o nome do cadastro e os
+// nomes externos. Vale o nome INTEIRO; um nome parcial casa só se todas as
+// palavras dele estão num nome aceito ("Lucio" → "Lucio Borges"). O contrato
+// do backend casa por pedaço nos dois sentidos; aqui não, para um apelido curto
+// ("Ben", "Ramos") não puxar "Ruben" ou "Pedro Ramos". Se o nome servir para
+// mais de um operador, fica não identificado (não se chuta).
+export function montarTime(o: OperadoresDoMes): TimeSdr {
+  const aceitos = o.operadores.map((op) => ({
+    id: op.id,
+    nomes: [op.nome, ...op.nomes_externos].map(comparavel).filter(Boolean).map((n) => n.split(" ")),
+  }));
+  const nomes = new Map(o.operadores.map((op) => [op.id, op.nome]));
+  const reconhecer = (nome: string | null | undefined): string | null => {
+    if (!nome?.trim()) return null;
+    const palavras = comparavel(nome).split(" ");
+    const exatos = aceitos.filter((a) => a.nomes.some((n) => n.join(" ") === palavras.join(" ")));
+    if (exatos.length) return exatos.length === 1 ? exatos[0].id : null;
+    if (NOMES_DO_POOL.includes(palavras[0])) return POOL;
+    const parciais = aceitos.filter((a) => a.nomes.some((n) => palavras.every((p) => n.includes(p))));
+    return parciais.length === 1 ? parciais[0].id : null;
+  };
+  return {
+    mes: o.mes,
+    operadores: o.operadores,
+    equipe: o.equipe.faixas ? [...o.equipe.faixas] : null,
+    reconhecer,
+    nomeDe: (id) => (id === POOL ? NOME_DO_POOL : (nomes.get(id) ?? "SDR")),
+  };
 }
 
 // 5.2 — produtos canônicos por substring (sem acento, case-insensitive)
@@ -164,17 +192,6 @@ export function produtoChave(nome: string): ProdutoChave | null {
   return null;
 }
 
-// 5.4 — metas escalonadas individuais; Hana não tem meta.
-export const METAS_SDR: number[] = [40, 50, 60];
-
-/** Metas próprias de quem não segue a escala padrão. */
-export const METAS_POR_SDR: Partial<Record<SdrCanonico, number[]>> = {
-  Arthur: [30, 40, 50],
-};
-
-/** SDRs que atendem Ninja e QC: para eles toda reunião vale 1 para a meta. */
-export const SDRS_NINJA_QC: readonly SdrCanonico[] = ["Arthur"];
-
 /**
  * Data da call (inclusive) a partir da qual vale a regra Ninja/QC da meta.
  * Antes dela, todos seguem a regra antiga — meses fechados não mudam.
@@ -184,13 +201,12 @@ export const INICIO_REGRA_NINJA_QC = "2026-10-01";
 // Regra que valeu para a conta da meta do mês (o card explica qual).
 export type RegraDaMeta = "padrao" | "ninja_qc" | "anterior";
 
-export function metasDoSdr(sdr: SdrCanonico): number[] | null {
-  if (sdr === "Hana") return null;
-  return METAS_POR_SDR[sdr] ?? METAS_SDR;
-}
-
 export type SdrMetrics = {
-  sdr: SdrCanonico;
+  /** Id do operador (da rota) ou POOL. É a chave; o nome a exibir é `nome`. */
+  sdr: string;
+  nome: string;
+  /** Pool (Hana): fora dos cards, dentro da meta da equipe. */
+  pool: boolean;
   callsAgendadas: number;
   callsRealizadas: number;
   callsRemarcadas: number;
@@ -208,7 +224,7 @@ export type SdrMetrics = {
   foraDaMeta: number;
   /** O detalhe da conta da meta, para a tela mostrar: Ninja fora, QC fora, bônus. */
   metaDetalhe: { ninja: number; qc: number; bonusQC: number; regra: RegraDaMeta };
-  /** null = sem meta (Hana) */
+  /** Faixas do mês; null = sem meta definida (ou o pool). */
   metas: number[] | null;
   metaAtual: number | null;
   nivelAtual: "M1" | "M2" | "M3" | null;
@@ -263,18 +279,23 @@ export function periodoDoMes(mes: string): string {
 // Quantas linhas vieram com um nome de SDR que a tabela não reconhece. Elas não
 // entram nos números, mas não somem caladas: a tela mostra a quantidade (nunca
 // o nome, que pode ser o da Clint).
-export function contarNaoIdentificadas<T extends { sdr: string }>(linhas: readonly T[], dentro: (l: T) => boolean = () => true): number {
-  return linhas.filter((l) => dentro(l) && !normalizarSdr(l.sdr)).length;
+export function contarNaoIdentificadas<T extends { sdr: string }>(
+  linhas: readonly T[],
+  reconhecer: TimeSdr["reconhecer"],
+  dentro: (l: T) => boolean = () => true,
+): number {
+  return linhas.filter((l) => dentro(l) && !reconhecer(l.sdr)).length;
 }
 
 function somaPorSdr(
   linhas: { sdr: string; data_referencia: string; total: number }[],
   mes: string,
-): Map<SdrCanonico, number> {
-  const mapa = new Map<SdrCanonico, number>();
+  reconhecer: TimeSdr["reconhecer"],
+): Map<string, number> {
+  const mapa = new Map<string, number>();
   for (const linha of linhas) {
     if (!linha.data_referencia.startsWith(mes)) continue;
-    const sdr = normalizarSdr(linha.sdr);
+    const sdr = reconhecer(linha.sdr);
     if (!sdr) continue;
     mapa.set(sdr, (mapa.get(sdr) ?? 0) + linha.total);
   }
@@ -284,11 +305,15 @@ function somaPorSdr(
 export function agregarDashboard(
   payload: SdrDashboardPayload,
   mes: string,
+  time: TimeSdr,
 ): SdrDashboard {
-  const agendadas = somaPorSdr(payload.agendadas, mes);
-  const realizadas = somaPorSdr(payload.realizadas, mes);
-  const noShows = somaPorSdr(payload.no_show, mes);
-  const remarcadas = somaPorSdr(payload.remarcadas, mes);
+  const { reconhecer } = time;
+  const agendadas = somaPorSdr(payload.agendadas, mes, reconhecer);
+  const realizadas = somaPorSdr(payload.realizadas, mes, reconhecer);
+  const noShows = somaPorSdr(payload.no_show, mes, reconhecer);
+  const remarcadas = somaPorSdr(payload.remarcadas, mes, reconhecer);
+  const operador = new Map(time.operadores.map((o) => [o.id, o]));
+  const ninjaQC = (sdr: string) => operador.get(sdr)?.regra_ninja_qc === true;
 
   const zerado = (): Record<ProdutoChave, number> => ({
     qc: 0,
@@ -297,22 +322,22 @@ export function agregarDashboard(
     prime: 0,
     private: 0,
   });
-  const produtosPorSdr = new Map<SdrCanonico, Record<ProdutoChave, number>>();
+  const produtosPorSdr = new Map<string, Record<ProdutoChave, number>>();
   // Conta da meta: o que conta direto (1 cada), o "pote" de QC que vale 1 a
   // cada 3, e o que ficou fora (Ninja/QC) — só para a tela explicar.
   type ContaMeta = { contam: number; poteQC: number; ninjaFora: number; qcFora: number; regra: RegraDaMeta };
-  const metaPorSdr = new Map<SdrCanonico, ContaMeta>();
+  const metaPorSdr = new Map<string, ContaMeta>();
   for (const linha of payload.por_produto) {
     if (!linha.data_referencia.startsWith(mes)) continue;
-    const sdr = normalizarSdr(linha.sdr);
+    const sdr = reconhecer(linha.sdr);
     if (!sdr) continue;
 
     const chave = produtoChave(linha.produto);
     const regraNova = linha.data_referencia.slice(0, 10) >= INICIO_REGRA_NINJA_QC;
-    const regra: RegraDaMeta = !regraNova ? "anterior" : SDRS_NINJA_QC.includes(sdr) ? "ninja_qc" : "padrao";
+    const regra: RegraDaMeta = !regraNova ? "anterior" : ninjaQC(sdr) ? "ninja_qc" : "padrao";
     const meta = metaPorSdr.get(sdr) ?? { contam: 0, poteQC: 0, ninjaFora: 0, qcFora: 0, regra };
     meta.regra = regra;
-    if (regra === "ninja_qc") meta.contam += linha.total; // Arthur: tudo vale 1
+    if (regra === "ninja_qc") meta.contam += linha.total; // regra Ninja/QC: tudo vale 1
     else if (chave === "qc") {
       meta.poteQC += linha.total; // QC: 1 a cada 3, nas duas regras
       if (regra === "padrao") meta.qcFora += linha.total;
@@ -326,7 +351,8 @@ export function agregarDashboard(
     produtosPorSdr.set(sdr, atual);
   }
 
-  const sdrs: SdrMetrics[] = SDRS_DASHBOARD.map((sdr) => {
+  // Os operadores do mês, na ordem da rota, e o pool por último.
+  const sdrs: SdrMetrics[] = [...time.operadores.map((o) => o.id), POOL].map((sdr) => {
     const ag = agendadas.get(sdr) ?? 0;
     const re = realizadas.get(sdr) ?? 0;
     const ns = noShows.get(sdr) ?? 0;
@@ -337,7 +363,7 @@ export function agregarDashboard(
       ninjaFora: 0,
       qcFora: 0,
       regra: (mes >= INICIO_REGRA_NINJA_QC.slice(0, 7)
-        ? SDRS_NINJA_QC.includes(sdr) ? "ninja_qc" : "padrao"
+        ? ninjaQC(sdr) ? "ninja_qc" : "padrao"
         : "anterior") as RegraDaMeta,
     };
 
@@ -352,8 +378,9 @@ export function agregarDashboard(
     const qualificadosMeta = conta.contam + bonusQCMeta;
     const foraDaMeta = conta.ninjaFora + conta.qcFora;
 
-    // 5.4 — Hana é linha informativa, sem meta
-    const metas = metasDoSdr(sdr);
+    // 5.4 — faixas do mês, da rota; o pool não tem meta individual.
+    const faixas = sdr === POOL ? null : (operador.get(sdr)?.faixas ?? null);
+    const metas = faixas ? [...faixas] : null;
     const metasBatidas = metas ? metas.filter((m) => qualificadosMeta >= m).length : 0;
     const metaAtual = metas
       ? (metas.find((m) => qualificadosMeta < m) ?? metas[metas.length - 1])
@@ -365,6 +392,8 @@ export function agregarDashboard(
 
     return {
       sdr,
+      nome: time.nomeDe(sdr),
+      pool: sdr === POOL,
       callsAgendadas: ag,
       callsRealizadas: re,
       callsRemarcadas: remarcadas.get(sdr) ?? 0,
@@ -387,31 +416,55 @@ export function agregarDashboard(
 
   const doMes = (l: { data_referencia: string }) => l.data_referencia.startsWith(mes);
   const naoIdentificadas = [payload.agendadas, payload.realizadas, payload.no_show, payload.remarcadas, payload.por_produto].reduce(
-    (a, linhas) => a + contarNaoIdentificadas(linhas, doMes),
+    (a, linhas) => a + contarNaoIdentificadas(linhas, reconhecer, doMes),
     0,
   );
   return { mes, periodoLabel: periodoDoMes(mes), sdrs, naoIdentificadas };
 }
 
 // Vendas do mês com SDR não reconhecido (aba Comissões avisa).
-export const vendasNaoIdentificadas = (payload: SdrDashboardPayload, mes: string) =>
-  contarNaoIdentificadas(payload.vendas_por_sdr ?? [], (v) => v.data_referencia.startsWith(mes));
+export const vendasNaoIdentificadas = (payload: SdrDashboardPayload, mes: string, reconhecer: TimeSdr["reconhecer"]) =>
+  contarNaoIdentificadas(payload.vendas_por_sdr ?? [], reconhecer, (v) => v.data_referencia.startsWith(mes));
 
 // 7.1.4 — vendas do mês agrupadas por SDR canônico (aba Comissões)
 export function vendasDoMesPorSdr(
   payload: SdrDashboardPayload,
   mes: string,
-): Map<SdrCanonico, VendaSdr[]> {
-  const mapa = new Map<SdrCanonico, VendaSdr[]>();
+  reconhecer: TimeSdr["reconhecer"],
+): Map<string, VendaSdr[]> {
+  const mapa = new Map<string, VendaSdr[]>();
   for (const venda of payload.vendas_por_sdr ?? []) {
     if (!venda.data_referencia.startsWith(mes)) continue;
-    const sdr = normalizarSdr(venda.sdr);
+    const sdr = reconhecer(venda.sdr);
     if (!sdr) continue;
     const atual = mapa.get(sdr) ?? [];
     atual.push(venda);
     mapa.set(sdr, atual);
   }
   return mapa;
+}
+
+// O texto da regra no topo da aba, a partir dos dados do mês (era fixo:
+// "meta escalonada individual 40/50/60 (Arthur 30/40/50)").
+export function textoDasMetas(time: TimeSdr, mes: string): string {
+  const grupos = new Map<string, string[]>();
+  const semMeta: string[] = [];
+  for (const o of time.operadores) {
+    if (o.faixas) grupos.set(o.faixas.join("/"), [...(grupos.get(o.faixas.join("/")) ?? []), o.nome]);
+    else semMeta.push(o.nome);
+  }
+  const metas = grupos.size
+    ? `meta escalonada individual do mês: ${[...grupos].map(([f, nomes]) => `${f} (${nomes.join(", ")})`).join(", ")}`
+    : "sem meta individual definida no mês";
+  const sem = grupos.size && semMeta.length ? ` · sem meta definida: ${semMeta.join(", ")}` : "";
+  let regra = "antes de out/2026, regra antiga de Ninja e QC";
+  if (mes >= INICIO_REGRA_NINJA_QC.slice(0, 7)) {
+    const ninja = time.operadores.filter((o) => o.regra_ninja_qc).map((o) => o.nome);
+    regra = ninja.length
+      ? `Ninja e QC contam 1 cada só para ${ninja.join(", ")}; para os demais, Ninja não conta e cada 3 QC valem +1`
+      : "Ninja não conta e cada 3 QC valem +1";
+  }
+  return `${metas}${sem} · ${regra}`;
 }
 
 // 6.4a / item 6 — classes de status compartilhadas
@@ -453,17 +506,17 @@ export function detalheDosQualificados(m: MetricasDoCard): string {
   return `${p.qualificados} qualificados · ${p.ninjaFora} Ninja fora · ${p.bonusQC} bônus QC`;
 }
 
-type MetricasDoCard = Pick<SdrMetrics, "sdr" | "metas" | "qualificados" | "qualificadosBase" | "bonusQC" | "qualificadosMeta" | "produtos" | "metaDetalhe">;
+type MetricasDoCard = Pick<SdrMetrics, "sdr" | "nome" | "pool" | "metas" | "qualificados" | "qualificadosBase" | "bonusQC" | "qualificadosMeta" | "produtos" | "metaDetalhe">;
 
 // O número de "Leads qualificados" no card: o que conta para a meta (sem meta, o total).
 export function qualificadosDoCard(m: MetricasDoCard): number {
-  return m.metas ? m.qualificadosMeta : m.qualificados;
+  return m.pool ? m.qualificados : m.qualificadosMeta;
 }
 
 // Partes da conta do card, que sempre fecham: qualificados − ninjaFora + bonusQC +
 // qcValem1 = número do card. Sem meta: o total (Ninja+ e bônus QC).
 function partesDosQualificados(m: MetricasDoCard) {
-  if (!m.metas) {
+  if (m.pool) {
     return { qualificados: m.qualificadosBase, ninjaFora: 0, bonusQC: m.bonusQC, qcValem1: 0, regra: m.metaDetalhe.regra };
   }
   const { ninja, bonusQC, regra } = m.metaDetalhe;
@@ -483,7 +536,7 @@ export function totalDosQualificados(sdrs: MetricasDoCard[]): { total: number; d
   if (partes.length > 0 && partes.every((p) => p.regra === "anterior")) {
     return { total, detalhe: `${soma("qualificados")} qualificados · ${soma("bonusQC")} bônus QC · regra antiga (antes de out/2026)` };
   }
-  const nomes = sdrs.filter((_, i) => partes[i].qcValem1 > 0).map((m) => m.sdr);
+  const nomes = sdrs.filter((_, i) => partes[i].qcValem1 > 0).map((m) => m.nome);
   const qc = soma("qcValem1") > 0 ? ` · ${soma("qcValem1")} QC que valem 1 (${nomes.join(", ")})` : "";
   return {
     total,

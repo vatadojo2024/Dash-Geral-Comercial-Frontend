@@ -290,8 +290,9 @@ export type Intervencao = z.infer<typeof IntervencaoSchema>;
 // Resumo da ÚLTIMA análise com IA da aula (backend f4154a5, 17/11/2026). Três
 // estados: chave AUSENTE = não carregado (não aja: a tela mantém o que já tem);
 // null = a aula não tem análise; objeto = a análise mais nova.
-// Situação da análise, DERIVADA pelo backend (40d18c8): "interrompida" é
-// processando há mais de 30 min. A tela usa a que vem; sem ela, lê o status.
+// Situação da análise, DERIVADA pelo backend (40d18c8; no resumo de cada aula da
+// ficha desde 4197783): "interrompida" é processando há mais de 30 min. A tela
+// usa a que vem; sem ela, lê o status.
 export const SITUACOES_ANALISE = ["analisando", "interrompida", "aguardando_decisao", "decidida", "erro"] as const;
 export type SituacaoAnalise = (typeof SITUACOES_ANALISE)[number];
 const SituacaoAnaliseSchema = z.enum(SITUACOES_ANALISE).nullable().catch(null).default(null);

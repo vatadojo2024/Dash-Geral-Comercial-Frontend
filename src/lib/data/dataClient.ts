@@ -14,6 +14,7 @@ import {
   type Agendamento,
 } from "@/lib/sdr/agendamentos";
 import { ComissoesResponseSchema, type ComissoesResponse } from "@/lib/sdr/comissoes";
+import { OperadoresDoMesSchema, type OperadoresDoMes } from "@/lib/data/sdrDashboard";
 import {
   OportunidadesResponseSchema,
   type CodigoErroOportunidades,
@@ -351,6 +352,32 @@ export async function fetchLeadDetail(
       `Resposta do detalhe fora do contrato: ${parsed.error.issues[0]?.path.join(".")} — ${parsed.error.issues[0]?.message}`,
       "invalid_contract",
     );
+  }
+  return parsed.data;
+}
+
+// Os SDRs e as metas do mês (GET /api/sdr/operadores, backend 4197783). O 503
+// `de_para_indisponivel` vira um erro próprio: a tela avisa, em vez de mostrar
+// uma equipe vazia como se fosse a verdade.
+export class OperadoresIndisponiveisError extends Error {}
+
+export async function fetchOperadoresSdr(mes: string): Promise<OperadoresDoMes> {
+  const res = await fetch(`/api/sdr/operadores?mes=${encodeURIComponent(mes)}`, { headers: await headersComToken() });
+  const corpo = (await res.json().catch(() => null)) as { erro?: string; error?: string } | null;
+  if (!res.ok) {
+    if (res.status === 503 && corpo?.erro === "de_para_indisponivel") {
+      throw new OperadoresIndisponiveisError("A lista de SDRs está indisponível no momento.");
+    }
+    if (res.status === 401 && typeof window !== "undefined") {
+      const { limparCookieSessao } = await import("@/lib/auth/clientSession");
+      limparCookieSessao();
+      window.location.href = "/login";
+    }
+    throw new DataError(corpo?.error ?? `A lista de SDRs respondeu ${res.status}.`, res.status === 403 ? "sem_permissao" : "request_failed");
+  }
+  const parsed = OperadoresDoMesSchema.safeParse(corpo);
+  if (!parsed.success) {
+    throw new DataError(`Resposta de /api/sdr/operadores fora do contrato: ${parsed.error.issues[0]?.path.join(".")}`, "invalid_contract");
   }
   return parsed.data;
 }

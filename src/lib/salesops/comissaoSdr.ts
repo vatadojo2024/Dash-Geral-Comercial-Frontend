@@ -43,7 +43,7 @@ export type EntradaComissaoSdr = {
   callsQC: number;
   /** Volume (R$) das vendas originadas dos agendamentos do SDR no mês */
   volumeVendas: number;
-  /** Metas individuais escalonadas; null = sem comissão (Hana) */
+  /** Metas individuais escalonadas do mês; null = sem meta definida, ou o pool (Hana): sem comissão */
   metas: number[] | null;
 };
 
@@ -58,7 +58,7 @@ export type CenarioComissaoSdr = {
 };
 
 export type ResultadoComissaoSdr = CenarioComissaoSdr & {
-  /** true para SDR sem meta/comissão (Hana) — valores zerados */
+  /** true sem meta no mês (ou para o pool) — valores zerados; a tela diz o porquê */
   semComissao: boolean;
   /** Projeção retroativa "se bater a próxima meta"; null no patamar máximo */
   proximaMeta: (CenarioComissaoSdr & { meta: number }) | null;

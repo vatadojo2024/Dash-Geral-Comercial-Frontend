@@ -14,8 +14,8 @@ export function resumoDaUltimaAnalise(banco: Banco, aulaId: string, agora: strin
   const ultima = (banco.analises_aula ?? [])
     .filter((x) => x.aula_id === aulaId)
     .sort((x, y) => y.criada_em.localeCompare(x.criada_em))[0];
-  // Sem `situacao`, como o backend manda neste resumo (null = não informado).
-  return ultima ? { id: ultima.id, status: statusDe(ultima, agora), decidida: ultima.decidida_em != null, situacao: null } : null;
+  // Com a `situacao`, como o backend manda desde 4197783 ("Interrompida" na ficha).
+  return ultima ? { id: ultima.id, status: statusDe(ultima, agora), decidida: ultima.decidida_em != null, situacao: situacaoDe(ultima, agora) } : null;
 }
 
 // Situação como o backend deriva (40d18c8): decidida primeiro; "interrompida" é

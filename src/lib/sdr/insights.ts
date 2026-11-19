@@ -1,4 +1,4 @@
-import { nomeDoSdr, type SdrMetrics } from "@/lib/data/sdrDashboard";
+import type { SdrMetrics } from "@/lib/data/sdrDashboard";
 
 // ---------------------------------------------------------------------------
 // Insights do mês (DOCUMENTACAO.md 6.4c) — função PURA com as regras EXATAS
@@ -25,7 +25,7 @@ export function getInsights(sdrs: SdrMetrics[]): Insight[] {
     if (s.noShowPct >= 20) {
       insights.push({
         tipo: "risco",
-        texto: `${nomeDoSdr(s.sdr)} está com no-show de ${s.noShowPct.toFixed(1).replace(".", ",")}% — acima do limite de 20%.`,
+        texto: `${s.nome} está com no-show de ${s.noShowPct.toFixed(1).replace(".", ",")}% — acima do limite de 20%.`,
       });
     }
   }
@@ -41,8 +41,8 @@ export function getInsights(sdrs: SdrMetrics[]): Insight[] {
       tipo: "destaque",
       texto:
         maisProximo.gap === 0
-          ? `${nomeDoSdr(maisProximo.sdr)} bateu a meta atual (${maisProximo.nivelAtual}: ${maisProximo.metaAtual}).`
-          : `${nomeDoSdr(maisProximo.sdr)} é quem está mais perto da meta — faltam ${maisProximo.gap} para ${maisProximo.nivelAtual}: ${maisProximo.metaAtual}.`,
+          ? `${maisProximo.nome} bateu a meta atual (${maisProximo.nivelAtual}: ${maisProximo.metaAtual}).`
+          : `${maisProximo.nome} é quem está mais perto da meta — faltam ${maisProximo.gap} para ${maisProximo.nivelAtual}: ${maisProximo.metaAtual}.`,
     });
   }
 
@@ -53,7 +53,7 @@ export function getInsights(sdrs: SdrMetrics[]): Insight[] {
   if (lider.qualificados > 0) {
     insights.push({
       tipo: "destaque",
-      texto: `${nomeDoSdr(lider.sdr)} lidera em leads qualificados no mês (${lider.qualificados}).`,
+      texto: `${lider.nome} lidera em leads qualificados no mês (${lider.qualificados}).`,
     });
   }
 
@@ -67,7 +67,7 @@ export function getInsights(sdrs: SdrMetrics[]): Insight[] {
     );
     insights.push({
       tipo: "destaque",
-      texto: `${nomeDoSdr(eficiente.sdr)} tem a melhor eficiência de qualificação: ${pct(eficiente.qualificados / eficiente.callsRealizadas)} das calls realizadas viram lead qualificado.`,
+      texto: `${eficiente.nome} tem a melhor eficiência de qualificação: ${pct(eficiente.qualificados / eficiente.callsRealizadas)} das calls realizadas viram lead qualificado.`,
     });
   }
 
@@ -76,7 +76,7 @@ export function getInsights(sdrs: SdrMetrics[]): Insight[] {
     if (s.callsAgendadas >= 5 && s.callsRealizadas / s.callsAgendadas < 0.7) {
       insights.push({
         tipo: "acao",
-        texto: `${nomeDoSdr(s.sdr)} realizou só ${pct(s.callsRealizadas / s.callsAgendadas)} das calls agendadas — reforçar confirmação pré-call.`,
+        texto: `${s.nome} realizou só ${pct(s.callsRealizadas / s.callsAgendadas)} das calls agendadas — reforçar confirmação pré-call.`,
       });
     }
   }
@@ -88,7 +88,7 @@ export function getInsights(sdrs: SdrMetrics[]): Insight[] {
       const faltam = 3 - resto;
       insights.push({
         tipo: "acao",
-        texto: `${nomeDoSdr(s.sdr)} está a ${faltam} QC do próximo bônus de qualificado (+1 a cada 3).`,
+        texto: `${s.nome} está a ${faltam} QC do próximo bônus de qualificado (+1 a cada 3).`,
       });
     }
   }

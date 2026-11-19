@@ -1,19 +1,15 @@
 import {
   agregarDashboard,
   contarNaoIdentificadas,
-  normalizarSdr,
-  SDRS_DASHBOARD,
-  type SdrCanonico,
+  POOL,
   type SdrDashboardPayload,
+  type TimeSdr,
 } from "@/lib/data/sdrDashboard";
 
 // ---------------------------------------------------------------------------
 // Regras PURAS da aba "Liderança Pré-venda" (DOCUMENTACAO.md 5.5, 5.8–5.11
 // e 6.5). Tudo aqui é testável sem rede nem React.
 // ---------------------------------------------------------------------------
-
-// 5.5 — metas escalonadas da EQUIPE (reuniões qualificadas no mês)
-export const METAS_EQUIPE: number[] = [150, 188, 225];
 
 // 5.1 — closers: giba/gilberto → Giba; demais mantidos como vieram.
 export function normalizarCloser(nome: string): string {
@@ -87,7 +83,8 @@ export function allocateIntegersWithTarget(fracoes: number[], alvo: number): num
 export const SEM_CLOSER = "Sem Closer";
 
 export type ComparecimentoSdr = {
-  sdr: SdrCanonico;
+  sdr: string;
+  nome: string;
   agendadasAteHoje: number;
   ocorridas: number;
   noShow: number;
@@ -110,12 +107,13 @@ export type Lideranca = {
   produtosNoRecorte: { produto: string; total: number }[];
   matriz: {
     closers: string[];
-    linhas: { sdr: SdrCanonico; valores: Record<string, number>; total: number }[];
+    linhas: { sdr: string; nome: string; valores: Record<string, number>; total: number }[];
   };
   equipe: {
     qualificadosMes: number;
-    metas: number[];
-    metaAtual: number;
+    /** 5.5 — metas da equipe do mês (da rota); null = sem meta definida. */
+    metas: number[] | null;
+    metaAtual: number | null;
     metasBatidas: number;
     progresso: { meta: number; pct: number; batida: boolean; faltam: number }[];
   };
@@ -136,41 +134,41 @@ export function agregarLideranca(
   mes: string,
   semana: number | null,
   hojeISO: string,
+  time: TimeSdr,
 ): Lideranca {
   const r: Recorte = { mes, semana };
+  const { reconhecer } = time;
+  // Ordem das linhas: a dos operadores do mês, e o pool por último.
+  const ordem = [...time.operadores.map((o) => o.id), POOL];
 
   // --- Comparecimento (5.8): só calls com data ≤ hoje entram na base -------
-  const porSdr = new Map<
-    SdrCanonico,
-    { agendadasAteHoje: number; ocorridas: number; noShow: number }
-  >();
-  const garantir = (sdr: SdrCanonico) => {
+  const porSdr = new Map<string, { agendadasAteHoje: number; ocorridas: number; noShow: number }>();
+  const garantir = (sdr: string) => {
     const atual = porSdr.get(sdr) ?? { agendadasAteHoje: 0, ocorridas: 0, noShow: 0 };
     porSdr.set(sdr, atual);
     return atual;
   };
   for (const linha of payload.agendadas) {
     if (!noRecorte(linha.data_referencia, r) || linha.data_referencia > hojeISO) continue;
-    const sdr = normalizarSdr(linha.sdr);
+    const sdr = reconhecer(linha.sdr);
     if (sdr) garantir(sdr).agendadasAteHoje += linha.total;
   }
   for (const linha of payload.realizadas) {
     if (!noRecorte(linha.data_referencia, r) || linha.data_referencia > hojeISO) continue;
-    const sdr = normalizarSdr(linha.sdr);
+    const sdr = reconhecer(linha.sdr);
     if (sdr) garantir(sdr).ocorridas += linha.total;
   }
   for (const linha of payload.no_show) {
     if (!noRecorte(linha.data_referencia, r) || linha.data_referencia > hojeISO) continue;
-    const sdr = normalizarSdr(linha.sdr);
+    const sdr = reconhecer(linha.sdr);
     if (sdr) garantir(sdr).noShow += linha.total;
   }
 
-  const comparecimentoPorSdr: ComparecimentoSdr[] = SDRS_DASHBOARD.filter((s) =>
-    porSdr.has(s),
-  ).map((sdr) => {
+  const comparecimentoPorSdr: ComparecimentoSdr[] = ordem.filter((s) => porSdr.has(s)).map((sdr) => {
     const c = porSdr.get(sdr)!;
     return {
       sdr,
+      nome: time.nomeDe(sdr),
       ...c,
       taxa:
         c.agendadasAteHoje > 0
@@ -205,10 +203,10 @@ export function agregarLideranca(
   // calls marcadas no recorte (agendadas), distribuídas pela participação de
   // cada closer no MESMO dia; sem closer no dia → "Sem Closer"; arredondamento
   // por maiores restos para a soma bater com o total real do SDR.
-  const sdrPorDia = new Map<string, Map<SdrCanonico, number>>();
+  const sdrPorDia = new Map<string, Map<string, number>>();
   for (const linha of payload.agendadas) {
     if (!noRecorte(linha.data_referencia, r)) continue;
-    const sdr = normalizarSdr(linha.sdr);
+    const sdr = reconhecer(linha.sdr);
     if (!sdr) continue;
     const dia = sdrPorDia.get(linha.data_referencia) ?? new Map();
     dia.set(sdr, (dia.get(sdr) ?? 0) + linha.total);
@@ -225,7 +223,7 @@ export function agregarLideranca(
     closerPorDia.set(linha.data_referencia, dia);
   }
 
-  const fracionado = new Map<SdrCanonico, Map<string, number>>();
+  const fracionado = new Map<string, Map<string, number>>();
   let usouSemCloser = false;
   for (const [dia, sdrs] of sdrPorDia) {
     const closersDoDia = closerPorDia.get(dia);
@@ -250,7 +248,7 @@ export function agregarLideranca(
   const colunas = [...todosClosers].sort((a, b) => a.localeCompare(b, "pt-BR"));
   if (usouSemCloser) colunas.push(SEM_CLOSER);
 
-  const linhasMatriz = SDRS_DASHBOARD.filter((s) => fracionado.has(s)).map((sdr) => {
+  const linhasMatriz = ordem.filter((s) => fracionado.has(s)).map((sdr) => {
     const fracoes = fracionado.get(sdr)!;
     const totalSdr = [...(sdrPorDia.values() ?? [])].reduce(
       (a, dia) => a + (dia.get(sdr) ?? 0),
@@ -262,17 +260,17 @@ export function agregarLideranca(
     colunas.forEach((c, i) => {
       valores[c] = inteiros[i];
     });
-    return { sdr, valores, total: totalSdr };
+    return { sdr, nome: time.nomeDe(sdr), valores, total: totalSdr };
   });
 
   // --- Métricas da equipe (5.5): SEMPRE o mês inteiro, ignora a semana -----
-  // Soma os qualificados de TODOS os SDRs acompanhados (incl. Hana — a meta
+  // Soma os qualificados de TODOS os SDRs acompanhados (incl. o pool — a meta
   // da equipe conta reuniões qualificadas do time inteiro de pré-venda).
-  const dashboardMes = agregarDashboard(payload, mes);
+  const dashboardMes = agregarDashboard(payload, mes, time);
   const qualificadosMes = dashboardMes.sdrs.reduce((a, s) => a + s.qualificados, 0);
-  const metasBatidasEquipe = METAS_EQUIPE.filter((m) => qualificadosMes >= m).length;
-  const metaAtualEquipe =
-    METAS_EQUIPE.find((m) => qualificadosMes < m) ?? METAS_EQUIPE[METAS_EQUIPE.length - 1];
+  const metasEquipe = time.equipe;
+  const metasBatidasEquipe = metasEquipe ? metasEquipe.filter((m) => qualificadosMes >= m).length : 0;
+  const metaAtualEquipe = metasEquipe ? (metasEquipe.find((m) => qualificadosMes < m) ?? metasEquipe[metasEquipe.length - 1]) : null;
 
   return {
     kpis: {
@@ -289,15 +287,15 @@ export function agregarLideranca(
     produtosNoRecorte,
     matriz: { closers: colunas, linhas: linhasMatriz },
     naoIdentificadas: [payload.agendadas, payload.realizadas, payload.no_show].reduce(
-      (a, linhas) => a + contarNaoIdentificadas(linhas, (l) => noRecorte(l.data_referencia, r)),
+      (a, linhas) => a + contarNaoIdentificadas(linhas, reconhecer, (l) => noRecorte(l.data_referencia, r)),
       0,
     ),
     equipe: {
       qualificadosMes,
-      metas: METAS_EQUIPE,
+      metas: metasEquipe,
       metaAtual: metaAtualEquipe,
       metasBatidas: metasBatidasEquipe,
-      progresso: METAS_EQUIPE.map((meta) => ({
+      progresso: (metasEquipe ?? []).map((meta) => ({
         meta,
         pct: Math.min(qualificadosMes / meta, 1),
         batida: qualificadosMes >= meta,
