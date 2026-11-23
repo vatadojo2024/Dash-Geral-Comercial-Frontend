@@ -1,7 +1,7 @@
 import { getServerSession } from "@/lib/auth/session";
 import { NextResponse, type NextRequest } from "next/server";
 import { adaptApiUsuarios } from "@/lib/server/apiUsuarios";
-import { DEMO_ACCOUNTS } from "@/lib/mock/users";
+import { DEMO_ACCOUNTS, DESLIGADOS_DEMO } from "@/lib/mock/users";
 
 // ---------------------------------------------------------------------------
 // GET /api/usuarios — diretório de usuários (id→nome) para traduzir os UUIDs
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Sessão expirada." }, { status: 401 });
     }
     return NextResponse.json({
-      usuarios: DEMO_ACCOUNTS.map((u) => ({ id: u.id, nome: u.nome })),
+      usuarios: DEMO_ACCOUNTS.map((u) => ({ id: u.id, nome: u.nome, papel: u.role, ativo: !DESLIGADOS_DEMO.has(u.id) })),
     });
   }
 

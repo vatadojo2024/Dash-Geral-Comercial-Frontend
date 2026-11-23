@@ -1,5 +1,5 @@
 import { hojeBR, somarDias } from "@/lib/agendamentos/primeiraCall";
-import { CLOSERS, SDRS } from "@/lib/mock/users";
+import { CLOSERS_ATIVOS, SDRS } from "@/lib/mock/users";
 
 // ---------------------------------------------------------------------------
 // Mock de GET /api/agendamentos/primeira-call (LEADS_MODE=mock). Espelha a
@@ -111,7 +111,7 @@ export type ParamsMockAgendamentos = {
 // logado é um closer que NÃO é uma delas (login real), ele assume o lugar do
 // primeiro — assim a fila dele não vem vazia no teste local.
 export function closersDoMock(user: { id: string; nome: string; role: string }): CloserDoMock[] {
-  const demo = CLOSERS.map((c) => ({ id: c.id, nome: c.nome }));
+  const demo = CLOSERS_ATIVOS.map((c) => ({ id: c.id, nome: c.nome }));
   if (user.role !== "closer" || demo.some((c) => c.id === user.id)) return demo;
   return [{ id: user.id, nome: user.nome }, ...demo.slice(1)];
 }
@@ -125,7 +125,7 @@ export function mockAgendamentosPrimeiraCall(p: ParamsMockAgendamentos = {}) {
   const base = { de: de ?? hoje, ate, gerado_em: (p.agora ?? new Date()).toISOString() };
   if (p.simular === "vazio") return { ...base, total: 0, agendamentos: [] as unknown[] };
 
-  const closers = p.closers && p.closers.length > 0 ? p.closers : CLOSERS;
+  const closers = p.closers && p.closers.length > 0 ? p.closers : CLOSERS_ATIVOS;
   const todos = SEMENTES.map((s, i) => item(s, i, hoje, closers)).sort((a, b) => a.call_at.localeCompare(b.call_at));
   const naJanela = todos.filter((a) => {
     const dia = a.call_at.slice(0, 10);

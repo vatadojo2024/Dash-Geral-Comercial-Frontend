@@ -18,8 +18,9 @@ import {
 import type { LeadListItem } from "@/lib/api/contracts";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { fetchVendasDoMes } from "@/lib/data/salesOps";
-import { useUsuariosMap, useUsuariosCarregando } from "@/lib/data/useUsuarios";
+import { useClosers, useUsuariosMap, useUsuariosCarregando } from "@/lib/data/useUsuarios";
 import {
+  chaveDeVendas,
   metasPorCloser,
   nomeApiVendasPorCloser,
   rotuloProduto,
@@ -37,7 +38,7 @@ import { potencialPorProduto } from "@/lib/salesops/potencial";
 import { formatarBRL, formatarBRLExato, formatarPct } from "@/lib/formatters/moeda";
 import { leadAtivo } from "@/features/dashboard/derivacoes";
 import { useSession } from "@/features/session/SessionProvider";
-import { CLOSERS, findAccountById, nomeDoUsuario } from "@/lib/mock/users";
+import { findAccountById, nomeDoUsuario } from "@/lib/mock/users";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
@@ -256,11 +257,14 @@ function PainelCloser({ closerId }: { closerId: string }) {
   // isto, o closer logado piscaria "sem meta" enquanto o UUID não resolve.
   const resolvendoCloser = !slug && usuariosCarregando;
 
+  // Sem slug (closer sem meta configurada, ex.: quem acabou de entrar), as
+  // vendas vêm pelo nome do diretório.
+  const chaveVendas = chaveDeVendas(closerId, usuarios);
   const vendasQuery = useQuery({
-    queryKey: ["vendas", slug],
-    queryFn: () => fetchVendasDoMes(slug!),
+    queryKey: ["vendas", chaveVendas],
+    queryFn: () => fetchVendasDoMes(chaveVendas!),
     staleTime: VALIDADE.vendas,
-    enabled: !!slug,
+    enabled: !!chaveVendas,
   });
   const leadsQuery = useQuery({
     queryKey: ["leads", user.id],
@@ -337,8 +341,8 @@ function PainelCloser({ closerId }: { closerId: string }) {
       <Card>
         <EmptyState
           icon={Target}
-          titulo="Closer sem meta configurada"
-          descricao="Cadastre as metas do mês em src/lib/config/salesops.ts."
+          titulo="Sem meta definida"
+          descricao={`Este closer ainda não tem meta no mês. Vendido até agora: ${formatarBRL(vendas.volumeVendido)}.`}
         />
       </Card>
     );
@@ -522,18 +526,19 @@ function PainelCloser({ closerId }: { closerId: string }) {
 export function SalesOpsView() {
   const user = useSession();
   const usuarios = useUsuariosMap();
-  const [closerSelecionado, setCloserSelecionado] = useState<string>(
-    user.role === "closer" ? user.id : CLOSERS[0].id,
-  );
+  // Os closers vêm do diretório (/api/usuarios): os ativos primeiro; quem saiu
+  // continua como opção, marcado "(desligado)", para ver o histórico.
+  const closers = useClosers();
+  const [closerSelecionado, setCloserSelecionado] = useState<string | null>(null);
 
   // Closer vê a própria página; admin escolhe qual carteira ver.
-  const closerId = user.role === "closer" ? user.id : closerSelecionado;
+  const closerId = user.role === "closer" ? user.id : (closerSelecionado ?? closers[0]?.id ?? null);
 
   // Cabeçalho: nome real (diretório /api/usuarios resolve o UUID do closer; admin
   // cai no nome da conta pelo slug). Último recurso de nomeDoUsuario é o próprio
   // id — se isso for um UUID (diretório ainda carregando), mostramos um rótulo
   // limpo, NUNCA o UUID cru.
-  const nomeResolvido = nomeDoUsuario(closerId, usuarios);
+  const nomeResolvido = closerId ? nomeDoUsuario(closerId, usuarios) : "Closer";
   const ehUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-/i.test(nomeResolvido);
   const rotuloCloser = ehUuid ? "Closer" : nomeResolvido;
 
@@ -548,7 +553,7 @@ export function SalesOpsView() {
           <span className="text-xs font-medium uppercase tracking-wide text-texto-sec">
             Closer:
           </span>
-          {CLOSERS.map((c) => (
+          {closers.map((c) => (
             <button
               key={c.id}
               role="tab"
@@ -560,7 +565,7 @@ export function SalesOpsView() {
                   : "border-borda bg-painel-claro text-texto-sec hover:text-texto"
               }`}
             >
-              {c.nome}
+              {c.ativo ? c.nome : `${c.nome} (desligado)`}
             </button>
           ))}
         </div>
@@ -571,7 +576,13 @@ export function SalesOpsView() {
         metas e tabela de preços vigentes do mês
       </p>
 
-      <PainelCloser closerId={closerId} />
+      {closerId ? (
+        <PainelCloser closerId={closerId} />
+      ) : (
+        <p className="text-sm text-texto-sec" role="status">
+          Carregando os closers…
+        </p>
+      )}
     </div>
   );
 }

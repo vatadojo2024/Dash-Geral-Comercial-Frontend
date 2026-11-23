@@ -41,6 +41,10 @@ function opcoesDe(
     .sort((a, b) => a.nome.localeCompare(b.nome));
 }
 
+// Rótulo de filtro de histórico: quem saiu continua como opção, marcado.
+export const comDesligado = (nome: string, id: string, desligados?: ReadonlySet<string> | null) =>
+  desligados?.has(id) ? `${nome} (desligado)` : nome;
+
 // Opção "Sem SDR" quando houver leads sem sdr_id (inclui os do pool). value = SEM_SDR.
 export function opcaoSemSdr(leads: LeadListItem[]): OpcaoDono | null {
   const semSdr = leads.filter((l) => !l.sdr_id);
@@ -51,14 +55,16 @@ export function opcaoSemSdr(leads: LeadListItem[]): OpcaoDono | null {
 export function opcoesDeDono(
   leads: LeadListItem[],
   mapa?: ReadonlyMap<string, string> | null,
+  desligados?: ReadonlySet<string> | null,
 ): {
   closers: OpcaoDono[];
   sdrs: OpcaoDono[];
 } {
-  const sdrs = opcoesDe(leads, (l) => l.sdr_id, (l) => l.sdr_nome, mapa);
+  const marcar = (o: OpcaoDono) => ({ ...o, nome: comDesligado(o.nome, o.id, desligados) });
+  const sdrs = opcoesDe(leads, (l) => l.sdr_id, (l) => l.sdr_nome, mapa).map(marcar);
   const sem = opcaoSemSdr(leads);
   return {
-    closers: opcoesDe(leads, (l) => l.closer_id, (l) => l.closer_nome, mapa),
+    closers: opcoesDe(leads, (l) => l.closer_id, (l) => l.closer_nome, mapa).map(marcar),
     // A opção "Sem SDR" entra no fim da lista de SDRs (quando há).
     sdrs: sem ? [...sdrs, sem] : sdrs,
   };

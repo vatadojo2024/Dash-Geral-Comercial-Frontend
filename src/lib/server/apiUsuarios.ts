@@ -39,7 +39,9 @@ function mapApiUsuario(bruto: unknown): Usuario | null {
     texto(raw.display_name) ??
     (email ? email.split("@")[0] : null) ??
     id; // sem nome utilizável → o id (mesmo fallback do front)
-  return { id, nome };
+  const papel = texto(raw.papel) ?? texto(raw.role);
+  // `ativo: false` = desligado (backend 9a04915). Ausente = ativo (API antiga).
+  return { id, nome, ...(papel ? { papel } : {}), ativo: raw.ativo !== false };
 }
 
 export type AdaptUsuariosResult =

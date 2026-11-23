@@ -22,12 +22,12 @@ import {
   mesPadrao,
 } from "@/lib/data/sdrDashboard";
 import { useTimeSdr } from "@/features/sdr/useTimeSdr";
-import { metasPorCloser } from "@/lib/config/salesops";
+import { chaveDeVendas, metasPorCloser, slugDoCloser } from "@/lib/config/salesops";
+import { useClosers, useUsuariosMap } from "@/lib/data/useUsuarios";
 import { formatarBRL, formatarPct } from "@/lib/formatters/moeda";
 import { TEMPERATURA_CONFIG, TEMPERATURAS_ORDENADAS } from "@/lib/formatters/score";
 import { leadAtivo } from "@/features/dashboard/derivacoes";
 import { tiposDoLead } from "@/lib/leads/alertas";
-import { CLOSERS, nomeDoUsuario } from "@/lib/mock/users";
 import { useSession } from "@/features/session/SessionProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -80,14 +80,22 @@ export function VisaoGeralView() {
     queryFn: () => fetchLeads(user),
     staleTime: VALIDADE.leads,
   });
+  // Os closers vêm do diretório (/api/usuarios), sem nome fixo: os ativos e quem
+  // saiu (este só aparece se tiver venda no mês, marcado "(desligado)").
+  const closers = useClosers();
+  const usuarios = useUsuariosMap();
   const vendasQuery = useQuery({
-    queryKey: ["vendas", "todos-closers"],
+    queryKey: ["vendas", "todos-closers", closers.map((c) => c.id)],
     queryFn: async () => {
       const porCloser = await Promise.all(
-        CLOSERS.map(async (c) => [c.id, await fetchVendasDoMes(c.id)] as const),
+        closers.map(async (c) => {
+          const chave = chaveDeVendas(c.id, usuarios);
+          return [c.id, chave ? await fetchVendasDoMes(chave) : null] as const;
+        }),
       );
-      return new Map<string, VendasDoMes>(porCloser);
+      return new Map<string, VendasDoMes>(porCloser.filter((x): x is readonly [string, VendasDoMes] => x[1] !== null));
     },
+    enabled: closers.length > 0,
     staleTime: VALIDADE.vendas,
   });
   const sdrQuery = useQuery({ queryKey: ["sdr-dashboard"], queryFn: fetchSdrPayload, staleTime: VALIDADE.pacoteSdr });
@@ -157,7 +165,7 @@ export function VisaoGeralView() {
   const qualificadosEquipe = dashboardSdr?.sdrs.reduce((a, s) => a + s.qualificados, 0) ?? 0;
   const metasEquipe = timeSdr.time?.equipe ?? null;
 
-  const volumeTotal = CLOSERS.reduce(
+  const volumeTotal = closers.reduce(
     (a, c) => a + (vendas.get(c.id)?.volumeVendido ?? 0),
     0,
   );
@@ -231,17 +239,33 @@ export function VisaoGeralView() {
             }
           />
           <CardContent className="space-y-4">
-            {CLOSERS.map((c) => {
+            {closers.map((c) => {
               const v = vendas.get(c.id);
-              const meta = metasPorCloser[c.id];
-              if (!v || !meta) return null;
+              // Quem saiu só aparece se vendeu no mês (histórico).
+              if (!v || (!c.ativo && v.volumeVendido <= 0)) return null;
+              const slug = slugDoCloser(c.id, usuarios);
+              const meta = slug ? metasPorCloser[slug] : undefined;
+              const nome = c.ativo ? c.nome : `${c.nome} (desligado)`;
+              if (!meta) {
+                return (
+                  <div key={c.id} className="flex items-baseline justify-between text-sm">
+                    <span className="flex items-center gap-2 font-medium text-texto">
+                      <Wallet className="h-3.5 w-3.5 text-texto-sec" aria-hidden />
+                      {nome}
+                    </span>
+                    <span className="tabular-nums text-texto-sec">
+                      {formatarBRL(v.volumeVendido)} <span className="text-xs">· sem meta definida</span>
+                    </span>
+                  </div>
+                );
+              }
               const pct = v.volumeVendido / meta.m1;
               return (
                 <div key={c.id}>
                   <div className="mb-1 flex items-baseline justify-between text-sm">
                     <span className="flex items-center gap-2 font-medium text-texto">
                       <Wallet className="h-3.5 w-3.5 text-texto-sec" aria-hidden />
-                      {nomeDoUsuario(c.id)}
+                      {nome}
                     </span>
                     <span className="tabular-nums text-texto-sec">
                       {formatarBRL(v.volumeVendido)}{" "}

@@ -17,6 +17,8 @@ export const DEMO_ACCOUNTS: SessionUser[] = [
   conta("marcio", "Marcio", "marcio@vatadojo.com.br", "closer"),
   conta("giba", "Giba", "giba@vatadojo.com.br", "closer"),
   conta("aurelio", "Aurelio", "aurelio@vatadojo.com.br", "closer"),
+  // Demonstração do closer que entrou no lugar do Marcio (19/11/2026).
+  conta("lucas", "Lucas Frare", "lucas.frare@exemplo-de-teste.com", "closer"),
   conta("benhur", "Benhur", "benhur@vatadojo.com.br", "sdr"),
   conta("guilherme", "Guilherme", "guilherme@vatadojo.com.br", "sdr"),
   conta("glaucio", "Glaucio", "glaucio@vatadojo.com.br", "sdr"),
@@ -39,6 +41,10 @@ export const ROLE_LABEL: Record<Role, string> = {
 };
 
 export const CLOSERS = DEMO_ACCOUNTS.filter((a) => a.role === "closer");
+// Demonstração de operador DESLIGADO (backend 9a04915: `ativo: false` no
+// /api/usuarios): o Marcio saiu. Continua no histórico; não recebe trabalho novo.
+export const DESLIGADOS_DEMO: ReadonlySet<string> = new Set(["marcio"]);
+export const CLOSERS_ATIVOS = CLOSERS.filter((c) => !DESLIGADOS_DEMO.has(c.id));
 export const SDRS = DEMO_ACCOUNTS.filter((a) => a.role === "sdr");
 
 export function findAccountById(id: string): SessionUser | null {

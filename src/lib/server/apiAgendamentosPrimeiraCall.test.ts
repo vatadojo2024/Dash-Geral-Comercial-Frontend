@@ -135,7 +135,8 @@ describe("mock no formato da API real", () => {
   it("teste local com login real: o closer logado assume a fila do primeiro closer do mock", () => {
     const real = { id: "3f1c0b52-uuid-do-closer", nome: "Marcio Travassos", role: "closer" };
     const closers = closersDoMock(real);
-    expect(closers.map((c) => c.id)).toEqual(["3f1c0b52-uuid-do-closer", "giba", "aurelio"]);
+    // O Marcio da demonstração está desligado: não entra na agenda (trabalho novo).
+    expect(closers.map((c) => c.id)).toEqual(["3f1c0b52-uuid-do-closer", "aurelio", "lucas"]);
     const r = adaptApiAgendamentosPrimeiraCall(
       mockAgendamentosPrimeiraCall({ agora: AGORA, closerId: real.id, closers }),
     );
@@ -144,8 +145,8 @@ describe("mock no formato da API real", () => {
     expect(r.resposta.agendamentos.length).toBeGreaterThan(0);
     expect(r.resposta.agendamentos.every((a) => a.closer_id === real.id && a.closer_nome === "Marcio Travassos")).toBe(true);
     // Conta de demonstração e admin seguem com os closers do mock.
-    expect(closersDoMock({ id: "giba", nome: "Giba", role: "closer" }).map((c) => c.id)).toEqual(["marcio", "giba", "aurelio"]);
-    expect(closersDoMock({ id: "uuid-admin", nome: "Vata", role: "admin" }).map((c) => c.id)).toEqual(["marcio", "giba", "aurelio"]);
+    expect(closersDoMock({ id: "giba", nome: "Giba", role: "closer" }).map((c) => c.id)).toEqual(["giba", "aurelio", "lucas"]);
+    expect(closersDoMock({ id: "uuid-admin", nome: "Vata", role: "admin" }).map((c) => c.id)).toEqual(["giba", "aurelio", "lucas"]);
   });
 
   it("simular=invalido: os dois itens quebrados são descartados, o resto fica", () => {

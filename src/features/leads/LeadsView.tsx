@@ -8,7 +8,7 @@ import { SearchX } from "lucide-react";
 import { fetchLeads } from "@/lib/data/dataClient";
 import { opcoesDeDono } from "@/lib/data/donos";
 import { filtrarPorEscopo } from "@/lib/data/escopo";
-import { useUsuariosMap } from "@/lib/data/useUsuarios";
+import { useDesligados, useUsuariosMap } from "@/lib/data/useUsuarios";
 import { useSession } from "@/features/session/SessionProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
@@ -40,9 +40,10 @@ export function LeadsView() {
 
   // Diretório id→nome (traduz os UUIDs de closer_id/sdr_id).
   const usuarios = useUsuariosMap();
+  const desligados = useDesligados();
 
   // Opções de Closer/SDR derivadas dos próprios leads (ids reais) — ver donos.ts.
-  const donos = useMemo(() => opcoesDeDono(data ?? [], usuarios), [data, usuarios]);
+  const donos = useMemo(() => opcoesDeDono(data ?? [], usuarios, desligados), [data, usuarios, desligados]);
 
   function setParam(chave: string, valor: string | null) {
     const sp = new URLSearchParams(searchParams);

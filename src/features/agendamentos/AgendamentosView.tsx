@@ -1,5 +1,7 @@
 "use client";
 
+import { comDesligado } from "@/lib/data/donos";
+import { useDesligados } from "@/lib/data/useUsuarios";
 import { BotaoAtualizar } from "@/components/layout/BotaoAtualizar";
 import { VALIDADE } from "@/lib/data/validade";
 import { useEffect, useMemo, useState } from "react";
@@ -145,6 +147,7 @@ export function AgendamentosView() {
   );
 
   // Filtro de closer (só admin): nomes presentes no que está carregado.
+  const desligados = useDesligados();
   const opcoesCloser = useMemo(
     () =>
       veTodos
@@ -194,7 +197,7 @@ export function AgendamentosView() {
                 <option value="">Todos os closers</option>
                 {opcoesCloser.map((c) => (
                   <option key={c.chave} value={c.chave}>
-                    {c.nome}
+                    {comDesligado(c.nome, c.chave, desligados)}
                   </option>
                 ))}
               </select>

@@ -47,6 +47,13 @@ export function slugDoCloser(
   return null;
 }
 
+// O que a busca de vendas recebe: o slug, se o closer tem meta configurada aqui;
+// senão, o NOME do diretório (a API comercial filtra por nome). Assim um closer
+// novo (ex.: quem entrou pelo /api/usuarios) tem vendas sem slug fixo no código.
+export function chaveDeVendas(closerId: string, usuariosMap: ReadonlyMap<string, string>): string | null {
+  return slugDoCloser(closerId, usuariosMap) ?? usuariosMap.get(closerId) ?? null;
+}
+
 export type PrecoProduto = { avista: number; parcelado12x: number };
 
 // Tabela oficial de preços (Vata, jun/2026)

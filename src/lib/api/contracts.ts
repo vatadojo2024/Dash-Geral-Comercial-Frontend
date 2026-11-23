@@ -75,10 +75,14 @@ export type SessionUser = z.infer<typeof SessionUserSchema>;
 
 // GET /api/usuarios — diretório usado para traduzir closer_id/sdr_id (UUID) →
 // nome nos dropdowns de filtro, no detalhe do lead e onde aparecer um dono.
-// Enxuto de propósito: o front só precisa de id→nome (papel não é usado aqui).
+// `ativo: false` = operador DESLIGADO (backend 9a04915): continua no diretório
+// para o histórico mostrar o nome, mas não é opção de trabalho novo; nos
+// filtros de histórico aparece como "(desligado)".
 export const UsuarioSchema = z.object({
   id: z.string(),
   nome: z.string(),
+  papel: z.string().optional(),
+  ativo: z.boolean().default(true),
 });
 export type Usuario = z.infer<typeof UsuarioSchema>;
 

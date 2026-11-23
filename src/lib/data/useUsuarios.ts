@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { Usuario } from "@/lib/api/contracts";
 import { fetchUsuarios } from "./dataClient";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,25 @@ export function useUsuariosMap(): ReadonlyMap<string, string> {
     () => new Map((data ?? []).map((u) => [u.id, u.nome] as const)),
     [data],
   );
+}
+
+// Ids de quem saiu (ativo: false): continuam com nome no histórico e viram
+// "(desligado)" nos filtros.
+export function useDesligados(): ReadonlySet<string> {
+  const { data } = useQuery(usuariosQueryOptions);
+  return useMemo(() => new Set((data ?? []).filter((u) => !u.ativo).map((u) => u.id)), [data]);
+}
+
+// Os closers do diretório: os ativos primeiro (por nome), depois os desligados.
+export function useClosers(): Usuario[] {
+  const { data } = useQuery(usuariosQueryOptions);
+  return useMemo(() => ordenarClosers(data ?? []), [data]);
+}
+
+export function ordenarClosers(usuarios: readonly Usuario[]): Usuario[] {
+  return usuarios
+    .filter((u) => u.papel === "closer")
+    .sort((a, b) => Number(!a.ativo) - Number(!b.ativo) || a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
 // isLoading do diretório (mesma queryKey → o React Query dedupe a busca). Para
