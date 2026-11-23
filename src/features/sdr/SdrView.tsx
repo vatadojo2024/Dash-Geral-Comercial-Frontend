@@ -51,15 +51,8 @@ import { KpiChip } from "./KpiChip";
 import { LevantouMaoPanel } from "./LevantouMaoPanel";
 import { PerformanceTable } from "./PerformanceTable";
 import { LeadershipPanel } from "./LeadershipPanel";
+import { classeDaGrade, classeDoCard } from "@/lib/sdr/gradeDosCards";
 
-// Grade dos cards por SDR: tantas colunas quantos cards (até 4), para a linha
-// ocupar a largura toda. Classes fixas — o Tailwind não enxerga classe montada.
-function colunasDosCards(n: number): string {
-  if (n <= 1) return "grid-cols-1";
-  if (n === 2) return "lg:grid-cols-2";
-  if (n === 3) return "lg:grid-cols-3";
-  return "lg:grid-cols-2 xl:grid-cols-4";
-}
 
 const COR_STATUS = {
   verde: "text-verde",
@@ -82,13 +75,13 @@ function Metrica({ rotulo, children }: { rotulo: string; children: React.ReactNo
   );
 }
 
-function SdrCard({ m, destaque }: { m: SdrMetrics; destaque: boolean }) {
+function SdrCard({ m, destaque, className }: { m: SdrMetrics; destaque: boolean; className?: string }) {
   const linhaProdutos = (Object.keys(PRODUTO_ROTULO) as ProdutoChave[])
     .map((k) => `${PRODUTO_ROTULO[k]} ${m.produtos[k]}`)
     .join(" | ");
 
   return (
-    <Card className={cn(destaque && "border-azul/60 ring-1 ring-azul/40")}>
+    <Card className={cn("h-full", destaque && "border-azul/60 ring-1 ring-azul/40", className)}>
       <CardContent>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -257,7 +250,7 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
             <Skeleton key={i} className="h-16 rounded-xl" />
           ))}
         </div>
-        <div className={cn("grid gap-3", colunasDosCards(3))}>
+        <div className={cn("grid gap-3", classeDaGrade(3))}>
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-72 rounded-xl" />
           ))}
@@ -371,11 +364,12 @@ export function SdrView({ aba, recorte = "geral" }: { aba: AbaSdr; recorte?: Rec
             <KpiChip icon={Percent} rotulo="Taxa de qualificação" valor={pctBR(taxaQualificacao)} />
           </div>
 
-          {/* 6.4a — cards por SDR (destaque no SDR logado). As colunas acompanham
-              o número de SDRs exibidos (a Hana saiu): sem coluna vazia à direita. */}
-          <div className={cn("grid gap-3", colunasDosCards(sdrs.length))}>
-            {sdrs.map((m) => (
-              <SdrCard key={m.sdr} m={m} destaque={meuSdr === m.sdr} />
+          {/* 6.4a — cards por SDR (destaque no SDR logado), na ordem de sempre.
+              Linhas equilibradas no desktop: nunca um card sozinho na última
+              (regra em src/lib/sdr/gradeDosCards.ts). */}
+          <div className={cn("grid gap-3", classeDaGrade(sdrs.length))}>
+            {sdrs.map((m, i) => (
+              <SdrCard key={m.sdr} m={m} destaque={meuSdr === m.sdr} className={classeDoCard(i, sdrs.length)} />
             ))}
           </div>
 
