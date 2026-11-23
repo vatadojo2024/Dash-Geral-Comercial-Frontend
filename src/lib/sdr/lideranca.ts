@@ -139,7 +139,7 @@ export function agregarLideranca(
   const r: Recorte = { mes, semana };
   const { reconhecer } = time;
   // Ordem das linhas: a dos operadores do mês, e o pool por último.
-  const ordem = [...time.operadores.map((o) => o.id), POOL];
+  const ordem = [...time.operadores.map((o) => o.id), ...(time.temPool ? [POOL] : [])];
 
   // --- Comparecimento (5.8): só calls com data ≤ hoje entram na base -------
   const porSdr = new Map<string, { agendadasAteHoje: number; ocorridas: number; noShow: number }>();

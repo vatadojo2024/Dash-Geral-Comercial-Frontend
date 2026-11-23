@@ -5,8 +5,9 @@ import type { OperadoresDoMes, OperadorSdr } from "@/lib/data/sdrDashboard";
 // e as metas "efetivas a partir de" um mês, como a tabela comercial_metas.
 // Nomes e apelidos espelham os do backend (tests/setup-operadores.ts); os ids
 // são os das contas de demonstração, para o "você" casar com a sessão.
-// Diferença deliberada: aqui as metas valem desde 01/2026, para os dados de
-// exemplo (abril a junho) terem meta; no backend elas começam em 11/2026.
+// As datas das metas são as do banco (aplicadas em 23/11/2026): os SDRs antigos
+// e a equipe desde 01/2026, o Arthur desde 10/2026 (entrou em 08/10) e a Fátima
+// desde 11/2026.
 // ---------------------------------------------------------------------------
 
 type Vigencia = { desde: string; faixas: [number, number, number]; regra_ninja_qc?: boolean };
@@ -18,7 +19,7 @@ const CADASTRO: Cadastro[] = [
   { id: "benhur", nome: "Benhur Ramos", nomes_externos: ["Benhur", "Ben", "Ramos", "Joao Filipe"], metas: PADRAO },
   { id: "glaucio", nome: "Glaucio Portela", nomes_externos: ["Glaucio", "Portela", "Lucio Borges"], metas: PADRAO },
   { id: "guilherme", nome: "Guilherme Alves", nomes_externos: ["Guilherme", "Delrue", "Alves"], metas: PADRAO },
-  { id: "arthur", nome: "Arthur", nomes_externos: ["Arthur", "Artur"], metas: [{ desde: "2026-01", faixas: [30, 40, 50], regra_ninja_qc: true }] },
+  { id: "arthur", nome: "Arthur", nomes_externos: ["Arthur", "Artur"], metas: [{ desde: "2026-10", faixas: [30, 40, 50], regra_ninja_qc: true }] },
   {
     id: "fatima",
     nome: "Fátima Consuelo",
@@ -41,6 +42,8 @@ export function operadoresDoMes(mes: string): OperadoresDoMes {
     mes,
     metrica: "leads_qualificados",
     equipe: { faixas: equipe?.faixas ?? null, meta_desde: equipe?.desde ?? null },
+    // A IA de agendamento (backend 7c75a94): separada dos operadores.
+    pool: { nome: "Hana", nomes_externos: ["Hana"] },
     operadores: CADASTRO.map(({ metas, ...o }) => {
       const m = vigente(metas, mes);
       return { ...o, faixas: m?.faixas ?? null, meta_desde: m?.desde ?? null, regra_ninja_qc: m?.regra_ninja_qc ?? false };

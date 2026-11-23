@@ -192,6 +192,7 @@ describe("SDRs e metas da rota de operadores (backend 4197783)", () => {
     const o: OperadoresDoMes = {
       mes: "2026-11",
       equipe: { faixas: null, meta_desde: null },
+      pool: null,
       operadores: [
         { id: "a", nome: "Ana Souza", nomes_externos: ["Ana"], faixas: null, meta_desde: null, regra_ninja_qc: false },
         { id: "b", nome: "Ana Lima", nomes_externos: ["Ana"], faixas: null, meta_desde: null, regra_ninja_qc: false },
@@ -234,6 +235,16 @@ describe("SDRs e metas da rota de operadores (backend 4197783)", () => {
     expect([pool.pool, pool.nome, pool.metas, pool.qualificados]).toEqual([true, "Hana", null, 5]);
     expect(d.naoIdentificadas).toBe(1);
     expect(contarNaoIdentificadas([{ sdr: "Glaucio" }, { sdr: "x" }, { sdr: "Hana" }], time.reconhecer)).toBe(1);
+  });
+
+  it("o pool vem da rota: os nomes da IA são os que ela manda; sem pool, nenhum nome é da IA (e conta no aviso)", () => {
+    const base = operadoresDoMes("2026-11");
+    const outroNome = montarTime({ ...base, pool: { nome: "Agenda IA", nomes_externos: ["Agenda IA", "Hana"] } });
+    expect([outroNome.reconhecer("Agenda IA"), outroNome.reconhecer("hana"), outroNome.nomeDe(POOL)]).toEqual([POOL, POOL, "Agenda IA"]);
+    const semPool = montarTime({ ...base, pool: null });
+    expect([semPool.reconhecer("Hana"), semPool.temPool]).toEqual([null, false]);
+    const d = agregarDashboard(payload([linha("Hana", "2026-11-02", "Black", 5)]), "2026-11", semPool);
+    expect([d.sdrs.some((s) => s.pool), d.naoIdentificadas]).toEqual([false, 1]);
   });
 
   it("o texto do topo sai dos dados do mês (era fixo '40/50/60 (Arthur 30/40/50)')", () => {

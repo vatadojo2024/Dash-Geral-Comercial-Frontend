@@ -109,15 +109,15 @@ export const OperadoresDoMesSchema = z.object({
   metrica: z.string().optional(),
   equipe: z.object({ faixas: FaixasSchema.nullable(), meta_desde: z.string().nullable().default(null) }),
   operadores: z.array(OperadorSdrSchema),
+  // A IA de agendamento (o "pool", hoje a Hana), separada dos operadores
+  // (backend 7c75a94). null = "não sei quais nomes são da IA": nenhum nome é
+  // tratado como dela (e as linhas dela entram no aviso de não identificadas).
+  pool: z.object({ nome: z.string(), nomes_externos: z.array(z.string()) }).nullable().default(null),
 });
 export type OperadoresDoMes = z.infer<typeof OperadoresDoMesSchema>;
 
-// TEMPORÁRIO: a IA de agendamento (Hana) é o "pool" do de-para, e a rota de
-// operadores não o manda. Ela segue como antes: fora dos cards e da tela de SDR,
-// dentro da meta da EQUIPE. Reconhecida pelo primeiro nome até a rota mandá-la.
+// Chave do pool nas métricas: fora dos cards e da tela de SDR, dentro da meta da EQUIPE.
 export const POOL = "pool";
-const NOMES_DO_POOL = ["hana"];
-const NOME_DO_POOL = "Hana";
 
 const comparavel = (nome: string) =>
   nome
@@ -137,6 +137,8 @@ export type TimeSdr = {
   equipe: number[] | null;
   reconhecer: (nome: string | null | undefined) => string | null;
   nomeDe: (id: string) => string;
+  /** A rota mandou o pool (com os nomes da IA)? */
+  temPool: boolean;
 };
 
 // Reconhecimento: sem acento e sem maiúsculas, contra o nome do cadastro e os
@@ -144,19 +146,21 @@ export type TimeSdr = {
 // palavras dele estão num nome aceito ("Lucio" → "Lucio Borges"). O contrato
 // do backend casa por pedaço nos dois sentidos; aqui não, para um apelido curto
 // ("Ben", "Ramos") não puxar "Ruben" ou "Pedro Ramos". Se o nome servir para
-// mais de um operador, fica não identificado (não se chuta).
+// mais de um operador, fica não identificado (não se chuta). O pool entra pelos
+// nomes que a rota manda, com a mesma regra.
 export function montarTime(o: OperadoresDoMes): TimeSdr {
-  const aceitos = o.operadores.map((op) => ({
-    id: op.id,
-    nomes: [op.nome, ...op.nomes_externos].map(comparavel).filter(Boolean).map((n) => n.split(" ")),
-  }));
+  const palavrasDe = (lista: string[]) => lista.map(comparavel).filter(Boolean).map((n) => n.split(" "));
+  const aceitos = [
+    ...o.operadores.map((op) => ({ id: op.id, nomes: palavrasDe([op.nome, ...op.nomes_externos]) })),
+    ...(o.pool ? [{ id: POOL, nomes: palavrasDe([o.pool.nome, ...o.pool.nomes_externos]) }] : []),
+  ];
   const nomes = new Map(o.operadores.map((op) => [op.id, op.nome]));
+  if (o.pool) nomes.set(POOL, o.pool.nome);
   const reconhecer = (nome: string | null | undefined): string | null => {
     if (!nome?.trim()) return null;
     const palavras = comparavel(nome).split(" ");
     const exatos = aceitos.filter((a) => a.nomes.some((n) => n.join(" ") === palavras.join(" ")));
     if (exatos.length) return exatos.length === 1 ? exatos[0].id : null;
-    if (NOMES_DO_POOL.includes(palavras[0])) return POOL;
     const parciais = aceitos.filter((a) => a.nomes.some((n) => palavras.every((p) => n.includes(p))));
     return parciais.length === 1 ? parciais[0].id : null;
   };
@@ -165,7 +169,8 @@ export function montarTime(o: OperadoresDoMes): TimeSdr {
     operadores: o.operadores,
     equipe: o.equipe.faixas ? [...o.equipe.faixas] : null,
     reconhecer,
-    nomeDe: (id) => (id === POOL ? NOME_DO_POOL : (nomes.get(id) ?? "SDR")),
+    nomeDe: (id) => nomes.get(id) ?? "SDR",
+    temPool: Boolean(o.pool),
   };
 }
 
@@ -352,7 +357,7 @@ export function agregarDashboard(
   }
 
   // Os operadores do mês, na ordem da rota, e o pool por último.
-  const sdrs: SdrMetrics[] = [...time.operadores.map((o) => o.id), POOL].map((sdr) => {
+  const sdrs: SdrMetrics[] = [...time.operadores.map((o) => o.id), ...(time.temPool ? [POOL] : [])].map((sdr) => {
     const ag = agendadas.get(sdr) ?? 0;
     const re = realizadas.get(sdr) ?? 0;
     const ns = noShows.get(sdr) ?? 0;
