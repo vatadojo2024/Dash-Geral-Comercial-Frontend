@@ -26,7 +26,8 @@ export const CHAVE_BANCO = "mdc_edu_demo_v2";
 // 12 = análise de aula com IA: uma análise de exemplo pronta para revisar.
 // 13 = central de análises: exemplos interrompida, erro e decidida.
 // 14 = sempre um próximo checkpoint em pausa (a semente dependia da data).
-export const VERSAO_DADOS = 14;
+// 15 = todos os status de próximo checkpoint, em qualquer data.
+export const VERSAO_DADOS = 15;
 
 type Semente = Omit<Banco, "versao_dados"> & { data_referencia: string };
 type Salvo = { banco: Banco; tarefa_em: string };
@@ -70,24 +71,33 @@ export function bancoDaSemente(hoje: string): Banco {
   semearMural(banco, hoje);
   semearVencimentos(banco, hoje);
   importarDaFase1(banco);
-  garantirEmPausa(banco);
+  garantirStatusDosProximos(banco);
   semearAnaliseDeExemplo(banco, hoje);
   return banco;
 }
 
 // Os status da semente saem das datas (meses de calendário), e em alguns dias
-// nenhum próximo checkpoint fica "em pausa". A demonstração precisa de um: o
-// último aluno ativo com o próximo checkpoint pendente passa a tê-lo em pausa.
-function garantirEmPausa(banco: Banco) {
-  const proximo = (alunoId: string) =>
-    banco.checkpoints
-      .filter((c) => c.aluno_id === alunoId && !c.arquivado_em && !c.substituido_em)
-      .sort((x, y) => x.ordem - y.ordem)
-      .find((c) => c.status !== "realizado");
-  const ativos = banco.alunos.filter((a) => !a.arquivado_em && a.status_aluno === "ativo");
-  if (ativos.some((a) => proximo(a.id)?.status === "em_pausa")) return;
-  const alvo = [...ativos].reverse().map((a) => proximo(a.id)).find((c) => c?.status === "pendente");
-  if (alvo) alvo.status = "em_pausa";
+// algum status some dos próximos checkpoints. A demonstração precisa de todos:
+// o que faltar passa para o próximo checkpoint de um aluno (de trás para a
+// frente) cujo status se repete em outro aluno.
+const STATUS_DOS_PROXIMOS = ["previsto", "pendente", "nao_respondeu", "em_pausa"] as const;
+function garantirStatusDosProximos(banco: Banco) {
+  const proximos = banco.alunos
+    .filter((a) => !a.arquivado_em)
+    .map((a) =>
+      banco.checkpoints
+        .filter((c) => c.aluno_id === a.id && !c.arquivado_em && !c.substituido_em)
+        .sort((x, y) => x.ordem - y.ordem)
+        .find((c) => c.status !== "realizado"),
+    )
+    .filter((c): c is NonNullable<typeof c> => Boolean(c))
+    .reverse();
+  const conta = (s: string) => proximos.filter((c) => c.status === s).length;
+  for (const falta of STATUS_DOS_PROXIMOS) {
+    if (conta(falta) > 0) continue;
+    const alvo = proximos.find((c) => conta(c.status) > 1);
+    if (alvo) alvo.status = falta;
+  }
 }
 
 const NOTAS_DA_FASE1 = ["consumiu", "entendeu", "aplicou", "validou"] as const;
