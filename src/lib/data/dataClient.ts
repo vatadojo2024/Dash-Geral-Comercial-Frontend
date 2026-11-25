@@ -24,6 +24,7 @@ import { NaoAbordadosResponseSchema, type NaoAbordadosResponse } from "@/lib/sdr
 import { IncognitasResponseSchema, type IncognitasResponse } from "@/lib/sdr/incognitas";
 import { AbordagemResponseSchema, type AbordagemResponse } from "@/lib/sdr/abordagem";
 import { RetencaoResponseSchema, type RetencaoResponse } from "@/lib/sdr/retencao";
+import { adaptarComparativo, ContratoComparativoError, type Comparativo } from "@/lib/eventos/comparativo";
 import { PresentesResponseSchema, type PresentesResponse } from "@/lib/sdr/presentesSemAplicar";
 import { InscritosResponseSchema, type InscritosResponse } from "@/lib/sdr/inscritos";
 import { AusentesResponseSchema, type AusentesResponse } from "@/lib/sdr/ausentes";
@@ -307,6 +308,50 @@ export function fetchInscritos(de: string, ate: string): Promise<InscritosRespon
 // Aba "Retenção da audiência" (GET /api/eventos/retencao?de&ate).
 export function fetchRetencao(de: string, ate: string): Promise<RetencaoResponse> {
   return fetchEndpointEventos("/api/eventos/retencao", "retenção", RetencaoResponseSchema, de, ate);
+}
+
+// Aba "Eventos ao Vivo" (GET /api/eventos/comparativo?de&ate, só admin). de e
+// ate opcionais. Erro tipado pelo STATUS: a tela escolhe a mensagem de 403 e
+// 502 por ele. O 401 segue o padrão do painel: limpa o cookie e volta ao login.
+// Evento fora do contrato é descartado no adaptador (com aviso no console); só
+// o envelope inválido vira erro.
+export class ComparativoError extends Error {
+  constructor(
+    message: string,
+    // 0 = a resposta veio, mas fora do contrato.
+    public readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+export async function fetchComparativo(
+  de: string | null,
+  ate: string | null,
+  simular: string | null = null,
+): Promise<Comparativo> {
+  const qs = new URLSearchParams();
+  if (de) qs.set("de", de);
+  if (ate) qs.set("ate", ate);
+  if (simular) qs.set("simular", simular);
+  const res = await fetch(`/api/eventos/comparativo${qs.size ? `?${qs}` : ""}`, { headers: await headersComToken() });
+  const corpo = (await res.json().catch(() => null)) as unknown;
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      const { limparCookieSessao } = await import("@/lib/auth/clientSession");
+      limparCookieSessao();
+      window.location.href = "/login";
+    }
+    const mensagem =
+      (corpo as { error?: string } | null)?.error ?? `A consulta do comparativo respondeu ${res.status}.`;
+    throw new ComparativoError(mensagem, res.status);
+  }
+  try {
+    return adaptarComparativo(corpo);
+  } catch (e) {
+    if (e instanceof ContratoComparativoError) throw new ComparativoError(e.message, 0);
+    throw e;
+  }
 }
 
 // PATCH do destaque do lead (só admin — a API responde 403 para os demais).
